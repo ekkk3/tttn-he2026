@@ -196,6 +196,9 @@ CREATE TABLE IF NOT EXISTS `products` (
   `image_url` VARCHAR(500) NULL,
   `sale_price` DECIMAL(15,2) NOT NULL DEFAULT 0,
   `stock_quantity` INT NOT NULL DEFAULT 0,
+  -- Tuan 2: nguon goc/truy xuat (UC 2.2.6 "Nguon goc san pham") + mo ta ngan cho card.
+  `origin` VARCHAR(255) NULL COMMENT 'Nguon goc / truy xuat san pham',
+  `short_description` VARCHAR(500) NULL,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -303,6 +306,7 @@ CREATE TABLE IF NOT EXISTS `order_items` (
 CREATE TABLE IF NOT EXISTS `order_status_history` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_id` BIGINT UNSIGNED NOT NULL,
+  `from_status` VARCHAR(40) NULL,
   `to_status` VARCHAR(40) NOT NULL,
   `note` VARCHAR(255) NULL,
   `changed_by_user_id` BIGINT UNSIGNED NULL,
@@ -313,15 +317,22 @@ CREATE TABLE IF NOT EXISTS `order_status_history` (
   CONSTRAINT `fk_order_status_history_user` FOREIGN KEY (`changed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tuan 2: bo sung cot de shape khop adaptPayment() cua frontend
+-- (transaction_code, gateway_name/reference, raw_payload cho huong dan chuyen khoan).
 CREATE TABLE IF NOT EXISTS `payments` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `order_id` BIGINT UNSIGNED NOT NULL,
   `provider` VARCHAR(30) NOT NULL,
+  `payment_method` VARCHAR(30) NULL,
   `amount` DECIMAL(15,2) NOT NULL,
   `payment_status` VARCHAR(30) NOT NULL DEFAULT 'PENDING',
-  `transaction_no` VARCHAR(100) NULL,
+  `transaction_code` VARCHAR(100) NULL,
+  `gateway_name` VARCHAR(100) NULL,
+  `gateway_reference` VARCHAR(100) NULL,
+  `raw_payload` JSON NULL,
   `paid_at` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_payments_order` (`order_id`),
   CONSTRAINT `fk_payments_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE
