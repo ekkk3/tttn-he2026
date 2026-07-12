@@ -84,6 +84,10 @@ Các dịch vụ ngoài đều **tự fallback**, không làm sập server nếu
 | `VNPAY_*` / `MOMO_*` | Checkout dùng COD + chuyển khoản ngân hàng (frontend đang dùng). |
 | `GHN_TOKEN` | Tạo vận đơn thủ công (manual) + tracking mô phỏng. |
 
+> 📘 **Cấu hình chi tiết từng tích hợp** (Google/Facebook login, VNPay/MoMo, GHN) — cách lấy
+> credential, biến `.env`, và các đoạn code cần dán để chạy thật: xem
+> [`docs/HUONG_DAN_TICH_HOP.md`](../docs/HUONG_DAN_TICH_HOP.md).
+
 ## 7. Ghi chú phạm vi (backend-ready, frontend chưa có UI riêng)
 
 Một số tính năng có endpoint backend nhưng frontend chưa có trang UI để thao tác
