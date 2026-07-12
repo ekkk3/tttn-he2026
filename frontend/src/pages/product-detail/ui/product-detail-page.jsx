@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { apiRequest } from "@/shared/api/backend-client";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/cn";
 import { formatCurrency } from "@/shared/lib/format";
 import { stockStatusLabels } from "@/shared/lib/labels";
+import { useAuthStore } from "@/shared/lib/store/use-auth-store";
 import { useCartStore } from "@/shared/lib/store/use-cart-store";
+import { useFeedbackStore } from "@/shared/lib/store/use-feedback-store";
 import { useShopStore } from "@/shared/lib/store/use-shop-store";
 import { useStorefrontCatalogStore } from "@/shared/lib/store/use-storefront-catalog-store";
 import { Icon } from "@/shared/ui";
@@ -37,9 +40,16 @@ export function ProductDetailPage() {
     const product = productFromCatalog
         ? (productDetails[productFromCatalog.id] ?? productFromCatalog)
         : undefined;
+    const session = useAuthStore((state) => state.session);
+    const accessToken = useAuthStore((state) => state.accessToken);
+    const pushToast = useFeedbackStore((state) => state.pushToast);
     const [quantity, setQuantity] = useState(1);
     const [activeMediaIndex, setActiveMediaIndex] = useState(0);
     const [activeTab, setActiveTab] = useState("details");
+    const [reviews, setReviews] = useState([]);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState("");
+    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const relatedProducts = useMemo(() => {
         if (!product)
             return [];
@@ -72,6 +82,51 @@ export function ProductDetailPage() {
         const currentMaxAvailableQuantity = Math.max(1, product.stockQuantity ?? 0);
         setQuantity((value) => Math.min(Math.max(1, value), currentMaxAvailableQuantity));
     }, [product]);
+    const productId = product?.id;
+    async function loadReviews(id) {
+        try {
+            const response = await apiRequest(`/products/${id}/reviews`);
+            setReviews(response.data ?? []);
+        } catch {
+            setReviews([]);
+        }
+    }
+    useEffect(() => {
+        if (!productId) {
+            return;
+        }
+        void loadReviews(productId);
+    }, [productId]);
+    async function handleSubmitReview(event) {
+        event.preventDefault();
+        if (!session) {
+            void navigate(`${routes.login}?redirect=${encodeURIComponent(window.location.pathname)}`);
+            return;
+        }
+        if (!reviewComment.trim()) {
+            pushToast({ tone: "warning", message: "Vui lòng nhập nội dung đánh giá." });
+            return;
+        }
+        setIsSubmittingReview(true);
+        try {
+            await apiRequest(`/products/${productId}/reviews`, {
+                method: "POST",
+                token: accessToken,
+                body: { rating: reviewRating, comment: reviewComment.trim() },
+            });
+            setReviewComment("");
+            setReviewRating(5);
+            await loadReviews(productId);
+            pushToast({ tone: "success", message: "Cảm ơn bạn đã đánh giá sản phẩm!" });
+        } catch (error) {
+            pushToast({
+                tone: "warning",
+                message: error instanceof Error ? error.message : "Không thể gửi đánh giá.",
+            });
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    }
     if (!product && status === "ready") {
         return <Navigate replace to={routes.products}/>;
     }
@@ -262,23 +317,38 @@ export function ProductDetailPage() {
                             </div>) : null}
 
                         {activeTab === "reviews" ? (<div className="space-y-6">
-                                <div className="flex flex-wrap items-end justify-between gap-4">
-                                    <div>
-                                        <h3 className="font-headline text-2xl font-bold tracking-tight">
-                                            Đánh giá khách hàng
-                                        </h3>
-                                        <p className="text-on-surface-variant">
-                                            Hiện chưa có đánh giá chi tiết từ khách hàng để hiển thị tại đây.
-                                        </p>
-                                    </div>
-                                    <button type="button" className="cursor-not-allowed rounded-full bg-surface-container px-6 py-3 font-bold text-on-surface-variant" disabled>
-                                        Sắp cập nhật
-                                    </button>
+                                <div>
+                                    <h3 className="font-headline text-2xl font-bold tracking-tight">
+                                        Đánh giá khách hàng ({reviews.length})
+                                    </h3>
                                 </div>
 
-                                <div className="rounded-2xl bg-surface-container-low p-6 text-sm leading-7 text-on-surface-variant">
-                                    Khi có đánh giá khách hàng, tab này sẽ hiển thị phản hồi thật và cho
-                                    phép khách hàng gửi nhận xét về sản phẩm.
+                                <form onSubmit={handleSubmitReview} className="space-y-4 rounded-2xl bg-surface-container-low p-6">
+                                    <p className="font-semibold text-on-surface">Viết đánh giá của bạn</p>
+                                    <div className="flex items-center gap-2">
+                                        {[1, 2, 3, 4, 5].map((star) => (<button key={star} type="button" onClick={() => setReviewRating(star)} aria-label={`${star} sao`}>
+                                                <Icon name="star" className={cn("text-2xl", star <= reviewRating ? "text-tertiary" : "text-on-surface-variant/30")} fill={star <= reviewRating}/>
+                                            </button>))}
+                                        <span className="ml-2 text-sm text-on-surface-variant">{reviewRating}/5</span>
+                                    </div>
+                                    <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..." value={reviewComment} onChange={(event) => setReviewComment(event.target.value)}/>
+                                    <button type="submit" className="rounded-full bg-primary px-6 py-3 font-bold text-on-primary disabled:opacity-50" disabled={isSubmittingReview}>
+                                        {isSubmittingReview ? "Đang gửi..." : session ? "Gửi đánh giá" : "Đăng nhập để đánh giá"}
+                                    </button>
+                                </form>
+
+                                <div className="space-y-4">
+                                    {reviews.length === 0 ? (<div className="rounded-2xl bg-surface-container-low p-6 text-sm text-on-surface-variant">
+                                            Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá sản phẩm này.
+                                        </div>) : (reviews.map((review) => (<div key={review.id} className="rounded-2xl bg-surface-container-lowest p-5">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <p className="font-semibold text-on-surface">{review.user?.full_name ?? "Khách hàng"}</p>
+                                                    <div className="flex items-center text-tertiary">
+                                                        {Array.from({ length: review.rating }).map((_, index) => (<Icon key={index} name="star" className="text-sm" fill/>))}
+                                                    </div>
+                                                </div>
+                                                {review.comment ? (<p className="mt-2 text-sm leading-6 text-on-surface-variant">{review.comment}</p>) : null}
+                                            </div>)))}
                                 </div>
                             </div>) : null}
 

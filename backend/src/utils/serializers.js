@@ -7,11 +7,15 @@
 // =====================================================================
 
 // SQL SELECT cho san pham kem quan he (dung chung cho storefront + admin).
+// Kem rating trung binh + so luot danh gia (chi review VISIBLE) de card/chi tiet
+// hien sao that thay vi fallback (UC 2.2.10).
 export const PRODUCT_SELECT = `
   SELECT p.*,
          c.name AS category_name,
          s.name AS supplier_name,
-         r.name AS region_name
+         r.name AS region_name,
+         COALESCE((SELECT ROUND(AVG(rating),1) FROM product_reviews rv WHERE rv.product_id = p.id AND rv.status = 'VISIBLE'), 0) AS avg_rating,
+         (SELECT COUNT(*) FROM product_reviews rv WHERE rv.product_id = p.id AND rv.status = 'VISIBLE') AS review_count
   FROM products p
   LEFT JOIN categories c ON c.id = p.category_id
   LEFT JOIN suppliers s ON s.id = p.supplier_id
@@ -20,9 +24,11 @@ export const PRODUCT_SELECT = `
 
 export function serializeProduct(row) {
   if (!row) return null;
-  const { category_name, supplier_name, region_name, ...product } = row;
+  const { category_name, supplier_name, region_name, avg_rating, review_count, ...product } = row;
   return {
     ...product,
+    rating: avg_rating != null ? Number(avg_rating) : null,
+    review_count: review_count != null ? Number(review_count) : 0,
     category: row.category_id ? { id: row.category_id, name: category_name } : null,
     supplier: row.supplier_id ? { id: row.supplier_id, name: supplier_name } : null,
     region: row.region_id ? { id: row.region_id, name: region_name } : null,

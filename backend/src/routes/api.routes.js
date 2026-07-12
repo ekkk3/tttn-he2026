@@ -14,6 +14,8 @@ import * as ghnLocationController from '../controllers/ghnLocationController.js'
 import * as misc from '../controllers/miscController.js';
 import * as operationController from '../controllers/operationController.js';
 import * as chatController from '../controllers/chatController.js';
+import * as reviewController from '../controllers/reviewController.js';
+import * as voucherController from '../controllers/voucherController.js';
 import * as admin from '../controllers/admin/admin.controller.js';
 import { uploadSupplierLicense } from '../middleware/upload.js';
 
@@ -39,6 +41,7 @@ router.post('/suppliers/apply', uploadSupplierLicense, supplierController.apply)
 
 router.get('/products', productController.index);
 router.get('/products/:id', productController.show);
+router.get('/products/:id/reviews', reviewController.listForProduct);
 router.get('/regions', regionController.index);
 router.post('/newsletter-subscriptions', misc.subscribeNewsletter);
 router.get('/shipping/ghn/provinces', ghnLocationController.provinces);
@@ -88,10 +91,14 @@ router.post('/posts/:post/comments', misc.storeComment);
 router.post('/posts/:post/likes', misc.likePost);
 router.delete('/posts/:post/likes', misc.unlikePost);
 
+router.post('/products/:id/reviews', reviewController.store);
+
 router.get('/cart', cartController.show);
 router.post('/cart/items', cartController.storeItem);
 router.patch('/cart/items/:cartItem', cartController.updateItem);
 router.delete('/cart/items/:cartItem', cartController.destroyItem);
+
+router.post('/vouchers/apply', voucherController.apply);
 
 router.post('/orders/checkout', orderController.checkout);
 router.get('/orders', orderController.index);
@@ -114,13 +121,26 @@ operations.get('/supplier-orders', operationController.supplierOrders);
 operations.get('/fulfillment-tasks', operationController.fulfillmentTasks);
 operations.patch('/orders/:order/delivery-status', operationController.updateOrderDeliveryStatus);
 operations.patch('/fulfillment-tasks/:order/advance', operationController.advanceFulfillmentTask);
-router.use('/operations', requireRole('WAREHOUSE_STAFF', 'ADMIN'), operations);
+router.use('/operations', requireRole('WAREHOUSE_STAFF', 'ADMIN', 'SUPPLIER'), operations);
+
+// ---------------- Nha cung cap quan ly san pham cua minh (UC 2.2.15) ----------------
+const supplierPortal = Router();
+supplierPortal.get('/products', supplierController.myProducts);
+supplierPortal.post('/products', supplierController.storeMyProduct);
+supplierPortal.put('/products/:id', supplierController.updateMyProduct);
+router.use('/supplier', requireRole('SUPPLIER'), supplierPortal);
 
 // ---------------- Admin: /api/admin/* ----------------
 const adminRouter = Router();
 adminRouter.get('/dashboard', admin.dashboard);
 adminRouter.get('/complaints', misc.adminListComplaints);
 adminRouter.patch('/complaints/:complaint/resolve', misc.adminResolveComplaint);
+adminRouter.get('/reviews', reviewController.adminList);
+adminRouter.patch('/reviews/:id/moderate', reviewController.adminModerate);
+adminRouter.get('/vouchers', voucherController.adminList);
+adminRouter.post('/vouchers', voucherController.adminStore);
+adminRouter.put('/vouchers/:voucher', voucherController.adminUpdate);
+adminRouter.delete('/vouchers/:voucher', voucherController.adminDestroy);
 adminRouter.get('/community', admin.listCommunity);
 adminRouter.post('/community/invitations', admin.storeInvitation);
 adminRouter.get('/posts', admin.listAdminPosts);
