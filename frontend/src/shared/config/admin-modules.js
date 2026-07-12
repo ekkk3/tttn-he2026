@@ -58,6 +58,27 @@ export const adminModules = [
         section: "commerce",
     },
     {
+        id: "complaints",
+        label: "Khiếu nại",
+        to: routes.adminComplaints,
+        icon: "gavel",
+        section: "commerce",
+    },
+    {
+        id: "reviews",
+        label: "Đánh giá",
+        to: routes.adminReviews,
+        icon: "reviews",
+        section: "commerce",
+    },
+    {
+        id: "vouchers",
+        label: "Voucher",
+        to: routes.adminVouchers,
+        icon: "sell",
+        section: "commerce",
+    },
+    {
         id: "community",
         label: "Cộng đồng",
         to: routes.adminCommunity,

@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { routes } from "@/shared/config/routes";
 import { SidebarNav } from "@/shared/ui";
 const supplierItems = [
-    { label: "Tồn kho", to: routes.supplierInventory, icon: "inventory_2" },
+    { label: "Sản phẩm của tôi", to: routes.supplierProducts, icon: "inventory_2" },
+    { label: "Tồn kho", to: routes.supplierInventory, icon: "warehouse" },
     { label: "Phiếu yêu cầu", to: routes.supplierRequisitions, icon: "assignment_turned_in" },
     { label: "Xử lý đơn", to: routes.supplierProcessing, icon: "package_2" },
     { label: "Đơn nhà cung cấp", to: routes.supplierOrders, icon: "local_shipping" },

@@ -80,5 +80,16 @@ export const show = asyncHandler(async (req, res) => {
   const [product] = await query(`${PRODUCT_SELECT} WHERE p.id = ? AND p.is_deleted = 0`, [req.params.id]);
   if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
   const images = await query('SELECT * FROM product_images WHERE product_id = ? ORDER BY sort_order', [product.id]);
-  res.json({ data: { ...serializeProduct(product), images } });
+  const [{ avg_rating, review_count }] = await query(
+    "SELECT COALESCE(AVG(rating),0) AS avg_rating, COUNT(*) AS review_count FROM product_reviews WHERE product_id = ? AND status = 'VISIBLE'",
+    [product.id]
+  );
+  res.json({
+    data: {
+      ...serializeProduct(product),
+      images,
+      rating: Number(Number(avg_rating).toFixed(1)),
+      review_count,
+    },
+  });
 });

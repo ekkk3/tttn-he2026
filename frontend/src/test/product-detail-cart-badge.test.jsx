@@ -95,6 +95,9 @@ describe("Product detail cart badge", () => {
                     data: [],
                 });
             }
+            if (path.endsWith("/api/products/101/reviews")) {
+                return jsonResponse({ data: [], summary: { average_rating: 0, review_count: 0 } });
+            }
             if (path.endsWith("/api/products/101")) {
                 return jsonResponse({
                     message: "Product retrieved successfully.",
@@ -145,6 +148,9 @@ describe("Product detail cart badge", () => {
                     message: "Regions retrieved successfully.",
                     data: [],
                 });
+            }
+            if (path.endsWith("/api/products/101/reviews")) {
+                return jsonResponse({ data: [], summary: { average_rating: 0, review_count: 0 } });
             }
             if (path.endsWith("/api/products/101")) {
                 return jsonResponse({
@@ -209,6 +215,9 @@ describe("Product detail cart badge", () => {
                     message: "Regions retrieved successfully.",
                     data: [],
                 });
+            }
+            if (path.endsWith("/api/products/101/reviews")) {
+                return jsonResponse({ data: [], summary: { average_rating: 0, review_count: 0 } });
             }
             if (path.endsWith("/api/products/101")) {
                 return jsonResponse({

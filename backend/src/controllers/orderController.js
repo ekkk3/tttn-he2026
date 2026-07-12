@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
+import { computeVoucherDiscount } from './voucherController.js';
 
 function generateOrderNo() {
   return `DH${Date.now()}`;
@@ -54,7 +55,7 @@ async function notifyUser(userId, type, title, message, linkUrl = null) {
 
 // POST /api/orders/checkout
 export const checkout = asyncHandler(async (req, res) => {
-  const { recipient_name, recipient_phone, shipping_address, payment_method = 'COD', payment_gateway, note } = req.body;
+  const { recipient_name, recipient_phone, shipping_address, payment_method = 'COD', payment_gateway, note, voucher_code } = req.body;
   if (!recipient_name || !recipient_phone || !shipping_address) {
     return res.status(422).json({ message: 'Thieu thong tin nguoi nhan hoac dia chi giao hang.' });
   }
@@ -88,7 +89,15 @@ export const checkout = asyncHandler(async (req, res) => {
 
     const subtotal = items.reduce((sum, i) => sum + Number(i.line_total), 0);
     const shipping_fee = calculateShippingFee(subtotal, shipping_address);
-    const discount_amount = 0; // Voucher: xem PLAN (backend-ready, chua ghep vao UI checkout).
+
+    // UC 2.2.9a: ap dung voucher neu khach nhap ma hop le.
+    let discount_amount = 0;
+    let appliedVoucher = null;
+    if (voucher_code) {
+      const [[voucher]] = await connection.query('SELECT * FROM vouchers WHERE code = ? LIMIT 1', [voucher_code]);
+      discount_amount = computeVoucherDiscount(voucher, subtotal); // nem 422 neu khong hop le
+      appliedVoucher = voucher;
+    }
     const total_amount = subtotal + shipping_fee - discount_amount;
     const orderNo = generateOrderNo();
 
@@ -130,6 +139,15 @@ export const checkout = asyncHandler(async (req, res) => {
        VALUES (?, ?, ?, ?, 'PENDING', ?, ?)`,
       [orderId, payment_method, payment_method, total_amount, payment_gateway || null, rawPayload]
     );
+
+    // Ghi nhan voucher da dung (UC 2.2.9a) + tang used_count.
+    if (appliedVoucher && discount_amount > 0) {
+      await connection.query(
+        'INSERT INTO order_vouchers (order_id, voucher_id, discount_amount) VALUES (?, ?, ?)',
+        [orderId, appliedVoucher.id, discount_amount]
+      );
+      await connection.query('UPDATE vouchers SET used_count = used_count + 1 WHERE id = ?', [appliedVoucher.id]);
+    }
 
     await connection.query('DELETE FROM cart_items WHERE cart_id = ?', [cart.id]);
     await connection.query("UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?", [cart.id]);
