@@ -238,6 +238,25 @@ CREATE TABLE IF NOT EXISTS `wishlist_items` (
   CONSTRAINT `fk_wishlist_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Danh gia san pham (UC 2.2.10) + kiem duyet (UC 2.2.10a: status VISIBLE/HIDDEN).
+CREATE TABLE IF NOT EXISTS `product_reviews` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `product_id` BIGINT UNSIGNED NOT NULL,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `order_id` BIGINT UNSIGNED NULL,
+  `rating` TINYINT NOT NULL,
+  `comment` VARCHAR(1000) NULL,
+  `status` VARCHAR(20) NOT NULL DEFAULT 'VISIBLE',
+  `moderated_by_user_id` BIGINT UNSIGNED NULL,
+  `moderated_at` DATETIME NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_reviews_product` (`product_id`),
+  KEY `idx_reviews_status` (`status`),
+  CONSTRAINT `fk_reviews_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reviews_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------------------------------------------------------------------
 -- 5. GIO HANG (UC 2.2.7)
 -- ---------------------------------------------------------------------
