@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiRequest } from "@/shared/api/backend-client";
 import { routes } from "@/shared/config/routes";
 import { formatCurrency } from "@/shared/lib/format";
 import { useAccountStore } from "@/shared/lib/store/use-account-store";
@@ -151,6 +152,7 @@ function CopyButton({ onClick }) {
 export function CheckoutPage() {
     const navigate = useNavigate();
     const session = useAuthStore((state) => state.session);
+    const accessToken = useAuthStore((state) => state.accessToken);
     const profile = useAccountStore((state) => state.profile);
     const updateProfile = useAccountStore((state) => state.updateProfile);
     const loadCart = useCartStore((state) => state.loadCart);
@@ -178,6 +180,10 @@ export function CheckoutPage() {
     const locationError = useVietnamLocationStore((state) => state.error);
     const [form, setForm] = useState(() => buildForm(profile));
     const [paymentMethod, setPaymentMethod] = useState("COD");
+    const [voucherCode, setVoucherCode] = useState("");
+    const [appliedVoucher, setAppliedVoucher] = useState(null);
+    const [voucherError, setVoucherError] = useState("");
+    const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
     const [submitError, setSubmitError] = useState("");
     const [createdBankTransferOrder, setCreatedBankTransferOrder] = useState(null);
     const [bankTransferMessage, setBankTransferMessage] = useState("");
@@ -292,7 +298,7 @@ export function CheckoutPage() {
         .join(", ");
     const hasShippingAddress = fullShippingAddress.trim().length > 0;
     const shippingFee = hasShippingAddress ? calculateShippingFee(subtotal, fullShippingAddress) : null;
-    const discount = 0;
+    const discount = appliedVoucher?.discount_amount ?? 0;
     const total = subtotal + (shippingFee ?? 0) - discount;
     const bankTransferPayload = createdBankTransferOrder?.payment?.rawPayload ?? null;
     const bankName = paymentInstructionValue(bankTransferPayload, "bank_name") || "MB Bank";
@@ -318,6 +324,37 @@ export function CheckoutPage() {
             ...current,
             [key]: value,
         }));
+    }
+    async function handleApplyVoucher() {
+        setVoucherError("");
+        if (!voucherCode.trim()) {
+            setVoucherError("Vui lòng nhập mã giảm giá.");
+            return;
+        }
+        if (!session) {
+            setVoucherError("Vui lòng đăng nhập để áp dụng mã giảm giá.");
+            return;
+        }
+        setIsApplyingVoucher(true);
+        try {
+            const response = await apiRequest("/vouchers/apply", {
+                method: "POST",
+                token: accessToken,
+                body: { code: voucherCode.trim().toUpperCase(), subtotal },
+            });
+            setAppliedVoucher(response.data);
+            pushToast({ tone: "success", message: `Đã áp dụng mã ${response.data.code}.` });
+        } catch (error) {
+            setAppliedVoucher(null);
+            setVoucherError(error instanceof Error ? error.message : "Mã giảm giá không hợp lệ.");
+        } finally {
+            setIsApplyingVoucher(false);
+        }
+    }
+    function removeVoucher() {
+        setAppliedVoucher(null);
+        setVoucherCode("");
+        setVoucherError("");
     }
     async function handleCopy(value) {
         try {
@@ -368,6 +405,7 @@ export function CheckoutPage() {
             note: form.note.trim(),
             payment_method: paymentMethod,
             payment_gateway: paymentMethod === "BANK_TRANSFER" ? "Manual bank transfer" : undefined,
+            voucher_code: appliedVoucher?.code,
         });
         if (!result.success || !result.data) {
             setSubmitError(result.error ?? "Không thể hoàn tất đơn hàng.");
@@ -611,6 +649,20 @@ export function CheckoutPage() {
                 <aside className="xl:sticky xl:top-24">
                     <section className="rounded-2xl bg-surface-container-lowest p-8 shadow-sm ring-1 ring-black/5">
                         <h2 className="font-headline text-2xl font-semibold">Tóm tắt đơn hàng</h2>
+
+                        <div className="mt-6 space-y-3">
+                            <label className="text-xs uppercase tracking-widest text-on-surface-variant">Mã giảm giá</label>
+                            {appliedVoucher ? (<div className="flex items-center justify-between rounded-xl bg-primary/5 px-4 py-3 text-sm">
+                                    <span className="font-semibold text-primary">{appliedVoucher.code} (-{formatCurrency(appliedVoucher.discount_amount)})</span>
+                                    <button type="button" className="text-xs text-error hover:underline" onClick={removeVoucher}>Bỏ mã</button>
+                                </div>) : (<div className="flex gap-2">
+                                    <input className="min-w-0 flex-1 rounded-xl bg-surface-container-highest px-4 py-3 text-sm uppercase outline-none focus:ring-2 focus:ring-primary/15" placeholder="Nhập mã giảm giá" value={voucherCode} onChange={(event) => setVoucherCode(event.target.value)}/>
+                                    <button type="button" className="rounded-xl bg-secondary px-4 py-3 text-sm font-semibold text-white disabled:opacity-50" disabled={isApplyingVoucher} onClick={() => void handleApplyVoucher()}>
+                                        {isApplyingVoucher ? "..." : "Áp dụng"}
+                                    </button>
+                                </div>)}
+                            {voucherError ? <p className="text-xs text-error">{voucherError}</p> : null}
+                        </div>
 
                         <div className="mt-6 space-y-4 text-sm">
                             <div className="flex justify-between">
