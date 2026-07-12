@@ -3,6 +3,7 @@ import { routes } from "@/shared/config/routes";
 import { SidebarNav } from "@/shared/ui";
 const supplierItems = [
     { label: "Sản phẩm của tôi", to: routes.supplierProducts, icon: "inventory_2" },
+    { label: "Báo cáo doanh thu", to: routes.supplierRevenue, icon: "monitoring" },
     { label: "Tồn kho", to: routes.supplierInventory, icon: "warehouse" },
     { label: "Phiếu yêu cầu", to: routes.supplierRequisitions, icon: "assignment_turned_in" },
     { label: "Xử lý đơn", to: routes.supplierProcessing, icon: "package_2" },

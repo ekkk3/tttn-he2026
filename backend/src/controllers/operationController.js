@@ -105,6 +105,12 @@ export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   const { status, approved_qty } = req.body;
   const [current] = await query('SELECT * FROM delivery_requests WHERE id = ?', [req.params.id]);
   if (!current) return res.status(404).json({ message: 'Khong tim thay phieu nhap.' });
+  // Bao ve: NCC chi duoc thao tac phieu nhap cho san pham CUA MINH (UC 2.2.13).
+  const scopeId = await supplierScopeId(req);
+  if (scopeId !== null) {
+    const [owned] = await query('SELECT id FROM products WHERE id = ? AND supplier_id = ?', [current.product_id, scopeId]);
+    if (!owned) return res.status(403).json({ message: 'Ban chi co the thao tac phieu nhap cua minh.' });
+  }
   await query(
     'UPDATE delivery_requests SET status = ?, approved_qty = COALESCE(?, approved_qty), approved_by_user_id = ? WHERE id = ?',
     [status, approved_qty ?? null, req.user.id, req.params.id]

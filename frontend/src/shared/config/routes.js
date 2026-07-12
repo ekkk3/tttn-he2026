@@ -71,6 +71,7 @@ export const routes = {
     adminWarehouseSupplierOrders: "/admin/warehouse/supplier-orders",
     adminWarehouseHelp: "/admin/warehouse/help",
     supplierProducts: "/supplier/products",
+    supplierRevenue: "/supplier/revenue",
     supplierInventory: "/supplier/inventory",
     supplierRequisitions: "/supplier/requisitions",
     supplierProcessing: "/supplier/processing",
