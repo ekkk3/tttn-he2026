@@ -36,7 +36,6 @@ export function StorefrontHeader() {
             { label: "Cửa hàng", to: routes.products },
             { label: "Bài viết", to: routes.story },
             { label: "Vùng miền", to: routes.regions },
-            { label: "Test Sản Phẩm", to: routes.productTest },
         ];
     const navLinkClasses = ({ isActive }) => cn("pb-1 text-sm font-medium transition-colors", isActive
         ? "border-b-2 border-primary text-primary"

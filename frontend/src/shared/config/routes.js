@@ -82,7 +82,6 @@ export const routes = {
     warehouseFulfillment: "/warehouse/fulfillment",
     warehouseSupplierOrders: "/warehouse/supplier-orders",
     warehouseHelp: "/warehouse/help",
-    productTest: "/product-test"
 };
 export const roleProtectedPrefixes = [
     {
