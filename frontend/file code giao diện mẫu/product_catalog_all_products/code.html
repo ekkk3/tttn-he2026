@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tất cả sản phẩm | Heritage Harvest</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#2e7d32",
+                        "primary-fixed-dim": "#88d982",
+                        "outline-variant": "#bfcaba",
+                        "on-surface-variant": "#40493d",
+                        "on-primary-fixed-variant": "#005312",
+                        "inverse-surface": "#2f3131",
+                        "surface-tint": "#1b6d24",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#cbffc2",
+                        "on-surface": "#1a1c1c",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e2e2e2",
+                        "secondary-fixed-dim": "#e4beb2",
+                        "on-primary-fixed": "#002204",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#ffdbce",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f1",
+                        "tertiary-container": "#b45000",
+                        "tertiary": "#8e3d00",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#eeeeee",
+                        "surface-container-low": "#f3f3f3",
+                        "on-tertiary-fixed-variant": "#773200",
+                        "background": "#f9f9f9",
+                        "secondary": "#75584d",
+                        "surface-container-high": "#e8e8e8",
+                        "primary-fixed": "#a3f69c",
+                        "on-tertiary-container": "#ffeee6",
+                        "secondary-container": "#fed7ca",
+                        "tertiary-fixed": "#ffdbca",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed-variant": "#5b4137",
+                        "inverse-primary": "#88d982",
+                        "surface": "#f9f9f9",
+                        "on-tertiary-fixed": "#331200",
+                        "tertiary-fixed-dim": "#ffb68f",
+                        "primary": "#0d631b",
+                        "outline": "#707a6c",
+                        "surface-bright": "#f9f9f9",
+                        "error-container": "#ffdad6",
+                        "on-secondary-container": "#795c51",
+                        "on-background": "#1a1c1c",
+                        "on-secondary-fixed": "#2b160f",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#dadada",
+                        "surface-variant": "#e2e2e2"
+                    },
+                    fontFamily: {
+                        "headline": ["Be Vietnam Pro"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .tonal-shift-bg { background-color: #f3f3f3; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#f9f9f9]/80 dark:bg-zinc-950/80 backdrop-blur-xl shadow-sm dark:shadow-none font-['Be_Vietnam_Pro'] tracking-tight">
+<div class="flex justify-between items-center px-6 py-4 max-w-7xl mx-auto">
+<a class="text-xl font-bold text-[#0d631b] dark:text-[#2e7d32]" href="#">Heritage Harvest</a>
+<div class="hidden md:flex items-center space-x-8">
+<a class="text-[#0d631b] dark:text-[#2e7d32] font-semibold border-b-2 border-[#0d631b] transition-colors duration-200" href="#">Shop</a>
+<a class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] transition-colors duration-200" href="#">Stories</a>
+<a class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] transition-colors duration-200" href="#">Regions</a>
+<a class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] transition-colors duration-200" href="#">About</a>
+</div>
+<div class="flex items-center space-x-5">
+<button class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+<button class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] active:scale-95 duration-150 relative">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="absolute -top-1 -right-1 bg-tertiary text-on-tertiary text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
+</button>
+<button class="text-zinc-600 dark:text-zinc-400 hover:text-[#0d631b] active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<main class="pt-24 pb-20 max-w-7xl mx-auto px-6">
+<!-- Breadcrumbs -->
+<nav class="mb-8 flex items-center space-x-2 text-sm font-label text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#">Home</a>
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Shop</a>
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary font-medium">All Products</span>
+</nav>
+<div class="flex flex-col lg:flex-row gap-12">
+<!-- Sidebar (Filters) -->
+<aside class="w-full lg:w-1/4 space-y-10">
+<!-- Search within Category -->
+<div class="space-y-3">
+<h3 class="font-headline font-semibold text-lg text-on-surface tracking-tight">Tìm kiếm</h3>
+<div class="relative">
+<input class="w-full bg-surface-container-highest border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 transition-all text-sm outline-none border-b-2 border-transparent focus:border-primary" placeholder="Tìm tên sản phẩm..." type="text"/>
+<span class="material-symbols-outlined absolute right-3 top-3 text-outline" data-icon="search">search</span>
+</div>
+</div>
+<!-- Category Filter -->
+<div class="space-y-4">
+<h3 class="font-headline font-semibold text-lg text-on-surface tracking-tight border-b border-outline-variant/30 pb-2">Danh mục</h3>
+<div class="flex flex-col space-y-3">
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Trà &amp; Cà phê</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Gia vị</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Đồ khô</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Thủ công mỹ nghệ</span>
+</label>
+</div>
+</div>
+<!-- Region Filter -->
+<div class="space-y-4">
+<h3 class="font-headline font-semibold text-lg text-on-surface tracking-tight border-b border-outline-variant/30 pb-2">Vùng miền</h3>
+<div class="flex flex-col space-y-3">
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Tây Bắc</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Miền Trung</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Tây Nguyên</span>
+</label>
+<label class="flex items-center group cursor-pointer">
+<input class="rounded text-primary focus:ring-primary border-outline-variant w-5 h-5 transition-all" type="checkbox"/>
+<span class="ml-3 font-body text-on-surface-variant group-hover:text-primary transition-colors">Miền Tây</span>
+</label>
+</div>
+</div>
+<!-- Price Range -->
+<div class="space-y-4">
+<h3 class="font-headline font-semibold text-lg text-on-surface tracking-tight border-b border-outline-variant/30 pb-2">Khoảng giá</h3>
+<div class="px-2">
+<input class="w-full h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" max="2000000" min="0" step="50000" type="range"/>
+<div class="flex justify-between mt-3 text-xs font-label text-outline uppercase tracking-wider">
+<span>0đ</span>
+<span>2,000,000đ</span>
+</div>
+</div>
+</div>
+<!-- Rating -->
+<div class="space-y-4">
+<h3 class="font-headline font-semibold text-lg text-on-surface tracking-tight border-b border-outline-variant/30 pb-2">Đánh giá</h3>
+<div class="flex flex-col space-y-2">
+<button class="flex items-center group text-left">
+<div class="flex text-tertiary">
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm text-outline-variant" data-icon="star">star</span>
+</div>
+<span class="ml-2 font-label text-sm text-on-surface-variant group-hover:text-primary">Trở lên</span>
+</button>
+</div>
+</div>
+<!-- Clear All -->
+<button class="w-full py-3 px-4 border border-outline-variant text-on-surface-variant font-medium rounded-xl hover:bg-surface-container-low transition-colors active:scale-[0.98]">
+                    Xóa tất cả bộ lọc
+                </button>
+</aside>
+<!-- Main Content Area -->
+<section class="w-full lg:w-3/4">
+<!-- Toolbar -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+<div>
+<h1 class="font-headline text-3xl font-bold text-on-surface tracking-tight">Tất cả sản phẩm</h1>
+<p class="text-on-surface-variant font-label text-sm mt-1">Hiển thị 128 sản phẩm tinh hoa</p>
+</div>
+<div class="flex items-center space-x-4 w-full sm:w-auto">
+<div class="relative group min-w-[180px]">
+<select class="appearance-none w-full bg-surface-container-low border-none rounded-full px-5 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary/20 cursor-pointer">
+<option>Phổ biến nhất</option>
+<option>Mới nhất</option>
+<option>Giá: Thấp đến Cao</option>
+<option>Giá: Cao đến Thấp</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-2.5 pointer-events-none text-outline text-lg" data-icon="expand_more">expand_more</span>
+</div>
+<div class="flex bg-surface-container-low rounded-full p-1">
+<button class="p-2 rounded-full bg-surface-container-lowest text-primary shadow-sm">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</button>
+<button class="p-2 rounded-full text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="view_list">view_list</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+<!-- Product Card 1 -->
+<div class="group flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-4px]">
+<div class="relative aspect-[4/5] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Premium Arabica coffee beans in a rustic wooden bowl with burlap texture and warm natural morning sunlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDSY18Y0pt9VoQJ_P711qNJumIYKNBIvCAWZ4zIyZsSAVxoRY3SVTwzOvIR_5xTiEdFJaYvQm8wM7Y-MDZKT8UKChNN-S89uNRgMAUMUIoeYrGidq32shCSv3Z6C-4Jb-OofC0pTkfyfoSD5VA7GHqiz13_oTiQVm2sPQxABzP8nshexcJ0vBLOrQSyQYF6T5L1Oq6lAncWJq9BtyKQlwIyrLXEWegJMs0W0882sywLHO5UHGhPEPIyo7QCgnm0QvlyWaed-txavU"/>
+<span class="absolute top-4 left-4 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Đặc sản Đà Lạt</span>
+</div>
+<div class="p-6 flex flex-col flex-grow space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-semibold text-lg leading-tight group-hover:text-primary transition-colors">Cà phê Arabica Cầu Đất</h3>
+<div class="flex items-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-1 text-xs font-bold">4.9</span>
+</div>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-2 leading-relaxed">Hương thơm nồng nàn, vị chua thanh thoát đặc trưng từ vùng đất đỏ Cầu Đất cao 1500m.</p>
+<div class="pt-4 mt-auto flex justify-between items-center">
+<span class="text-xl font-bold text-on-surface">250.000đ</span>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="group flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-4px]">
+<div class="relative aspect-[4/5] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Traditional Vietnamese fish sauce bottle on a rustic kitchen counter with fresh chili and herbs in soft focus background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRMHJm5onHQE0PlX9c5AJjae5ICooqPOTIDfbEJIBY5H34ysPfXG7Gw69aMa74drWjDIlEfwQ_oGyQULKSqonbCvW1FuIGR17ZwWIswDeEVylchccJkp5_Dc5BOcbqY5Uveinrbfml6NqrU9OkrjYmzrFlwrbuLjqQZJiM_o00nIdcfgWD1NesNvOkpN1MaM5MMpv81fwwokJK7mMzZuEsd49c1W4lSIFxJZbRIIkDHyJwM3VpalpQ2I44D0i1bGWXh-sSAm_lOw4"/>
+<span class="absolute top-4 left-4 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Đặc sản Kiên Giang</span>
+</div>
+<div class="p-6 flex flex-col flex-grow space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-semibold text-lg leading-tight group-hover:text-primary transition-colors">Nước mắm Phú Quốc truyền thống</h3>
+<div class="flex items-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-1 text-xs font-bold">5.0</span>
+</div>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-2 leading-relaxed">Được ủ chượp từ cá cơm than tươi ròng, đạt độ đạm tự nhiên tuyệt hảo.</p>
+<div class="pt-4 mt-auto flex justify-between items-center">
+<span class="text-xl font-bold text-on-surface">450.000đ</span>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="group flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-4px]">
+<div class="relative aspect-[4/5] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Fresh loose leaf green tea being poured into a ceramic bowl in a serene, zen-like mountain atmosphere" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPDimSj90aJOZiuPaefQYuEiuPaDNpIpYZGPZ70LKEAnoa6DRtoTu2kDrwQ75egreiLGT04aIGDdo0gEE0uYUCZGlzhdf2AR1WslnbGBOpOnWt0HmrFM1QPX9BesICguSVqmnknkumOsy_ztLFiuQZ-rqc1snryuBVmk_5ciiA89rLDd4EC1cuwNUtlhcs3Y7VGcX51noLvdMR2gRgt8SA49XcMWLRZgQcZKd6VazMwbJa1dSNjN3Cw3niyIKU9vcyczhTudAQmIY"/>
+<span class="absolute top-4 left-4 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Đặc sản Sơn La</span>
+</div>
+<div class="p-6 flex flex-col flex-grow space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-semibold text-lg leading-tight group-hover:text-primary transition-colors">Trà Oolong Mộc Châu</h3>
+<div class="flex items-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-1 text-xs font-bold">4.8</span>
+</div>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-2 leading-relaxed">Búp trà tuyển chọn từ cao nguyên Mộc Châu, hương hoa cỏ nhẹ nhàng, hậu vị ngọt sâu.</p>
+<div class="pt-4 mt-auto flex justify-between items-center">
+<span class="text-xl font-bold text-on-surface">180.000đ</span>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="group flex flex-col bg-surface-container-lowest rounded-xl overflow-hidden transition-all duration-300 hover:translate-y-[-4px]">
+<div class="relative aspect-[4/5] overflow-hidden">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="Roasted cashew nuts in a ceramic bowl with sea salt crystals scattered on a dark slate background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_mzXzjWs3GTxSMXBbR4dERYJ6x6LKxE4cMZ4eAcCqYiJy6O_yMZGcv5FyahGmozdKO2ZU7bJylFFm9IWkqS6VZgz7kW39qg0XtEeEUDmPTwTH3pz3xPyfhVMJ028qz_KhtJLdqf5LKHFcWkYT_AAPf_BjrZK2V8UZVcxN6CMQYLdK4h77GP1NOrvw62mvMoyGAFjobLkjSiqqDcsskd4ymNe-GSY05yw1ieMG95UsGSm-6_BURuyIe0ASytBfOOi-VWGgeLm_fWw"/>
+<span class="absolute top-4 left-4 bg-primary text-on-primary text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">Đặc sản Bình Phước</span>
+</div>
+<div class="p-6 flex flex-col flex-grow space-y-3">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-semibold text-lg leading-tight group-hover:text-primary transition-colors">Hạt điều rang muối Bình Phước</h3>
+<div class="flex items-center text-tertiary">
+<span class="material-symbols-outlined text-[16px]" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-1 text-xs font-bold">4.9</span>
+</div>
+</div>
+<p class="text-on-surface-variant text-sm line-clamp-2 leading-relaxed">Hạt to, giòn rụm, giữ nguyên vị béo ngậy đặc trưng của thủ phủ hạt điều Việt Nam.</p>
+<div class="pt-4 mt-auto flex justify-between items-center">
+<span class="text-xl font-bold text-on-surface">320.000đ</span>
+<button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90">
+<span class="material-symbols-outlined" data-icon="shopping_basket">shopping_basket</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination -->
+<div class="mt-16 flex justify-center">
+<nav class="flex items-center bg-surface-container-low rounded-full px-2 py-1 space-x-1">
+<button class="w-10 h-10 flex items-center justify-center text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-on-primary font-bold shadow-md">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors font-medium">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors font-medium">3</button>
+<span class="px-2 text-outline">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-colors font-medium">10</button>
+<button class="w-10 h-10 flex items-center justify-center text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</nav>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full border-t border-zinc-200 dark:border-zinc-800 bg-[#f3f3f3] dark:bg-zinc-900 font-['Be_Vietnam_Pro'] text-sm">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 py-12 max-w-7xl mx-auto w-full">
+<div class="mb-8 md:mb-0">
+<div class="text-lg font-bold text-[#0d631b] mb-2">Heritage Harvest</div>
+<p class="text-zinc-500 dark:text-zinc-400 max-w-xs text-xs">© 2024 Heritage Harvest. Celebrating Vietnamese Craftsmanship.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-6 md:gap-12">
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-[#0d631b] dark:hover:text-white transition-colors" href="#">Sustainability</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-[#0d631b] dark:hover:text-white transition-colors" href="#">Shipping</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-[#0d631b] dark:hover:text-white transition-colors" href="#">Returns</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-[#0d631b] dark:hover:text-white transition-colors" href="#">Privacy Policy</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-[#0d631b] dark:hover:text-white transition-colors" href="#">Contact</a>
+</div>
+<div class="mt-8 md:mt-0 flex space-x-4">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-[#0d631b] cursor-pointer hover:bg-primary hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="public">public</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-[#0d631b] cursor-pointer hover:bg-primary hover:text-on-primary transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="eco">eco</span>
+</div>
+</div>
+</div>
+</footer>
+</body></html>

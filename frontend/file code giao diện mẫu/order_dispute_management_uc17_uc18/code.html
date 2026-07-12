@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heritage Admin - Order &amp; Dispute Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary": "#ffffff",
+              "on-background": "#1a1c1c",
+              "tertiary": "#8e3d00",
+              "surface-container-high": "#e8e8e8",
+              "inverse-surface": "#2f3131",
+              "primary": "#0d631b",
+              "on-secondary": "#ffffff",
+              "surface-dim": "#dadada",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#ffeee6",
+              "secondary-container": "#fed7ca",
+              "tertiary-fixed-dim": "#ffb68f",
+              "surface-tint": "#1b6d24",
+              "surface-container-lowest": "#ffffff",
+              "inverse-on-surface": "#f0f1f1",
+              "secondary-fixed": "#ffdbce",
+              "error-container": "#ffdad6",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "secondary": "#75584d",
+              "secondary-fixed-dim": "#e4beb2",
+              "on-surface-variant": "#40493d",
+              "inverse-primary": "#88d982",
+              "on-secondary-fixed-variant": "#5b4137",
+              "surface": "#f9f9f9",
+              "on-primary-container": "#cbffc2",
+              "surface-bright": "#f9f9f9",
+              "tertiary-container": "#b45000",
+              "primary-fixed-dim": "#88d982",
+              "outline": "#707a6c",
+              "outline-variant": "#bfcaba",
+              "on-tertiary-fixed": "#331200",
+              "primary-fixed": "#a3f69c",
+              "primary-container": "#2e7d32",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#005312",
+              "surface-container-low": "#f3f3f3",
+              "on-error-container": "#93000a",
+              "on-primary-fixed": "#002204",
+              "tertiary-fixed": "#ffdbca",
+              "background": "#f9f9f9",
+              "on-secondary-container": "#795c51",
+              "on-secondary-fixed": "#2b160f",
+              "surface-variant": "#e2e2e2",
+              "on-tertiary-fixed-variant": "#773200",
+              "surface-container": "#eeeeee",
+              "on-surface": "#1a1c1c"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #bfcaba; border-radius: 10px; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-screen flex flex-col py-6 px-4 h-full w-64 border-none bg-[#f3f3f3] dark:bg-stone-900 z-50">
+<div class="mb-10 px-2">
+<h1 class="text-xl font-bold tracking-tight text-[#0d631b]">Heritage Admin</h1>
+<p class="text-xs text-secondary font-medium uppercase tracking-widest mt-1 opacity-70">Agrarian Curator</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Users</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Products</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Categories</span>
+</a>
+<!-- ACTIVE TAB: Orders -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#0d631b] font-bold border-r-4 border-[#0d631b] bg-white/50 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Disputes</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b] scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Suppliers</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 border-t border-outline-variant/10 pt-4">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 hover:text-[#0d631b]" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Settings</span>
+</a>
+<div class="flex items-center gap-3 px-3 py-4 mt-2">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img alt="Admin Avatar" class="w-full h-full object-cover" data-alt="professional portrait of a curator in a minimalist workspace with natural lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMgm4S4gvqzTOeXcd2hIQ1nC26FpIlEyFRCdsXiPHn4osCs6hhsLyP_DCLsQP80tqrKly6Or2Z4BKzCFdAXPvwU9Fn9SPk1S25inpBS1HwUDtfMS2CmHW9-btcvNOx68_wTZ6pMFsbi1fWSPlnTSyshrrh6XgRTo8lIbDUsetsVlEDP1hl3vsKPTzOZc1hjTAOzt91KzoaylGVhedBoKsJL_4zoJASZvf3Oxe3KcNhKKVW0Cwf9LiuTfZ1FDJRONOsOexcqJT-KMU"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-xs font-bold text-on-surface truncate">Admin Curator</p>
+<p class="text-[10px] text-secondary truncate">admin@heritage.vn</p>
+</div>
+</div>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-error hover:bg-error-container/20" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar Shell -->
+<header class="sticky top-0 z-40 flex justify-between items-center w-full px-8 py-4 bg-[#f9f9f9]/80 backdrop-blur-2xl dark:bg-stone-950/80">
+<div class="flex items-center gap-6 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all font-label" placeholder="Search orders, IDs or customers..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+<button class="flex items-center gap-2 hover:bg-surface-container-high py-1 px-3 rounded-full transition-all">
+<span class="material-symbols-outlined text-primary" data-icon="account_circle">account_circle</span>
+<span class="text-sm font-medium">Curator Portal</span>
+</button>
+</div>
+</header>
+<div class="px-8 py-8">
+<!-- Breadcrumbs & Title -->
+<div class="mb-8">
+<nav class="flex gap-2 text-xs font-label text-outline mb-2">
+<span>Admin</span>
+<span>/</span>
+<span class="text-primary font-semibold">Orders &amp; Disputes</span>
+</nav>
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-bold font-headline tracking-tight text-on-surface">Order Logistics</h2>
+<p class="text-on-surface-variant mt-1">Monitor heritage commerce flow and resolve artisan-customer claims.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 bg-surface-container-lowest text-on-surface px-5 py-2.5 rounded-full border border-outline-variant/20 font-label text-sm hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                            Advanced Filter
+                        </button>
+<button class="flex items-center gap-2 bg-primary text-on-primary px-6 py-2.5 rounded-full font-label text-sm font-semibold shadow-lg shadow-primary/20 hover:bg-primary-container transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                            Export Report
+                        </button>
+</div>
+</div>
+</div>
+<!-- Bento Status Overview -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<p class="text-xs font-label uppercase tracking-widest text-outline mb-2">Total Orders</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-headline">1,284</span>
+<span class="text-xs text-primary font-bold">+12%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+<div class="h-full bg-primary w-3/4"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<p class="text-xs font-label uppercase tracking-widest text-outline mb-2">Active Disputes</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-headline text-error">24</span>
+<span class="text-xs text-error font-bold">-2%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+<div class="h-full bg-error w-1/4"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<p class="text-xs font-label uppercase tracking-widest text-outline mb-2">Pending Shipping</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-headline text-tertiary">156</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+<div class="h-full bg-tertiary w-1/2"></div>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-none">
+<p class="text-xs font-label uppercase tracking-widest text-outline mb-2">Revenue (MoM)</p>
+<div class="flex items-baseline gap-2">
+<span class="text-2xl font-bold font-headline">$42.8k</span>
+<span class="text-xs text-primary font-bold">↑ 8%</span>
+</div>
+<div class="h-1.5 w-full bg-surface-container-highest rounded-full mt-4 overflow-hidden">
+<div class="h-full bg-primary-container w-2/3"></div>
+</div>
+</div>
+</div>
+<!-- Main Data Canvas -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm border border-outline-variant/10">
+<!-- Tab Switching Logic -->
+<div class="flex border-b border-outline-variant/10 px-6">
+<button class="px-6 py-4 text-sm font-bold text-primary border-b-2 border-primary">All Orders</button>
+<button class="px-6 py-4 text-sm font-medium text-outline hover:text-on-surface transition-all flex items-center gap-2">
+                        Active Disputes
+                        <span class="bg-error text-white text-[10px] px-1.5 py-0.5 rounded-full">24</span>
+</button>
+<button class="px-6 py-4 text-sm font-medium text-outline hover:text-on-surface transition-all">Archived</button>
+</div>
+<!-- Filters Bar -->
+<div class="p-4 bg-surface-container-low/50 flex flex-wrap gap-4 items-center">
+<div class="flex gap-2">
+<span class="bg-white px-3 py-1.5 rounded-full text-xs font-medium border border-outline-variant/20 flex items-center gap-2">
+                            Status: All <span class="material-symbols-outlined text-xs" data-icon="expand_more">expand_more</span>
+</span>
+<span class="bg-white px-3 py-1.5 rounded-full text-xs font-medium border border-outline-variant/20 flex items-center gap-2">
+                            Artisan: All <span class="material-symbols-outlined text-xs" data-icon="expand_more">expand_more</span>
+</span>
+<span class="bg-white px-3 py-1.5 rounded-full text-xs font-medium border border-outline-variant/20 flex items-center gap-2">
+                            Date: Last 30 Days <span class="material-symbols-outlined text-xs" data-icon="expand_more">expand_more</span>
+</span>
+</div>
+<div class="ml-auto text-xs text-outline font-label">
+                        Showing 1-10 of 1,284 results
+                    </div>
+</div>
+<!-- Table Content -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-xs font-label uppercase tracking-widest text-outline">
+<th class="px-6 py-4 font-semibold">Order ID</th>
+<th class="px-6 py-4 font-semibold">Customer</th>
+<th class="px-6 py-4 font-semibold">Date</th>
+<th class="px-6 py-4 font-semibold">Amount</th>
+<th class="px-6 py-4 font-semibold">Status</th>
+<th class="px-6 py-4 font-semibold">Dispute</th>
+<th class="px-6 py-4 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Row 1 (Dispute) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-sm font-bold text-on-surface">#HER-9402</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-[10px] font-bold">NP</div>
+<div>
+<p class="text-sm font-semibold text-on-surface">Nguyen Pham</p>
+<p class="text-[11px] text-outline">Hanoi, VN</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-label">Oct 24, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-on-surface">$245.00</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-error-container text-on-error-container uppercase tracking-tight">Cancelled</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-lg" data-icon="warning">warning</span>
+<div class="max-w-[140px]">
+<p class="text-[11px] font-bold text-error leading-tight truncate">Damaged on arrival</p>
+<p class="text-[10px] text-outline leading-tight italic">Resolution Pending</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-container">Manage Dispute</button>
+<button class="p-2 text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 (Shipping) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-sm font-bold text-on-surface">#HER-9401</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-tertiary-fixed-dim flex items-center justify-center text-[10px] font-bold">LM</div>
+<div>
+<p class="text-sm font-semibold text-on-surface">Le Minh</p>
+<p class="text-[11px] text-outline">Da Nang, VN</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-label">Oct 24, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-on-surface">$1,200.00</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-tertiary-fixed-dim text-tertiary uppercase tracking-tight">Shipping</span>
+</td>
+<td class="px-6 py-5">
+<span class="text-[10px] font-medium text-outline">—</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-container">View Details</button>
+<button class="p-2 text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 (Completed) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-sm font-bold text-on-surface">#HER-9398</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center text-[10px] font-bold">TA</div>
+<div>
+<p class="text-sm font-semibold text-on-surface">Tran Anh</p>
+<p class="text-[11px] text-outline">HCM City, VN</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-label">Oct 23, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-on-surface">$56.50</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-primary-container text-on-primary-container uppercase tracking-tight">Completed</span>
+</td>
+<td class="px-6 py-5">
+<span class="text-[10px] font-medium text-outline">—</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-container">View Details</button>
+<button class="p-2 text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 (Processing) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-sm font-bold text-on-surface">#HER-9395</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold">VH</div>
+<div>
+<p class="text-sm font-semibold text-on-surface">Vo Hoang</p>
+<p class="text-[11px] text-outline">Hue, VN</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-label">Oct 23, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-on-surface">$89.00</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-surface-container-high text-on-surface-variant uppercase tracking-tight">Processing</span>
+</td>
+<td class="px-6 py-5">
+<span class="text-[10px] font-medium text-outline">—</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-container">View Details</button>
+<button class="p-2 text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 5 (Dispute - Resolved) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-5">
+<span class="font-mono text-sm font-bold text-on-surface">#HER-9390</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-[10px] font-bold">SK</div>
+<div>
+<p class="text-sm font-semibold text-on-surface">S. Kieu</p>
+<p class="text-[11px] text-outline">Can Tho, VN</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant font-label">Oct 22, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-on-surface">$112.20</td>
+<td class="px-6 py-5">
+<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-primary-container text-on-primary-container uppercase tracking-tight">Completed</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-lg" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div class="max-w-[140px]">
+<p class="text-[11px] font-bold text-on-surface leading-tight truncate">Wrong Item</p>
+<p class="text-[10px] text-primary leading-tight font-medium">Refunded 100%</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-primary-container">History</button>
+<button class="p-2 text-outline hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="p-6 bg-surface-container-low/30 border-t border-outline-variant/10 flex justify-between items-center">
+<div class="flex gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white text-outline hover:text-primary transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-primary bg-primary text-on-primary text-xs font-bold">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white text-xs font-medium text-outline hover:bg-surface-container-high">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white text-xs font-medium text-outline hover:bg-surface-container-high">3</button>
+<span class="flex items-end px-1 pb-1 text-outline">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white text-xs font-medium text-outline hover:bg-surface-container-high">12</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant/20 bg-white text-outline hover:text-primary transition-all">
+<span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs text-outline font-label">Go to page:</span>
+<input class="w-10 text-center border-outline-variant/30 rounded-lg text-xs py-1 focus:ring-primary focus:border-primary" type="text" value="1"/>
+</div>
+</div>
+</div>
+<!-- Contextual Insights / Dispute Management Sidebar Preview (Right Panel Overlay Concept) -->
+<div class="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="lg:col-span-2">
+<h3 class="text-lg font-bold font-headline mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span>
+                        Order Velocity Insight
+                    </h3>
+<div class="bg-surface-container-low rounded-2xl p-6 h-64 flex flex-col justify-end">
+<div class="flex items-end gap-2 h-full">
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 40%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 55%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 35%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 65%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 85%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 70%;"></div>
+<div class="flex-1 bg-primary/20 rounded-t-lg transition-all hover:bg-primary/40" style="height: 90%;"></div>
+<div class="flex-1 bg-primary rounded-t-lg" style="height: 100%;"></div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-label text-outline uppercase tracking-wider px-1">
+<span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span><span class="text-primary font-bold">Today</span>
+</div>
+</div>
+</div>
+<div>
+<h3 class="text-lg font-bold font-headline mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-error" data-icon="gavel">gavel</span>
+                        Urgent Disputes
+                    </h3>
+<div class="space-y-4">
+<div class="bg-error-container/10 border border-error/10 p-4 rounded-xl">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-bold text-error">#HER-9402</span>
+<span class="text-[10px] text-outline font-label">2h ago</span>
+</div>
+<p class="text-xs font-medium text-on-surface mb-3 leading-relaxed">Artisan hasn't shipped item in 5 days. Customer requesting full refund.</p>
+<div class="flex gap-2">
+<button class="flex-1 bg-error text-white text-[10px] font-bold py-2 rounded-full hover:bg-error/90 transition-all">Resolve Now</button>
+<button class="flex-1 bg-white border border-error/20 text-error text-[10px] font-bold py-2 rounded-full hover:bg-error-container/20 transition-all">Review Log</button>
+</div>
+</div>
+<div class="bg-surface-container-low p-4 rounded-xl opacity-80">
+<div class="flex justify-between items-start mb-2">
+<span class="text-xs font-bold text-on-surface">#HER-9388</span>
+<span class="text-[10px] text-outline font-label">1d ago</span>
+</div>
+<p class="text-xs font-medium text-on-surface-variant mb-3 leading-relaxed">Package lost in transit. Investigation with VNPost ongoing.</p>
+<button class="w-full bg-surface-container-highest text-on-surface-variant text-[10px] font-bold py-2 rounded-full">Track Status</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Heritage Motif Divider -->
+<div class="flex justify-center py-12 opacity-20">
+<svg class="text-outline" fill="none" height="48" viewbox="0 0 48 48" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 4L26.5 16.5H39L28.5 24.5L31.5 37L24 29L16.5 37L19.5 24.5L9 16.5H21.5L24 4Z" fill="currentColor"></path>
+</svg>
+</div>
+</main>
+<!-- Floating Action for Urgent Resolution (FAB Suppression Logic: Enabled on Order Dashboard) -->
+<div class="fixed bottom-8 right-8 z-50">
+<button class="group flex items-center gap-3 bg-inverse-surface text-inverse-on-surface px-6 py-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="text-sm font-bold">Help Artisan</span>
+<div class="w-6 h-6 bg-error rounded-full flex items-center justify-center text-[10px] font-bold">3</div>
+</button>
+</div>
+</body></html>

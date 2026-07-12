@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heritage Harvest - Order Fulfillment</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed-dim": "#ffb68f",
+              "on-tertiary-fixed": "#331200",
+              "primary-fixed": "#a3f69c",
+              "outline": "#707a6c",
+              "on-primary-fixed-variant": "#005312",
+              "surface-container-low": "#f3f3f3",
+              "surface-container-highest": "#e2e2e2",
+              "error": "#ba1a1a",
+              "secondary-container": "#fed7ca",
+              "background": "#f9f9f9",
+              "tertiary-container": "#b45000",
+              "surface-bright": "#f9f9f9",
+              "tertiary-fixed": "#ffdbca",
+              "on-surface": "#1a1c1c",
+              "on-error": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-error-container": "#93000a",
+              "primary-fixed-dim": "#88d982",
+              "inverse-surface": "#2f3131",
+              "primary": "#0d631b",
+              "surface-dim": "#dadada",
+              "secondary-fixed": "#ffdbce",
+              "on-tertiary-fixed-variant": "#773200",
+              "surface-container": "#eeeeee",
+              "on-secondary-container": "#795c51",
+              "surface-tint": "#1b6d24",
+              "on-secondary-fixed-variant": "#5b4137",
+              "primary-container": "#2e7d32",
+              "outline-variant": "#bfcaba",
+              "on-surface-variant": "#40493d",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary-container": "#ffeee6",
+              "inverse-primary": "#88d982",
+              "on-secondary-fixed": "#2b160f",
+              "on-primary-container": "#cbffc2",
+              "inverse-on-surface": "#f0f1f1",
+              "error-container": "#ffdad6",
+              "surface": "#f9f9f9",
+              "surface-container-high": "#e8e8e8",
+              "surface-variant": "#e2e2e2",
+              "on-background": "#1a1c1c",
+              "tertiary": "#8e3d00",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#e4beb2",
+              "secondary": "#75584d",
+              "on-tertiary": "#ffffff",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex">
+<!-- SideNavBar (from JSON) -->
+<aside class="fixed left-0 top-0 h-full p-4 flex flex-col gap-2 bg-[#f3f3f3] dark:bg-[#1a1c1c] h-screen w-64 rounded-r-xl shadow-[20px_0px_40px_rgba(26,28,28,0.03)] z-40">
+<div class="mb-8 px-4 py-2">
+<h1 class="text-lg font-bold tracking-tight text-[#0d631b] font-headline">Heritage Harvest</h1>
+<p class="text-xs text-on-surface-variant font-label opacity-70">Warehouse Portal</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="assignment_turned_in">assignment_turned_in</span>
+<span>Requisitions</span>
+</a>
+<a class="bg-[#ffffff] dark:bg-[#252525] text-[#0d631b] dark:text-[#2e7d32] font-bold rounded-lg shadow-sm flex items-center gap-3 px-4 py-3 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="package_2" style="font-variation-settings: 'FILL' 1;">package_2</span>
+<span>Order Processing</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span>Supplier Orders</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 pt-4 border-t border-outline-variant/20">
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] rounded-lg transition-all text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-error hover:bg-[#f9f9f9] rounded-lg transition-all text-sm" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</aside>
+<div class="flex-1 ml-64 flex flex-col min-w-0">
+<!-- TopAppBar (from JSON) -->
+<header class="flex justify-between items-center px-6 py-3 w-full sticky top-0 z-50 bg-[#f9f9f9]/80 dark:bg-[#1a1c1c]/80 backdrop-blur-xl">
+<div class="flex items-center gap-4">
+<h2 class="text-xl font-bold text-[#0d631b] dark:text-[#2e7d32] font-headline tracking-tight">Order Fulfillment</h2>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative flex items-center bg-surface-container-low rounded-full px-4 py-1.5 w-64">
+<span class="material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-label placeholder:text-on-surface-variant/50" placeholder="Search orders..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-[#f3f3f3] transition-colors relative">
+<span class="material-symbols-outlined text-[#444746]" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-[#f3f3f3] transition-colors">
+<span class="material-symbols-outlined text-[#444746]" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden ml-2 bg-surface-container-high ring-2 ring-primary/10">
+<img alt="Warehouse Manager Profile" data-alt="professional portrait of warehouse manager in a clean logistical environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDY4HBwHNRf-nzH1_Y5JnZ2JvnQ6Ya9ZKNKtaDDR_BJz4jAghv43WcLIbR-xlB9-7KjiYslG5oHp0JarEi_bq9oX61judNhde5gJv0j_iQfMgU4TM-ZH3z9Ki1n39XMsoatM6LDyYw4O_AbK3JoFGjw5c2iaTJJsA2VifjO-oeNq37hUA41WeTZoX9R4AklkKWIAAKJTY0afjWSi4jkjiquh3M6vQyZqzne6jysEGsaqd5iOFsJJku2z3b_no8ntI1NYxsBCM-Oj0Y"/>
+</div>
+</div>
+</div>
+<div class="absolute bottom-0 left-0 bg-[#f3f3f3] dark:bg-[#252525] h-px w-full"></div>
+</header>
+<!-- Main Content Area -->
+<main class="p-8 flex flex-col gap-8 max-w-7xl">
+<!-- Statistics Row (Asymmetric Layout) -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="col-span-1 md:col-span-2 bg-surface-container-low p-6 rounded-xl flex flex-col justify-between">
+<div>
+<span class="text-xs font-label uppercase tracking-widest text-secondary font-semibold">Live Fulfillment Stream</span>
+<h3 class="text-3xl font-bold text-on-surface mt-2 font-headline">24 Pending Shipments</h3>
+</div>
+<div class="mt-8 flex gap-4">
+<div class="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-sm font-label text-on-surface-variant">8 Express</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-sm font-label text-on-surface-variant">16 Standard</span>
+</div>
+</div>
+</div>
+<div class="bg-primary-container/10 p-6 rounded-xl border border-primary/5">
+<span class="material-symbols-outlined text-primary mb-4" data-icon="speed">speed</span>
+<h4 class="text-sm font-label text-primary font-bold">Avg. Processing Time</h4>
+<p class="text-2xl font-bold text-on-surface mt-1">14.2 min</p>
+<p class="text-xs text-on-surface-variant mt-2">↑ 2% from yesterday</p>
+</div>
+<div class="bg-tertiary-container/10 p-6 rounded-xl border border-tertiary/5">
+<span class="material-symbols-outlined text-tertiary mb-4" data-icon="inventory">inventory</span>
+<h4 class="text-sm font-label text-tertiary font-bold">Packing Errors</h4>
+<p class="text-2xl font-bold text-on-surface mt-1">0.02%</p>
+<p class="text-xs text-on-surface-variant mt-2">Industry benchmark: 1.5%</p>
+</div>
+</section>
+<!-- Fulfillment Queue Header -->
+<div class="flex justify-between items-end mt-4">
+<div>
+<h2 class="text-2xl font-bold font-headline text-on-surface">Active Fulfillment Queue</h2>
+<p class="text-on-surface-variant text-sm font-body">Prioritizing high-heritage value and express shipments.</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface-container-high rounded-full text-sm font-label font-medium hover:bg-surface-container-highest transition-colors">
+                        All Orders
+                    </button>
+<button class="px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-full text-sm font-label font-medium">
+                        Processing
+                    </button>
+<button class="px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-full text-sm font-label font-medium">
+                        Delayed
+                    </button>
+</div>
+</div>
+<!-- Fulfillment Table (The "No-Line" Zebra Rule) -->
+<div class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant/10">
+<tr>
+<th class="px-6 py-4 text-[0.65rem] font-label font-bold uppercase tracking-wider text-on-surface-variant">Order Detail</th>
+<th class="px-6 py-4 text-[0.65rem] font-label font-bold uppercase tracking-wider text-on-surface-variant">Customer &amp; items</th>
+<th class="px-6 py-4 text-[0.65rem] font-label font-bold uppercase tracking-wider text-on-surface-variant">Shipping Partner</th>
+<th class="px-6 py-4 text-[0.65rem] font-label font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+<th class="px-6 py-4 text-[0.65rem] font-label font-bold uppercase tracking-wider text-on-surface-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-transparent">
+<!-- Order Row 1 -->
+<tr class="hover:bg-surface-container-low/40 transition-colors group">
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="text-primary font-bold text-sm">#HH-2024-9921</span>
+<span class="text-xs text-on-surface-variant font-label mt-1">Oct 24, 09:12 AM</span>
+<span class="mt-2 inline-flex items-center gap-1 text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Express Delivery</span>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="font-bold text-sm text-on-surface">Minh Nguyen</span>
+<div class="mt-2 space-y-1">
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-4 h-4 flex items-center justify-center bg-surface-container-high rounded text-[10px] font-bold">3</span>
+<span>Lotus Flower Tea (Heritage Tin)</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-4 h-4 flex items-center justify-center bg-surface-container-high rounded text-[10px] font-bold">1</span>
+<span>Dried Longan - Hưng Yên Origin</span>
+</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Shipping Partner" data-alt="close up of a professional delivery truck with clean logistics branding" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI2Lr_-tTYCBvj9gKRUWIv5d4SxxoJ9Xud3r1ODX_FCuCnqybUaAs5ZNt7lFY085S-zLvgXfT6qtS31MvQvKUkKMUk6_arSmMVLMrlsIEKBO-Fe3nV7NS1oKdvMZ6_4z7bxeCNRzM-0K519V-QPBormJJYUoFj5mlbV1tpfjaIjzxwe9xKhURsLF1j3QTU7GOS9g-YUsmpvCM74uHPrfevo6UbQDiDbmYuR-RADZRLyQPg5FC3Z8g-0bBE8ncPGhP4wjzuL19FkEQ"/>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">VN-POST Global</span>
+<span class="text-[10px] text-on-surface-variant">Tracking: N/A</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-secondary-container text-on-secondary-container">PENDING PICKING</span>
+</td>
+<td class="px-6 py-6 align-top text-right">
+<div class="flex flex-col gap-2 items-end">
+<button class="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="box">package_2</span>
+                                        Prepare Shipment
+                                    </button>
+<button class="text-primary text-[10px] font-bold uppercase hover:underline">View Packing List</button>
+</div>
+</td>
+</tr>
+<!-- Order Row 2 (Zebra) -->
+<tr class="bg-surface-container-low/30 hover:bg-surface-container-low/60 transition-colors group">
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="text-primary font-bold text-sm">#HH-2024-9918</span>
+<span class="text-xs text-on-surface-variant font-label mt-1">Oct 24, 08:45 AM</span>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="font-bold text-sm text-on-surface">Aria Smith</span>
+<div class="mt-2 space-y-1">
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-4 h-4 flex items-center justify-center bg-surface-container-high rounded text-[10px] font-bold">12</span>
+<span>Premium Fish Sauce (Traditional Oak)</span>
+</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Shipping Partner" data-alt="courier holding a package wearing a green logistics uniform" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTbdg8pOOOIu7y47fUngyl-WnFWBeoxXWyeVj9Dr_h8s_gmqjcW31u2KHTyN9vMG8ddITHbTUHDFuD1a3IT4J7yt3aN-LdVYJvY2nmpJ_2mm6RR8B3bN6MPnBbAVmALXfprYqNxdqk2QgBRS97VolDFQdDNXUP_x9Qq60x4TvjsJ16IF3Wi3NJxCv6H3-Ey8DXkYKaPqPJlEzuPW2_LMMFO337vIzJZhI_AqNb7hnO7wfAXU5rpBQMvjVrrCzyjuonKpERks32SnQ"/>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">DHL Express</span>
+<span class="text-[10px] text-on-surface-variant">Tracking: Ready to generate</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-primary-container text-on-primary-container">READY FOR LABEL</span>
+</td>
+<td class="px-6 py-6 align-top text-right">
+<div class="flex flex-col gap-2 items-end">
+<button class="bg-surface-container-highest text-on-surface text-xs font-bold px-4 py-2 rounded-lg shadow-sm hover:bg-outline-variant/30 active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="print">print</span>
+                                        Print Label
+                                    </button>
+<button class="text-on-surface-variant text-[10px] font-bold uppercase hover:underline">Update Status</button>
+</div>
+</td>
+</tr>
+<!-- Order Row 3 -->
+<tr class="hover:bg-surface-container-low/40 transition-colors group">
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="text-primary font-bold text-sm">#HH-2024-9915</span>
+<span class="text-xs text-on-surface-variant font-label mt-1">Oct 24, 08:30 AM</span>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex flex-col">
+<span class="font-bold text-sm text-on-surface">John Doe</span>
+<div class="mt-2 space-y-1">
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="w-4 h-4 flex items-center justify-center bg-surface-container-high rounded text-[10px] font-bold">1</span>
+<span>Hand-carved Bamboo Utensil Set</span>
+</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container overflow-hidden flex-shrink-0">
+<img alt="Shipping Partner" data-alt="professional shipping label printer in a clean warehouse desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7luweYB_jreg18KZd5e-wEVpsg2TUS5HkaKiFGji6DfJ9M-n8yZ8gansbsWbobJnYbaNbRr1tvbw5DVh97bkoa4rus5noR7ory4Jfsfz8NPq8JT_2iI35HE86tT-2O7f2uEUofQgWSNvM2j8YyLC8vq1vEwokpzv7ZuvWGAF_1XMU90wOAwnWqx1XdzAa238nf7NbJfoyrkXUzqFrUnAQg3aJJHUFh47VAXRMiCHvsH4nIW5zeD0Hd71PHJR83Nr5KJvXdFmpAF8"/>
+</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold text-on-surface">FedEx International</span>
+<span class="text-[10px] text-primary font-bold">Label Printed</span>
+</div>
+</div>
+</td>
+<td class="px-6 py-6 align-top">
+<span class="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-tertiary/10 text-tertiary">AWAITING CARRIER</span>
+</td>
+<td class="px-6 py-6 align-top text-right">
+<div class="flex flex-col gap-2 items-end">
+<button class="bg-tertiary text-white text-xs font-bold px-4 py-2 rounded-lg shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="local_shipping">local_shipping</span>
+                                        Dispatch Order
+                                    </button>
+<button class="text-tertiary text-[10px] font-bold uppercase hover:underline">Re-print Label</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Bento-style Detailed Context Section -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+<div class="bg-surface-container-low p-6 rounded-2xl flex flex-col gap-4">
+<h3 class="font-headline font-bold text-on-surface">Warehouse Utilization</h3>
+<div class="flex-1 flex items-end gap-2">
+<div class="w-full bg-surface-container rounded-full h-32 relative overflow-hidden">
+<div class="absolute bottom-0 left-0 w-full bg-primary h-[65%] rounded-t-full"></div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-32 relative overflow-hidden">
+<div class="absolute bottom-0 left-0 w-full bg-primary h-[42%] rounded-t-full"></div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-32 relative overflow-hidden">
+<div class="absolute bottom-0 left-0 w-full bg-tertiary h-[89%] rounded-t-full"></div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-32 relative overflow-hidden">
+<div class="absolute bottom-0 left-0 w-full bg-primary h-[55%] rounded-t-full"></div>
+</div>
+</div>
+<div class="flex justify-between text-[10px] font-label font-bold text-on-surface-variant uppercase">
+<span>Zone A</span>
+<span>Zone B</span>
+<span>Cold</span>
+<span>Pack</span>
+</div>
+</div>
+<div class="md:col-span-2 bg-surface-container-highest/30 p-8 rounded-2xl relative overflow-hidden flex flex-col justify-center">
+<div class="relative z-10 max-w-md">
+<h3 class="text-2xl font-bold font-headline text-on-surface mb-2">Automated Dispatch System</h3>
+<p class="text-sm text-on-surface-variant mb-6 leading-relaxed">System monitoring confirms optimal routing for 94% of today's shipments. No delays reported at local hubs.</p>
+<button class="bg-on-surface text-surface py-3 px-6 rounded-xl font-bold text-sm flex items-center gap-3 hover:bg-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                            Run Logistics Audit
+                        </button>
+</div>
+<!-- Decorative Graphic -->
+<div class="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 flex items-center justify-center">
+<span class="material-symbols-outlined text-[120px]" data-icon="route">route</span>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- FAB (Suppressed based on logic for transactional/management view, but if needed for 'Quick Ship' we'd add it here) -->
+<!-- Suppression logic applied: Managing a list, focusing on the table. -->
+</body></html>

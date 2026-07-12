@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@100;300;400;500;600;700;800;900&amp;family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary": "#ffffff",
+              "on-background": "#1a1c1c",
+              "tertiary": "#8e3d00",
+              "surface-container-high": "#e8e8e8",
+              "inverse-surface": "#2f3131",
+              "primary": "#0d631b",
+              "on-secondary": "#ffffff",
+              "surface-dim": "#dadada",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#ffeee6",
+              "secondary-container": "#fed7ca",
+              "tertiary-fixed-dim": "#ffb68f",
+              "surface-tint": "#1b6d24",
+              "surface-container-lowest": "#ffffff",
+              "inverse-on-surface": "#f0f1f1",
+              "secondary-fixed": "#ffdbce",
+              "error-container": "#ffdad6",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "secondary": "#75584d",
+              "secondary-fixed-dim": "#e4beb2",
+              "on-surface-variant": "#40493d",
+              "inverse-primary": "#88d982",
+              "on-secondary-fixed-variant": "#5b4137",
+              "surface": "#f9f9f9",
+              "on-primary-container": "#cbffc2",
+              "surface-bright": "#f9f9f9",
+              "tertiary-container": "#b45000",
+              "primary-fixed-dim": "#88d982",
+              "outline": "#707a6c",
+              "outline-variant": "#bfcaba",
+              "on-tertiary-fixed": "#331200",
+              "primary-fixed": "#a3f69c",
+              "primary-container": "#2e7d32",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#005312",
+              "surface-container-low": "#f3f3f3",
+              "on-error-container": "#93000a",
+              "on-primary-fixed": "#002204",
+              "tertiary-fixed": "#ffdbca",
+              "background": "#f9f9f9",
+              "on-secondary-container": "#795c51",
+              "on-secondary-fixed": "#2b160f",
+              "surface-variant": "#e2e2e2",
+              "on-tertiary-fixed-variant": "#773200",
+              "surface-container": "#eeeeee",
+              "on-surface": "#1a1c1c"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen flex flex-col py-6 px-4 h-full w-64 border-none bg-[#f3f3f3] dark:bg-stone-900 z-50">
+<div class="mb-10 px-4">
+<h1 class="text-xl font-bold tracking-tight text-[#0d631b] mb-1">Heritage Admin</h1>
+<p class="text-xs font-['Inter'] text-on-surface-variant/70 uppercase tracking-widest">Agrarian Curator</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Dashboard</span>
+</a>
+<!-- Active Tab: Users -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#0d631b] font-bold dark:text-[#4caf50] border-r-4 border-[#0d631b] bg-white/50 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Products</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Categories</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Disputes</span>
+</a>
+<!-- Active Sub-Context: Suppliers -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Suppliers</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-[#0d631b] hover:bg-white/30 dark:hover:bg-stone-800" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 dark:text-stone-400 hover:text-error hover:bg-error-container/20" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 flex justify-between items-center w-full px-8 py-4 ml-64 max-w-[calc(100%-16rem)] bg-[#f9f9f9]/80 backdrop-blur-2xl dark:bg-stone-950/80">
+<div class="flex items-center gap-6 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search users, regions, or orders..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container transition-all relative">
+<span class="material-symbols-outlined text-on-surface" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-surface"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-on-surface" data-icon="help_outline">help_outline</span>
+</button>
+<div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline-variant/30">
+<div class="text-right">
+<p class="text-xs font-bold leading-none">Admin Curator</p>
+<p class="text-[10px] text-on-surface-variant mt-1">Super Admin</p>
+</div>
+<img alt="Admin Avatar" class="w-10 h-10 rounded-full border-2 border-primary/20" data-alt="professional portrait of a senior administrator with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtLUoS1FbVGMnmkAAgIZs1VDFqrWTjsn2oEpUk7f0J1wyjXw05a8rZosMPIhNDiKSOQsDpwB-R_62e5_HWJXtb-Un_YOr5OMT1BHfHgpoGAMfXXtJXyS1E2XaAWzk65igQZvIkJBBicMp1kTmRIXcscweY2VzkzpNgssiJkUlyBXBNDakN5yqV3eyNnivQlJItNJ9-R5e2A3cf1PgEzE7wQhsBa0Q3Z88Ze665G7G-A2Sk0ojZTtletl9bi8dZPwNgmlz-Yqqjzck"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 min-h-screen bg-surface">
+<!-- Action Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<nav class="flex items-center gap-2 text-xs text-on-surface-variant mb-4 font-['Inter'] font-semibold tracking-wider uppercase">
+<span>Directory</span>
+<span class="material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary">Management</span>
+</nav>
+<h2 class="font-headline text-3xl font-medium tracking-tight text-on-surface">Community &amp; Partnership</h2>
+<p class="text-on-surface-variant mt-2 max-w-xl body-lg">Oversee the growth of our heritage ecosystem by managing both local artisans and our valued customer base.</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-lowest text-secondary font-medium rounded-full hover:bg-surface-container-high transition-all duration-200 border border-outline-variant/20">
+<span class="material-symbols-outlined text-lg" data-icon="ios_share">ios_share</span>
+<span class="text-sm">Export User Data</span>
+</button>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-br from-primary to-primary-container text-on-primary font-medium rounded-full shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all duration-300 scale-100 active:scale-95">
+<span class="material-symbols-outlined text-lg" data-icon="person_add">person_add</span>
+<span class="text-sm">Invite Supplier</span>
+</button>
+</div>
+</div>
+<!-- Management Split View / Tabs -->
+<div class="bg-surface-container-low rounded-[2rem] p-4">
+<!-- Custom Styled Tabs -->
+<div class="flex gap-2 mb-6 bg-surface-container-highest/30 p-1.5 rounded-full w-fit">
+<button class="px-8 py-2.5 rounded-full bg-surface-container-lowest text-primary font-bold shadow-sm text-sm transition-all">
+                    Suppliers
+                </button>
+<button class="px-8 py-2.5 rounded-full text-on-surface-variant hover:text-on-surface font-medium text-sm transition-all">
+                    Customers
+                </button>
+</div>
+<!-- Content Area -->
+<div class="space-y-6">
+<!-- Supplier Cards Grid (Bento Style Layout) -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<!-- Supplier Card 1 -->
+<div class="bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-14 h-14 bg-tertiary-fixed rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-2xl" data-icon="energy_savings_leaf">energy_savings_leaf</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold font-['Inter'] uppercase tracking-widest">Platinum Partner</span>
+</div>
+<h3 class="title-lg font-bold text-on-surface">Thái Nguyên Tea Collective</h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface-variant text-sm">
+<span class="material-symbols-outlined text-base" data-icon="location_on">location_on</span>
+<span>Thái Nguyên, VN</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10">
+<div class="flex justify-between items-center text-xs text-on-surface-variant mb-2">
+<span>Primary Contact</span>
+<span class="font-bold text-on-surface">Minh Nguyen</span>
+</div>
+<div class="flex justify-between items-center text-xs text-on-surface-variant">
+<span>Categories</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[10px]">Premium Tea</span>
+</div>
+</div>
+</div>
+<!-- Supplier Card 2 -->
+<div class="bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-14 h-14 bg-secondary-fixed rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-2xl" data-icon="set_meal">set_meal</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold font-['Inter'] uppercase tracking-widest">Gold Tier</span>
+</div>
+<h3 class="title-lg font-bold text-on-surface">Phú Quốc Essence</h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface-variant text-sm">
+<span class="material-symbols-outlined text-base" data-icon="location_on">location_on</span>
+<span>Phú Quốc Island</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10">
+<div class="flex justify-between items-center text-xs text-on-surface-variant mb-2">
+<span>Primary Contact</span>
+<span class="font-bold text-on-surface">Linh Pham</span>
+</div>
+<div class="flex justify-between items-center text-xs text-on-surface-variant">
+<span>Categories</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[10px]">Artisan Sauce</span>
+</div>
+</div>
+</div>
+<!-- Supplier Card 3 -->
+<div class="bg-surface-container-lowest rounded-3xl p-6 flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div class="w-14 h-14 bg-primary-fixed rounded-2xl flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="eco">eco</span>
+</div>
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold font-['Inter'] uppercase tracking-widest">Rising Partner</span>
+</div>
+<h3 class="title-lg font-bold text-on-surface">Dak Lak Arabica Hub</h3>
+<div class="flex items-center gap-2 mt-2 text-on-surface-variant text-sm">
+<span class="material-symbols-outlined text-base" data-icon="location_on">location_on</span>
+<span>Đắk Lắk, Highlands</span>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/10">
+<div class="flex justify-between items-center text-xs text-on-surface-variant mb-2">
+<span>Primary Contact</span>
+<span class="font-bold text-on-surface">Cuong Tran</span>
+</div>
+<div class="flex justify-between items-center text-xs text-on-surface-variant">
+<span>Categories</span>
+<span class="px-2 py-0.5 bg-surface-container-high rounded text-[10px]">Specialty Coffee</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Customer Management Table (Asymmetric Table Treatment) -->
+<div class="bg-surface-container-lowest rounded-[2rem] overflow-hidden">
+<div class="p-8 border-b border-outline-variant/10 flex justify-between items-center">
+<div>
+<h3 class="text-xl font-bold">Recent Customers</h3>
+<p class="text-sm text-on-surface-variant mt-1">Managed accounts and transactional history</p>
+</div>
+<button class="text-sm font-bold text-primary hover:underline flex items-center gap-1">
+                            View All <span class="material-symbols-outlined text-base" data-icon="trending_flat">trending_flat</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-8 py-5 label-md text-on-surface-variant tracking-widest uppercase opacity-80">User Identity</th>
+<th class="px-8 py-5 label-md text-on-surface-variant tracking-widest uppercase opacity-80">Activity</th>
+<th class="px-8 py-5 label-md text-on-surface-variant tracking-widest uppercase opacity-80">Total Orders</th>
+<th class="px-8 py-5 label-md text-on-surface-variant tracking-widest uppercase opacity-80">Status</th>
+<th class="px-8 py-5"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<!-- Table Row 1 -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center font-bold text-on-primary-fixed">AD</div>
+<div>
+<p class="font-medium">An Dang</p>
+<p class="text-xs text-on-surface-variant">an.dang@heritage.vn</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<p class="text-sm">Last active 2h ago</p>
+<p class="text-[10px] text-on-surface-variant">Hanoi, VN</p>
+</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">14</span>
+<div class="h-1.5 w-16 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[70%]"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold">Active</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 rounded-xl hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Table Row 2 -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<img alt="Customer" class="w-10 h-10 rounded-full" data-alt="close-up portrait of a cheerful young woman with soft natural lighting and neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSvXKD8fJ3DLfi3ynfqvp4hj8AG1r0bgrsZm87e19lzQ1x7uvW3OGxprmZRDSYrKHPn96u8pQau6m2yLNC6hPqxxSHhRHOTr-M3-vjVkTvlHkd7KpGguKaDkMycghU1g8QozKld8ifqlkAyPzFjrunm4AbRFU_48wMgXBKT8AxKZtExVuGVZ5SgyMGrK91-oF2K8Fcbf1Nc9LzY0MbWUfwMWQ_hz5srWsDlcv564iqhLWR_wP0GkrW5Em-i-H1ER_6HjaKNCgFsaw"/>
+<div>
+<p class="font-medium">Mai Hoang</p>
+<p class="text-xs text-on-surface-variant">mai.h@outlook.com</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<p class="text-sm">Yesterday</p>
+<p class="text-[10px] text-on-surface-variant">Ho Chi Minh, VN</p>
+</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">08</span>
+<div class="h-1.5 w-16 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[45%]"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 rounded-full bg-primary/10 text-primary text-[11px] font-bold">Active</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 rounded-xl hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Table Row 3 -->
+<tr class="hover:bg-surface transition-colors">
+<td class="px-8 py-5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed-dim flex items-center justify-center font-bold text-on-secondary-fixed">TL</div>
+<div>
+<p class="font-medium">Tuan Le</p>
+<p class="text-xs text-on-surface-variant">tuanle@proton.me</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<p class="text-sm">3 days ago</p>
+<p class="text-[10px] text-on-surface-variant">Da Nang, VN</p>
+</td>
+<td class="px-8 py-5">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">02</span>
+<div class="h-1.5 w-16 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[15%]"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-5">
+<span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[11px] font-bold">On Hold</span>
+</td>
+<td class="px-8 py-5 text-right">
+<button class="p-2 rounded-xl hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+<!-- Heritage Motif Divider -->
+<div class="flex justify-center my-16">
+<svg class="text-outline-variant opacity-30" fill="none" height="48" viewbox="0 0 48 48" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 4C24 4 16 12 16 20C16 28 24 36 24 36C24 36 32 28 32 20C32 12 24 4 24 4Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M24 16V24" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+<circle cx="24" cy="20" fill="currentColor" r="2"></circle>
+</svg>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,35 @@
+# Order Fulfillment Flow Review: Heritage Harvest
+
+This document outlines the end-to-end fulfillment process across the Warehouse and Supplier personas, mapping the current UI capabilities to the operational lifecycle.
+
+## 1. The Fulfillment Lifecycle
+
+| Phase | Actor | Action | Primary Screen | UC Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **Requisition** | Warehouse | Identifies low stock & requests restock. | {{DATA:SCREEN:SCREEN_6}} | UC20, UC24 |
+| **PO Reception** | Supplier | Receives & accepts Purchase Order. | {{DATA:SCREEN:SCREEN_8}} | UC13 |
+| **Inventory Update** | Warehouse | Goods arrive; stock levels updated. | {{DATA:SCREEN:SCREEN_6}} | UC21 |
+| **Picking & Packing**| Warehouse | Customer orders assigned for picking. | {{DATA:SCREEN:SCREEN_11}} | UC23 |
+| **Shipping** | Warehouse | Labels printed; status set to "Shipped". | {{DATA:SCREEN:SCREEN_11}} | UC22 |
+
+## 2. UX & Operational Analysis
+
+### A. Warehouse Inventory & Requisitions ({{DATA:SCREEN:SCREEN_6}})
+*   **Strength:** The side drawer for requisitions allows for quick multi-tasking without losing context of the inventory list.
+*   **Observation:** We should ensure "Purchase Price" (UC24) is clearly visible in the history or detail view to help the manager make better procurement decisions based on trends.
+
+### B. Order Fulfillment Queue ({{DATA:SCREEN:SCREEN_11}})
+*   **Strength:** The "Live Fulfillment Stream" provides a great high-level pulse of the warehouse workload.
+*   **Observation:** For high-volume days, a "Bulk Print Labels" or "Batch Process" action would significantly reduce manual clicks for the "Standard" shipping tier.
+
+### C. Supplier Portal ({{DATA:SCREEN:SCREEN_8}})
+*   **Strength:** The "Accept Order & Generate Invoice" button is a clear primary CTA that collapses two steps into one.
+*   **Observation:** Suppliers might benefit from a "Notify Delay" feature if they can't fulfill the full quantity, which would trigger a notification back to the Warehouse Admin.
+
+## 3. Recommended Refinements
+1.  **Add Batch Actions:** Introduce checkboxes in the Order Fulfillment Queue ({{DATA:SCREEN:SCREEN_11}}) for bulk shipping.
+2.  **Price Trend Visualization:** Add a small sparkline for price history in the Warehouse Inventory detail view.
+3.  **Supplier Messaging:** Add a quick "Message Warehouse" link in the Supplier PO view for coordination.
+
+---
+*Next Steps: Would you like me to implement these bulk processing features on the Order Fulfillment screen?*

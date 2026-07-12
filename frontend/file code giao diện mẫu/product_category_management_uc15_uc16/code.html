@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heritage Admin - Product Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary": "#ffffff",
+              "on-background": "#1a1c1c",
+              "tertiary": "#8e3d00",
+              "surface-container-high": "#e8e8e8",
+              "inverse-surface": "#2f3131",
+              "primary": "#0d631b",
+              "on-secondary": "#ffffff",
+              "surface-dim": "#dadada",
+              "on-tertiary": "#ffffff",
+              "on-tertiary-container": "#ffeee6",
+              "secondary-container": "#fed7ca",
+              "tertiary-fixed-dim": "#ffb68f",
+              "surface-tint": "#1b6d24",
+              "surface-container-lowest": "#ffffff",
+              "inverse-on-surface": "#f0f1f1",
+              "secondary-fixed": "#ffdbce",
+              "error-container": "#ffdad6",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e2e2e2",
+              "secondary": "#75584d",
+              "secondary-fixed-dim": "#e4beb2",
+              "on-surface-variant": "#40493d",
+              "inverse-primary": "#88d982",
+              "on-secondary-fixed-variant": "#5b4137",
+              "surface": "#f9f9f9",
+              "on-primary-container": "#cbffc2",
+              "surface-bright": "#f9f9f9",
+              "tertiary-container": "#b45000",
+              "primary-fixed-dim": "#88d982",
+              "outline": "#707a6c",
+              "outline-variant": "#bfcaba",
+              "on-tertiary-fixed": "#331200",
+              "primary-fixed": "#a3f69c",
+              "primary-container": "#2e7d32",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#005312",
+              "surface-container-low": "#f3f3f3",
+              "on-error-container": "#93000a",
+              "on-primary-fixed": "#002204",
+              "tertiary-fixed": "#ffdbca",
+              "background": "#f9f9f9",
+              "on-secondary-container": "#795c51",
+              "on-secondary-fixed": "#2b160f",
+              "surface-variant": "#e2e2e2",
+              "on-tertiary-fixed-variant": "#773200",
+              "surface-container": "#eeeeee",
+              "on-surface": "#1a1c1c"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      body {
+        font-family: 'Be Vietnam Pro', sans-serif;
+        background-color: #f9f9f9;
+        color: #1a1c1c;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar (Persistent) -->
+<aside class="fixed left-0 top-0 h-screen flex flex-col py-6 px-4 h-full w-64 border-none bg-[#f3f3f3] dark:bg-stone-900 z-50">
+<div class="mb-10 px-2">
+<h1 class="text-xl font-bold tracking-tight text-[#0d631b] uppercase">Heritage Admin</h1>
+<p class="font-['Be_Vietnam_Pro'] font-medium text-xs text-stone-500">Agrarian Curator</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Users</span>
+</a>
+<!-- Active Tab: Products -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#0d631b] font-bold border-r-4 border-[#0d631b] bg-white/50 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Products</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Categories</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Disputes</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 dark:hover:bg-stone-800 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Suppliers</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-stone-200/50 dark:border-stone-800 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-[#1a1c1c]/70 hover:bg-white/30 scale-98 active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-['Be_Vietnam_Pro'] font-medium text-sm">Settings</span>
+</a>
+<div class="flex items-center gap-3 px-3 py-4 mt-2">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="close-up portrait of a refined older Vietnamese man in a minimal workspace with natural wood textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJ6tGpHQQ1tNHnRC0t-irn2zF2waQ_TkB-xYs5zF43XsLLNIbV8OsZ5M9jeVHeY_SPRzeU1m4ND4BhwtUbRTzTABOrkav0twemhiiIqjLRBCAUcIALFT37oRMw4yGt8yy5C8u4s3AeWAGSn8-Eg6UMKtadjS9UuIgiqdykCKtFQFb4XR403246V7rIZwiXr1OrZW99xY3o6N2IfBhl6BvaQv0wPlUz9oMHQPlGcV9-e28ulwv9skdA5dae9AWISuxxu0lkZS8djb8"/>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold text-on-surface truncate">Admin Curator</p>
+</div>
+<span class="material-symbols-outlined text-stone-400 text-lg" data-icon="logout">logout</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 flex justify-between items-center w-full px-8 py-4 bg-[#f9f9f9]/80 backdrop-blur-2xl transition-all duration-300">
+<div class="flex items-center gap-6 flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-xl" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-stone-400 font-['Be_Vietnam_Pro']" placeholder="Search heritage products..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-stone-600 hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-tertiary rounded-full"></span>
+</button>
+<button class="p-2 text-stone-600 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="p-2 text-stone-600 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<div class="px-8 py-8 space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div class="space-y-1">
+<h2 class="font-headline font-extrabold text-3xl tracking-tight text-on-surface">Product Repository</h2>
+<p class="text-stone-500 font-medium">Curating 1,248 authentic Vietnamese heritage items</p>
+</div>
+<button class="bg-gradient-to-br from-primary to-primary-container text-on-primary px-6 py-3 rounded-full font-bold flex items-center gap-2 shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+<span>Add New Product</span>
+</button>
+</div>
+<!-- Dashboard Style Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Main Inventory Table Section -->
+<div class="col-span-12 lg:col-span-9 space-y-6">
+<!-- Filters & Stats Chips -->
+<div class="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
+<button class="bg-primary text-on-primary px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap">All Products</button>
+<button class="bg-surface-container-low text-stone-600 px-5 py-2 rounded-full text-sm font-medium hover:bg-surface-container-highest transition-colors whitespace-nowrap">Specialty Tea</button>
+<button class="bg-surface-container-low text-stone-600 px-5 py-2 rounded-full text-sm font-medium hover:bg-surface-container-highest transition-colors whitespace-nowrap">Artisan Sauces</button>
+<button class="bg-surface-container-low text-stone-600 px-5 py-2 rounded-full text-sm font-medium hover:bg-surface-container-highest transition-colors whitespace-nowrap">Heritage Rice</button>
+<button class="bg-surface-container-low text-stone-600 px-5 py-2 rounded-full text-sm font-medium hover:bg-surface-container-highest transition-colors whitespace-nowrap">Handicrafts</button>
+<div class="flex-1"></div>
+<button class="flex items-center gap-2 text-stone-500 text-sm font-medium px-3 py-2 hover:text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="filter_list">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex items-center gap-2 text-stone-500 text-sm font-medium px-3 py-2 hover:text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="download">download</span>
+                            Export
+                        </button>
+</div>
+<!-- Data Table -->
+<div class="bg-surface-container-lowest rounded-2xl overflow-hidden ring-1 ring-outline/5">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold">Product Details</th>
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold">Category</th>
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold text-right">Price</th>
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold">Stock</th>
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold">Supplier</th>
+<th class="px-6 py-4 font-label uppercase text-[10px] tracking-[0.1em] text-stone-500 font-bold text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline/5">
+<!-- Row 1 -->
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="premium loose leaf tea in a traditional ceramic bowl with soft natural lighting and steam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgZgcKjYUK77fVhI8nkuTJbrOlLUd0kX9q_Jzr7sh9qvlAevnEdTtAhlA3XqFC2zvJvfC0actgxVfR6W8m7tx_xxRKPY8Y8DJS3T2Q5S1bIhJ93lM6JmaI_lDf8Fqo2hGsNjam3PcMkUqXSoc1FawVJMzj1FM9sAVPtAlOZI6JwshupIsi3AoHf_ZwZCVdFa2K0eIb4csQCimQt_Q6PVPXYiHRtDvAbwh-Yw1ln4lyhTflyuvlj0z2nYjiUNWIdQJWaQhv0aCgTVM"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Trà Tân Cương</p>
+<p class="text-[10px] text-stone-400 font-medium">SKU: TC-8821</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold">Specialty Tea</span>
+</td>
+<td class="px-6 py-5 text-right font-headline font-bold text-sm">450,000 ₫</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<span class="text-xs font-medium text-stone-700">In Stock (124)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-xs text-stone-600 font-medium">Tân Cương Estates</td>
+<td class="px-6 py-5">
+<div class="flex justify-center gap-2">
+<button class="p-2 hover:bg-surface-container rounded-lg text-stone-400 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container/20 rounded-lg text-stone-400 hover:text-error transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="bg-surface-container-low/30 hover:bg-surface/50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="amber colored fish sauce in a glass bottle with traditional salt crystals and rustic wooden elements" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtvMc9kKhunCD-y52nYdMsFZMCECgOO_sUH8TK7sl8SF__z1XdgLl4ALMt5l9BPWzmpJfdy2XoBDFZeml4nLJQL6BrLbrEakT_K8-UcZnzUAWcIHaZpy1kl04f7cUZqsA0-E_15_EWN8bEW-pk69S17tUiqdTrDR73ON6NAoYFbg-sNPwzewAl6_PlKYWKDzRIHQ5WZDNYwx2OhiwoFXyUCctn26CSQI4DYaT__aViZ04iBxZeClGR0cYee8Rmy-RveQUAFgtM5BA"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Nước Mắm Phú Quốc</p>
+<p class="text-[10px] text-stone-400 font-medium">SKU: PQ-40N</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-xs font-bold">Artisan Sauces</span>
+</td>
+<td class="px-6 py-5 text-right font-headline font-bold text-sm">185,000 ₫</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-tertiary"></div>
+<span class="text-xs font-medium text-stone-700">Low Stock (12)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-xs text-stone-600 font-medium">Phu Quoc Traditional Co.</td>
+<td class="px-6 py-5">
+<div class="flex justify-center gap-2">
+<button class="p-2 hover:bg-surface-container rounded-lg text-stone-400 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container/20 rounded-lg text-stone-400 hover:text-error transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface/50 transition-colors">
+<td class="px-6 py-5">
+<div class="flex items-center gap-4">
+<img class="w-12 h-12 rounded-xl object-cover" data-alt="long grain white rice in a woven bamboo basket with a warm sunset lighting feel" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrTfcHmMMs_EVz1vCDbBzHwePylaWZDFiXkCQBDyKL7hqGIjYzKdnE12X97mcRLHIcSEwXoM_Fdln6ZLSlFqDOrqBT0Lz9636UA8gHGGK-gVFU2TecA-i_d9GVYLB9z9QljSg57lE2TfnDTUK5GJY0HXwlXv4Fkb-Sk8Aa8QwLQ9YT1NGz7cn-QF_YXU-a9t4_hvjq-A4jpq6M0-zQfbhpgTdiWsywLcgRAIgZRJlSNMSz-zY4fnOYNQSsHQUITwZ0VLu2pVGDmQk"/>
+<div>
+<p class="text-sm font-bold text-on-surface">Gạo ST25</p>
+<p class="text-[10px] text-stone-400 font-medium">SKU: ST25-PREM</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full text-xs font-bold">Heritage Rice</span>
+</td>
+<td class="px-6 py-5 text-right font-headline font-bold text-sm">220,000 ₫</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<span class="text-xs font-medium text-stone-700">In Stock (450)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-xs text-stone-600 font-medium">Mekong Delta Growers</td>
+<td class="px-6 py-5">
+<div class="flex justify-center gap-2">
+<button class="p-2 hover:bg-surface-container rounded-lg text-stone-400 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="edit">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container/20 rounded-lg text-stone-400 hover:text-error transition-all">
+<span class="material-symbols-outlined text-xl" data-icon="delete">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="bg-surface-container-low px-6 py-4 flex items-center justify-between border-t border-outline/5">
+<span class="text-xs text-stone-500 font-medium font-label">Showing 1-10 of 1,248 items</span>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-lg hover:bg-surface-container text-stone-400"><span class="material-symbols-outlined text-lg" data-icon="chevron_left">chevron_left</span></button>
+<button class="w-8 h-8 rounded-lg bg-primary text-on-primary text-xs font-bold">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container text-stone-600 text-xs font-medium">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-container text-stone-600 text-xs font-medium">3</button>
+<button class="p-2 rounded-lg hover:bg-surface-container text-stone-400"><span class="material-symbols-outlined text-lg" data-icon="chevron_right">chevron_right</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- Side Panel (Categories & Quick Access) -->
+<div class="col-span-12 lg:col-span-3 space-y-6">
+<!-- Quick Stats Cards -->
+<div class="grid grid-cols-1 gap-4">
+<div class="bg-primary-container p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-on-primary-container bg-white/20 p-2 rounded-xl" data-icon="inventory">inventory</span>
+<span class="text-[10px] font-bold text-on-primary-container/60 bg-white/10 px-2 py-1 rounded-full">+12% vs LY</span>
+</div>
+<h3 class="text-on-primary-container font-headline text-2xl font-extrabold">2,410</h3>
+<p class="text-on-primary-container/80 text-xs font-medium uppercase tracking-wider">Total Inventory Units</p>
+</div>
+<div class="bg-surface-container-highest p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-tertiary bg-white/50 p-2 rounded-xl" data-icon="warning">warning</span>
+</div>
+<h3 class="text-on-surface font-headline text-2xl font-extrabold">14</h3>
+<p class="text-stone-500 text-xs font-medium uppercase tracking-wider">Out of Stock Alerts</p>
+</div>
+</div>
+<!-- Category Management Panel -->
+<div class="bg-surface-container-low rounded-2xl p-6 space-y-6">
+<div class="flex justify-between items-center">
+<h4 class="font-bold text-sm uppercase tracking-wider text-on-surface">Categories</h4>
+<button class="text-primary hover:bg-primary/5 p-1 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-xl" data-icon="add_circle">add_circle</span>
+</button>
+</div>
+<div class="space-y-4">
+<div class="group flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-white transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" data-icon="eco">eco</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">Tea &amp; Herbs</p>
+<p class="text-[10px] text-stone-400">342 Products</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-primary" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<div class="group flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-white transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" data-icon="liquor">liquor</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">Artisan Spirits</p>
+<p class="text-[10px] text-stone-400">128 Products</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-tertiary" data-icon="drag_indicator">drag_indicator</span>
+</div>
+<div class="group flex items-center gap-3 p-2 -mx-2 rounded-xl hover:bg-white transition-all cursor-pointer">
+<div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined" data-icon="soup_kitchen">soup_kitchen</span>
+</div>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-surface">Fermented Foods</p>
+<p class="text-[10px] text-stone-400">86 Products</p>
+</div>
+<span class="material-symbols-outlined text-stone-300 group-hover:text-secondary" data-icon="drag_indicator">drag_indicator</span>
+</div>
+</div>
+<button class="w-full text-center py-3 border-t border-outline/10 text-xs font-bold text-stone-400 hover:text-primary transition-colors">
+                            Manage All Categories
+                        </button>
+</div>
+<!-- Supplier Spotlight -->
+<div class="relative rounded-2xl overflow-hidden aspect-[4/5] group">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
+<img class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="a traditional Vietnamese ceramic workshop with sunlight filtering through an open roof and artisan pottery" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8gZkWwg6w2pmDtI7SxeRaF4slQuEZIVPzHB6Xacq5iGo4Z4-MFvTLRXertq9DAmxosMGxLoZOjextYcfSa4B8R8qpyrgUZVedSgI_hfwBOwYDUpauL1bVCsm7dcIyS7YGigIbRObr5XSOFsPs1U2Mr1nFQYDZCT0dZeDkt-IultQNOnU636WyZjD_iU4n-d-r6SqdzH4ldlpLWWgdIbuzJ5rbnIvJ1pc9VEvnPfKc5UsCh53sIbKncYDLIyEM2KVv_7bk5wdwhAc"/>
+<div class="absolute bottom-0 left-0 p-5 z-20 space-y-2">
+<span class="bg-primary-fixed/20 backdrop-blur-md text-primary-fixed px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">Supplier of the month</span>
+<h5 class="text-white font-headline font-bold text-xl">Bat Trang Pottery Village</h5>
+<p class="text-white/70 text-xs line-clamp-2">Authentic hand-painted ceramics from the historic 14th-century craft commune.</p>
+<a class="inline-flex items-center gap-2 text-primary-fixed text-xs font-bold group-hover:translate-x-1 transition-transform" href="#">
+                                View Portfolio <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Heritage Motif Divider (Decorative) -->
+<div class="fixed bottom-12 right-12 opacity-5 pointer-events-none">
+<svg class="text-primary fill-current" height="240" viewbox="0 0 100 100" width="240">
+<path d="M50 0C50 0 55 25 75 25C95 25 100 50 100 50C100 50 95 75 75 75C55 75 50 100 50 100C50 100 45 75 25 75C5 75 0 50 0 50C0 50 5 25 25 25C45 25 50 0 50 0Z"></path>
+</svg>
+</div>
+</body></html>

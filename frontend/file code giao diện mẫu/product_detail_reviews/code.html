@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Trà Tân Cương Thái Nguyên - Heritage Harvest</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface": "#f9f9f9",
+              "tertiary-fixed": "#ffdbca",
+              "surface-bright": "#f9f9f9",
+              "on-surface": "#1a1c1c",
+              "on-secondary-fixed": "#2b160f",
+              "surface-container-highest": "#e2e2e2",
+              "inverse-primary": "#88d982",
+              "surface-dim": "#dadada",
+              "on-primary-container": "#cbffc2",
+              "surface-variant": "#e2e2e2",
+              "primary-container": "#2e7d32",
+              "secondary-fixed-dim": "#e4beb2",
+              "error": "#ba1a1a",
+              "secondary-container": "#fed7ca",
+              "on-background": "#1a1c1c",
+              "tertiary-fixed-dim": "#ffb68f",
+              "primary-fixed": "#a3f69c",
+              "outline-variant": "#bfcaba",
+              "primary": "#0d631b",
+              "secondary-fixed": "#ffdbce",
+              "inverse-on-surface": "#f0f1f1",
+              "on-primary": "#ffffff",
+              "surface-container": "#eeeeee",
+              "tertiary-container": "#b45000",
+              "error-container": "#ffdad6",
+              "on-tertiary": "#ffffff",
+              "on-surface-variant": "#40493d",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed-variant": "#5b4137",
+              "surface-tint": "#1b6d24",
+              "surface-container-low": "#f3f3f3",
+              "background": "#f9f9f9",
+              "on-error-container": "#93000a",
+              "tertiary": "#8e3d00",
+              "on-tertiary-fixed-variant": "#773200",
+              "secondary": "#75584d",
+              "surface-container-high": "#e8e8e8",
+              "on-secondary": "#ffffff",
+              "primary-fixed-dim": "#88d982",
+              "inverse-surface": "#2f3131",
+              "outline": "#707a6c",
+              "on-primary-fixed": "#002204",
+              "on-secondary-container": "#795c51",
+              "on-primary-fixed-variant": "#005312",
+              "on-tertiary-fixed": "#331200",
+              "on-tertiary-container": "#ffeee6",
+              "on-error": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .bg-primary-gradient {
+            background: linear-gradient(135deg, #0d631b 0%, #2e7d32 100%);
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl">
+<div class="flex justify-between items-center w-full px-6 py-4 max-w-screen-2xl mx-auto">
+<div class="text-xl font-bold tracking-tighter text-green-900 dark:text-green-50 font-headline">Heritage Harvest</div>
+<div class="hidden md:flex items-center space-x-8 font-be-vietnam-pro tracking-tight">
+<a class="text-green-900 dark:text-green-50 border-b-2 border-green-800 font-medium pb-1" href="#">Shop</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-green-800 transition-colors" href="#">Stories</a>
+<a class="text-zinc-500 dark:text-zinc-400 hover:text-green-800 transition-colors" href="#">Origins</a>
+</div>
+<div class="flex items-center space-x-5 text-green-800 dark:text-green-500">
+<button class="hover:bg-zinc-50 dark:hover:bg-zinc-900 p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+<button class="hover:bg-zinc-50 dark:hover:bg-zinc-900 p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="pt-24 pb-16 px-6 max-w-screen-2xl mx-auto">
+<!-- Breadcrumb -->
+<nav class="flex items-center space-x-2 text-label-md text-on-surface-variant/60 mb-8 font-label text-xs uppercase tracking-widest">
+<a class="hover:text-primary transition-colors" href="#">Trang chủ</a>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Đặc sản Miền Bắc</a>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="text-on-surface font-semibold">Trà Tân Cương</span>
+</nav>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+<!-- Left: Gallery -->
+<div class="lg:col-span-7 space-y-4">
+<div class="aspect-[4/3] w-full rounded-xl overflow-hidden bg-surface-container">
+<img alt="Premium Tan Cuong Tea" class="w-full h-full object-cover" data-alt="Close-up of premium loose-leaf green tea in a traditional ceramic bowl on a rustic wooden surface with soft atmospheric lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApEI8i5c5-lvSG4Dlzqoz_ycN0juCHIwgJu3FfozzIkOyIxQ9ptojAza2j8UI8hasmu7TOlgionfq-cY3H6PlEL8ywo7Q9ShEQzH3cLKFRf8Dni86n_WyOFH8nGRQG2nzf-wYHGbnmtVeIrVo6FoEtT4R5xELI2ROxWdoUp_rn8TYN8mY9qqAYcT6LXQWlZ1LhaniJBZQAaNAsEJ5jQH2O4pELA7gdA392tj2seqHbnk4X5_jOuW0CE3KuGtJwvRGuED9r7cA_DWY"/>
+</div>
+<div class="grid grid-cols-4 gap-4">
+<div class="aspect-square rounded-xl overflow-hidden cursor-pointer border-2 border-primary">
+<img class="w-full h-full object-cover" data-alt="Close up dry tea leaves texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL7tBoZzcJk6SYYV4n9uL9wF26gyQJtpXK4IdDPE0SUUtb0a3s3itJ39WwmgQxI8-xW3Bnr-11PctCR7ueeTNOESiUvFoMSe987IwKijvUbGaDUM5Z4l-Bel0YlZSzdy9sACwULd_0inGPlb5g4AX0pXKydB3z77dx7e2WhMqpPr-g3ASP3htLMDzE_XA2ZxrT6Y2T1HaJNddLWtj2P8da3bQdUPgRtH5b7c6FMWP6jkDgjLZRHQ6raLmTAyBXJHbt44k5zQVQkG0"/>
+</div>
+<div class="aspect-square rounded-xl overflow-hidden cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
+<img class="w-full h-full object-cover" data-alt="Traditional Vietnamese tea pouring ceremony in a serene garden" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaNwZPa5OUzJXLjq6t3dyG2zkiCXRqp3hZU7nL9Km7f7CCL_elO9i_5gBOt-hZZGTFJS1xNqBZ9Rpkd19KHSJZrO5heCLlxUGPhjJ_gLOmnq5tOQoFlNkwbaW2SVipo50DkHdC6voSTwW_0NJAOwot1brozLmmr48pOwnPNsmka94lBW2DKeTibLufJxmY2NQJc3y-ife7P5SP1v4vo7VzOznwK0Q8q78Q5lEpPhRSfjVZhrmImMJvtvN1LvsrlZtUGzCLudHc22w"/>
+</div>
+<div class="aspect-square rounded-xl overflow-hidden cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
+<img class="w-full h-full object-cover" data-alt="Tea plantation hills in Thai Nguyen Vietnam during sunrise" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAr2XHch98KyNZoGnA_IGZIVZo7iopmHkQL52Kpnkerro2sf85Nzu420RgNRcXOceUs70hCwesuNlZHpW_kQZW3oPajaQFKaUQFNiwjXizZTZKfVLBMsLYI6NT_XroIWF_DTbOygrq12tLs10aDR5J5wXiSXGlmDjdE-RzbWLoYyXfVaKFVURlr6bzxJBXnosK84BV-oHxIVk2cdhHKC9N7O3ySjk-ZolHnGY0r9zWyp6BEspbQpSRZ0eGnXLA8dch_jceeKYEM9AM"/>
+</div>
+<div class="aspect-square rounded-xl overflow-hidden cursor-pointer opacity-70 hover:opacity-100 transition-opacity">
+<img class="w-full h-full object-cover" data-alt="Steaming cup of green tea with natural steam on a dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5Tqphbqc4zGwOkNwJ84nCwRCFQwzEyTx3RPEy5eeL0TVyWEpvIlsjU_yDO2WLFcyNUymnNY-XhUxHfuPsurZSUg5bkwUOHB9l8HqN_FIzrSnSISMfJq1K9Yk3FaixQommh6pmceITJtPyqheVPJzFr_PId-4V4eQqIs0YIQ79M4T9KpdUDpTBKQBeLzz1Fd1fHk46CQa0R2TVmn6RY3GJrsTJGS86gYGU4R5jkXZS42rO4lxiUQJzd9yXcpdfKZ7tUOxneoQ_yiQ"/>
+</div>
+</div>
+</div>
+<!-- Right: Product Info -->
+<div class="lg:col-span-5 space-y-8">
+<header class="space-y-3">
+<span class="inline-block px-3 py-1 rounded-full bg-primary-container/10 text-primary text-[10px] font-bold uppercase tracking-wider font-label">Thượng Hạng</span>
+<h1 class="text-3xl font-headline font-bold text-on-surface tracking-tight leading-tight">Trà Tân Cương Thái Nguyên - Loại Thượng Hạng</h1>
+<div class="flex items-center space-x-4">
+<div class="flex items-center text-tertiary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star_half</span>
+<span class="ml-2 text-sm font-medium text-on-surface-variant">4.8 (124 reviews)</span>
+</div>
+</div>
+<p class="text-2xl font-headline font-bold text-primary pt-2">450,000 VND</p>
+</header>
+<div class="grid grid-cols-2 gap-y-4 py-6 border-y border-outline-variant/15 text-sm">
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant font-label text-xs uppercase tracking-wider">Xuất xứ</span>
+<span class="font-medium">Thái Nguyên, Việt Nam</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant font-label text-xs uppercase tracking-wider">Khối lượng</span>
+<span class="font-medium">500g</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant font-label text-xs uppercase tracking-wider">Hạn sử dụng</span>
+<span class="font-medium">12 tháng</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant font-label text-xs uppercase tracking-wider">Chứng nhận</span>
+<span class="font-medium">OCOP 4 Sao, VietGAP</span>
+</div>
+</div>
+<div class="space-y-6">
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low rounded-full px-4 py-2 border border-outline-variant/20">
+<button class="w-8 h-8 flex items-center justify-center hover:text-primary"><span class="material-symbols-outlined">remove</span></button>
+<input class="w-12 text-center bg-transparent border-none focus:ring-0 font-bold" type="text" value="1"/>
+<button class="w-8 h-8 flex items-center justify-center hover:text-primary"><span class="material-symbols-outlined">add</span></button>
+</div>
+<button class="flex-1 py-4 px-6 rounded-full border border-secondary text-secondary font-bold hover:bg-secondary hover:text-white transition-all">Thêm vào giỏ</button>
+</div>
+<button class="w-full py-4 px-6 rounded-full bg-primary-gradient text-white font-bold shadow-lg shadow-primary/20 active:scale-95 transition-transform">Mua ngay</button>
+</div>
+<div class="p-4 bg-surface-container-low rounded-xl flex items-start gap-4">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+<div class="text-sm">
+<p class="font-bold">Giao hàng miễn phí</p>
+<p class="text-on-surface-variant">Cho đơn hàng trên 1.000.000 VND. Nhận hàng trong 2-3 ngày.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Tabs Section -->
+<section class="mt-20">
+<div class="flex border-b border-outline-variant/15 gap-12 mb-10 overflow-x-auto no-scrollbar">
+<button class="pb-4 text-primary font-bold border-b-2 border-primary whitespace-nowrap">Thông tin chi tiết</button>
+<button class="pb-4 text-on-surface-variant font-medium hover:text-primary transition-colors whitespace-nowrap">Đánh giá khách hàng</button>
+<button class="pb-4 text-on-surface-variant font-medium hover:text-primary transition-colors whitespace-nowrap">Hướng dẫn pha trà</button>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-16">
+<div class="lg:col-span-2 space-y-12">
+<!-- Sourcing & Content -->
+<div class="space-y-6">
+<h3 class="text-2xl font-headline font-bold tracking-tight">Vùng nguyên liệu &amp; Quy trình</h3>
+<p class="text-body-lg text-on-surface-variant leading-relaxed">
+                            Trà Tân Cương của Heritage Harvest được thu hái thủ công tại các đồi chè có độ cao trên 1000m tại Thái Nguyên. Chúng tôi chỉ chọn những búp chè "1 tôm 2 lá" non nhất vào buổi sớm tinh sương để đảm bảo hương vị thanh tao nhất.
+                        </p>
+<div class="grid grid-cols-2 gap-4">
+<div class="p-6 bg-surface-container-lowest rounded-xl">
+<span class="material-symbols-outlined text-tertiary mb-3">verified</span>
+<h4 class="font-bold mb-2">Chứng nhận VietGAP</h4>
+<p class="text-sm text-on-surface-variant">Đảm bảo quy trình canh tác hữu cơ, không dư lượng thuốc bảo vệ thực vật.</p>
+</div>
+<div class="p-6 bg-surface-container-lowest rounded-xl">
+<span class="material-symbols-outlined text-tertiary mb-3">workspace_premium</span>
+<h4 class="font-bold mb-2">OCOP 4 Sao</h4>
+<p class="text-sm text-on-surface-variant">Sản phẩm tiêu biểu của địa phương, đạt tiêu chuẩn xuất khẩu quốc tế.</p>
+</div>
+</div>
+</div>
+<!-- Reviews section -->
+<div class="space-y-8 pt-12">
+<div class="flex justify-between items-end">
+<div>
+<h3 class="text-2xl font-headline font-bold tracking-tight">Khách hàng nói gì</h3>
+<p class="text-on-surface-variant">Dựa trên 124 lượt đánh giá</p>
+</div>
+<button class="bg-primary text-white px-6 py-3 rounded-full font-bold hover:opacity-90 transition-opacity">Viết đánh giá</button>
+</div>
+<!-- Review Cards -->
+<div class="space-y-6">
+<div class="p-6 bg-surface-container-lowest rounded-xl shadow-sm space-y-4">
+<div class="flex justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-secondary font-bold">NH</div>
+<div>
+<p class="font-bold text-sm">Nguyễn Hùng</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">Đã mua hàng</p>
+</div>
+</div>
+<div class="flex text-tertiary">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+</div>
+<p class="text-on-surface-variant">Trà rất thơm, nước xanh trong, vị tiền chát hậu ngọt đậm đà. Đóng gói rất kỹ lưỡng và sang trọng, thích hợp làm quà biếu.</p>
+<div class="flex gap-2">
+<img class="w-20 h-20 object-cover rounded-lg" data-alt="Review photo of brewed green tea in a clear glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2YpkTa-E3ri2tGexvjkiC3u39tot3_WbG7c7jF9wOOlP4uSR3C8YCM4JPTWBb0FTzwC-4sjFrtbpqEjw_3_kUc3chOaDHE5EQHWwvnsvqjr5jqfrzNRO81I6f-ArpJI6XOVUIVmY7UtTPX6sT_DXf18_rM4YghHG123aihUozKpRjAjV9JBapapSjUjv23z2IqXf8bBcK2Duah04BfJhem3mhdxTHDHWgU4fFR95Pv-PS0T39UVUJ3BmqMdcgFRWE3RqIn96UvsA"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar Content -->
+<div class="space-y-8">
+<div class="p-8 bg-surface-container-high rounded-2xl space-y-6">
+<h4 class="font-headline font-bold text-xl">Cam kết Heritage</h4>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">eco</span>
+<span class="text-sm">100% Tự nhiên, không chất bảo quản hay tạo màu.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">handshake</span>
+<span class="text-sm">Trực tiếp từ hộ nông dân Thái Nguyên.</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+<span class="text-sm">Lưu giữ phương thức sao chè truyền thống.</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<!-- Related Products -->
+<section class="mt-24">
+<div class="flex justify-between items-center mb-10">
+<h3 class="text-2xl font-headline font-bold tracking-tight">Có thể bạn sẽ thích</h3>
+<a class="text-primary font-bold hover:underline" href="#">Xem tất cả</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+<!-- Related Product Card 1 -->
+<div class="group cursor-pointer">
+<div class="aspect-[4/5] bg-surface-container-lowest rounded-xl overflow-hidden mb-4 relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Premium Vietnamese coffee beans in a burlap sack" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCueNGmwv_jbax_oi-9pOUsMpOgtA-IYe1eabIK7y_CK4WTwUyIHRPBAiH7JAup6-uloufJetLzmoT_j4csw4lzNSN-FEWs3UGnz4d9z7u2wp9skcyGzhmtY3h0PdOLQxLl8qMf8cMCzMBpR_ZWhZxvhfi9kx5ZkaVCu5SJksWKTVy2V6q4qLgk6a9fHFPbY7HUFWL8ojclTv1kzaRMoPBI526RW62GP0r6tO6Gb3yxanpJF8xcma_1fh_TFe2xoryspBr6bUY4_WM"/>
+</div>
+<h4 class="font-headline font-bold text-lg mb-1">Cà Phê Arabica Cầu Đất</h4>
+<p class="text-primary font-bold">320,000 VND</p>
+</div>
+<!-- Related Product Card 2 -->
+<div class="group cursor-pointer">
+<div class="aspect-[4/5] bg-surface-container-lowest rounded-xl overflow-hidden mb-4 relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Dried lotus seeds in a wooden bowl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTjjwbpqqLwuiIEOLXQ88E0X6Nrxn2yBY330Dazpt3PDezNQu7C6B2AboiWRMnSoo-guYuAVSHeccKRdP5UuhNUnkqzALhIEudFpLJRYb4jVo4faJ3YR6amyXSYKqufmsCnj6qLB67JHpS7TQnWA0oV6ThPCTe1LA4Z8pZ3UCD5TqkTiQRUq0GGUxz_bLOlQxZZnUpMJ5i2ZefNZ35kvzgtmpxc6dn6XLjQ22PVn4Vbc7szW0Jf3OrMwcEPcNmdcaH_KI3E8kEv0g"/>
+</div>
+<h4 class="font-headline font-bold text-lg mb-1">Hạt Sen Khô Tịnh Tâm</h4>
+<p class="text-primary font-bold">285,000 VND</p>
+</div>
+<!-- Related Product Card 3 -->
+<div class="group cursor-pointer">
+<div class="aspect-[4/5] bg-surface-container-lowest rounded-xl overflow-hidden mb-4 relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Vietnamese honey in glass jars with honeycomb" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmjjjyinN4JPzPYT4liRk90E-jBhxS01BytG69boB1XaAsu1-N1WgM0euyD6IzACoE64P53KEHliqF-NVOWdSZKNQVVmeNQd4nr191ik-sNVUQLnfE6m21RAUNNDwg6hQR6hfWTYNfSbMzSeZpFZKi5vkU5KK44YcdNOIy8wauNrVknHMJOUhFjl6rssIkfZyyt-ILxA1m3gUUmljshWnJ0zdaAkFv0fdPE1wrUpxajy0cyL_UMop-dUztGrQMLuam7k4GmjEQX4o"/>
+</div>
+<h4 class="font-headline font-bold text-lg mb-1">Mật Ong Hoa Nhãn</h4>
+<p class="text-primary font-bold">190,000 VND</p>
+</div>
+<!-- Related Product Card 4 -->
+<div class="group cursor-pointer">
+<div class="aspect-[4/5] bg-surface-container-lowest rounded-xl overflow-hidden mb-4 relative">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Premium Vietnamese cashew nuts on a plate" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3uT4E9RIiTXN88yPlkXEEUu7F0vOXffFyITMvLsKn0JuCKIvqSX29WNMwTcntACKgZBDZLRviAUDTjhkNi1z_K4r8oggd5gZVY1b85C_JBejOMzojeOGjCE4KVo_moMyvFukXBN16Gx6fmGkXGVUxmdYyJ0k8Ql1JIO40xHcOTMgjeTtb-W34vXyWN6lWgFDvmDRJxdjOalYnoKCPX0RXc5n_9fg42fUJ5jbJ3JOS7HQwJcuk5cUX9kk3N-9dii4BLZ1Z6T9Cwms"/>
+</div>
+<h4 class="font-headline font-bold text-lg mb-1">Hạt Điều Rang Muối</h4>
+<p class="text-primary font-bold">210,000 VND</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer Component -->
+<footer class="bg-zinc-100 dark:bg-zinc-900 w-full rounded-none border-t border-zinc-200 dark:border-zinc-800 font-be-vietnam-pro text-sm leading-relaxed">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8 px-8 py-16 max-w-7xl mx-auto">
+<div class="space-y-4">
+<div class="text-2xl font-bold text-green-900 dark:text-green-50">Heritage Harvest</div>
+<p class="text-zinc-600 dark:text-zinc-400">Celebrating Vietnamese Craftsmanship and the rich heritage of our land through exceptional agrarian products.</p>
+</div>
+<div class="space-y-4">
+<h5 class="text-green-900 dark:text-green-50 font-bold">About</h5>
+<ul class="space-y-2">
+<li><a class="text-zinc-600 dark:text-zinc-400 hover:text-green-700 hover:translate-y-[-1px] transition-all inline-block" href="#">Our Story</a></li>
+<li><a class="text-zinc-600 dark:text-zinc-400 hover:text-green-700 hover:translate-y-[-1px] transition-all inline-block" href="#">Sourcing</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h5 class="text-green-900 dark:text-green-50 font-bold">Support</h5>
+<ul class="space-y-2">
+<li><a class="text-zinc-600 dark:text-zinc-400 hover:text-green-700 hover:translate-y-[-1px] transition-all inline-block" href="#">Shipping</a></li>
+<li><a class="text-zinc-600 dark:text-zinc-400 hover:text-green-700 hover:translate-y-[-1px] transition-all inline-block" href="#">Terms</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h5 class="text-green-900 dark:text-green-50 font-bold">Newsletter</h5>
+<p class="text-zinc-600 dark:text-zinc-400">Join our harvest community for stories and seasonal drops.</p>
+<div class="flex gap-2">
+<input class="bg-white dark:bg-zinc-800 border-none rounded-full px-4 py-2 w-full focus:ring-2 focus:ring-green-800" placeholder="Email của bạn" type="email"/>
+<button class="bg-green-800 text-white p-2 rounded-full hover:opacity-80 transition-opacity"><span class="material-symbols-outlined">arrow_forward</span></button>
+</div>
+</div>
+</div>
+<div class="px-8 py-6 text-center border-t border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-500">
+            © 2024 Heritage Harvest. Celebrating Vietnamese Craftsmanship.
+        </div>
+</footer>
+</body></html>

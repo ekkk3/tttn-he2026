@@ -1,0 +1,82 @@
+# TÀI LIỆU ĐẶC TẢ HỆ THỐNG ĐẶC SẢN VÙNG MIỀN (UC1-UC25)
+
+## 1. Site Map Tổng Thể
+
+### A. Phân hệ Khách hàng (Customer)
+- **Auth:** Đăng ký (UC1), Đăng nhập (UC2)
+- **Mua sắm:** Trang chủ, Danh mục, Tìm kiếm (UC6), Chi tiết sản phẩm (UC6), Giỏ hàng (UC7)
+- **Thanh toán:** Checkout/Đặt hàng (UC8), Thanh toán Online/COD (UC9), Kết quả thanh toán (UC25)
+- **Cá nhân:** Hồ sơ (UC3), Lịch sử đơn hàng (UC4), Theo dõi đơn (UC5), Đánh giá (UC10), Khiếu nại (UC11)
+
+### B. Phân hệ Admin
+- **Dashboard:** Báo cáo thống kê (UC19)
+- **Quản trị:** Người dùng (UC14), Nhà cung cấp (UC12), Danh mục (UC16)
+- **Nghiệp vụ:** Sản phẩm (UC15), Đơn hàng (UC17), Khiếu nại (UC18)
+
+### C. Phân hệ Nhà cung cấp (Supplier)
+- **Đơn hàng:** Danh sách đơn cung cấp (UC13), Chi tiết đơn (UC13)
+
+### D. Phân hệ Nhân viên kho (Warehouse)
+- **Nhập hàng:** Yêu cầu nhập hàng (UC20), Quản lý giá nhập (UC24)
+- **Kho vận:** Quản lý kho/Tồn kho (UC21), Xử lý đơn hàng (UC23), Cập nhật trạng thái (UC22)
+
+---
+
+## 2. Ma trận Mapping Use Case -> Screens
+
+| UC ID | Tên Use Case | Màn hình tương ứng | Actor |
+|-------|--------------|-------------------|-------|
+| UC1 | Đăng ký | Page: Register | Khách hàng |
+| UC2 | Đăng nhập | Page: Login | Khách hàng |
+| UC3 | Quản lý thông tin cá nhân | Page: Profile | Khách hàng |
+| UC4 | Quản lý lịch sử mua hàng | Page: Order History | Khách hàng |
+| UC5 | Theo dõi trạng thái đơn | Page: Order Tracking (Timeline) | Khách hàng |
+| UC6 | Xem và tìm kiếm sản phẩm | Page: Home, Product List, Detail | Khách hàng |
+| UC7 | Quản lý giỏ hàng | Page: Cart | Khách hàng |
+| UC8 | Đặt hàng | Page: Checkout | Khách hàng |
+| UC9 | Thanh toán | Page: Payment Selection | Khách hàng |
+| UC10 | Đánh giá sản phẩm | Modal: Review | Khách hàng |
+| UC11 | Khiếu nại | Page: Dispute/Claim | Khách hàng |
+| UC12 | Quản lý nhà cung cấp | Page: Admin - Supplier Mgmt | Admin |
+| UC13 | Xem đơn hàng cung cấp | Page: Supplier - Order List | Supplier |
+| UC14 | Quản lý người dùng | Page: Admin - User Mgmt | Admin |
+| UC15 | Quản lý sản phẩm | Page: Admin - Product Mgmt | Admin |
+| UC16 | Quản lý danh mục | Page: Admin - Category Mgmt | Admin |
+| UC17 | Quản lý đơn hàng | Page: Admin - Order Mgmt | Admin |
+| UC18 | Quản lý khiếu nại | Page: Admin - Dispute Mgmt | Admin |
+| UC19 | Báo cáo thống kê | Page: Admin - Dashboard | Admin |
+| UC20 | Yêu cầu nhập hàng | Page: Warehouse - Requisition | NV Kho |
+| UC21 | Quản lý kho | Page: Warehouse - Inventory | NV Kho |
+| UC22 | Cập nhật trạng thái đơn | Page: Warehouse - Order Status | NV Kho |
+| UC23 | Xử lý đơn hàng | Page: Warehouse - Order Processing | NV Kho |
+| UC24 | Quản lý giá nhập | Page: Warehouse - Purchase Price | NV Kho |
+| UC25 | Xử lý thanh toán | Page: Payment Gateway Flow | Khách hàng |
+
+---
+
+## 3. Checklist Đối Soát UC1-UC25
+- [ ] UC1 Đăng ký
+- [ ] UC2 Đăng nhập
+- [ ] UC3 Thông tin cá nhân
+- [ ] UC4 Lịch sử mua hàng
+- [ ] UC5 Theo dõi đơn
+- [ ] UC6 Tìm kiếm SP
+- [ ] UC7 Giỏ hàng
+- [ ] UC8 Đặt hàng
+- [ ] UC9 Thanh toán
+- [ ] UC10 Đánh giá
+- [ ] UC11 Khiếu nại
+- [ ] UC12 Quản lý NCC
+- [ ] UC13 Đơn hàng NCC
+- [ ] UC14 Quản lý người dùng
+- [ ] UC15 Quản lý SP
+- [ ] UC16 Quản lý danh mục
+- [ ] UC17 Quản lý đơn hàng (Admin)
+- [ ] UC18 Quản lý khiếu nại (Admin)
+- [ ] UC19 Báo cáo thống kê
+- [ ] UC20 Yêu cầu nhập hàng
+- [ ] UC21 Quản lý kho
+- [ ] UC22 Cập nhật trạng thái đơn
+- [ ] UC23 Xử lý đơn hàng
+- [ ] UC24 Giá nhập SP
+- [ ] UC25 Payment Gateway Flow

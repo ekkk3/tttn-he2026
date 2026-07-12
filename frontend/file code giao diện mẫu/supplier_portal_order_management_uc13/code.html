@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heritage Harvest - Supplier Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed-dim": "#ffb68f",
+                        "on-tertiary-fixed": "#331200",
+                        "primary-fixed": "#a3f69c",
+                        "outline": "#707a6c",
+                        "on-primary-fixed-variant": "#005312",
+                        "surface-container-low": "#f3f3f3",
+                        "surface-container-highest": "#e2e2e2",
+                        "error": "#ba1a1a",
+                        "secondary-container": "#fed7ca",
+                        "background": "#f9f9f9",
+                        "tertiary-container": "#b45000",
+                        "surface-bright": "#f9f9f9",
+                        "tertiary-fixed": "#ffdbca",
+                        "on-surface": "#1a1c1c",
+                        "on-error": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#88d982",
+                        "inverse-surface": "#2f3131",
+                        "primary": "#0d631b",
+                        "surface-dim": "#dadada",
+                        "secondary-fixed": "#ffdbce",
+                        "on-tertiary-fixed-variant": "#773200",
+                        "surface-container": "#eeeeee",
+                        "on-secondary-container": "#795c51",
+                        "surface-tint": "#1b6d24",
+                        "on-secondary-fixed-variant": "#5b4137",
+                        "primary-container": "#2e7d32",
+                        "outline-variant": "#bfcaba",
+                        "on-surface-variant": "#40493d",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffeee6",
+                        "inverse-primary": "#88d982",
+                        "on-secondary-fixed": "#2b160f",
+                        "on-primary-container": "#cbffc2",
+                        "inverse-on-surface": "#f0f1f1",
+                        "error-container": "#ffdad6",
+                        "surface": "#f9f9f9",
+                        "surface-container-high": "#e8e8e8",
+                        "surface-variant": "#e2e2e2",
+                        "on-background": "#1a1c1c",
+                        "tertiary": "#8e3d00",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#e4beb2",
+                        "secondary": "#75584d",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#002204"
+                    },
+                    fontFamily: {
+                        "headline": ["Be Vietnam Pro"],
+                        "body": ["Be Vietnam Pro"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f9f9f9;
+            color: #1a1c1c;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen">
+<!-- Sidebar Navigation -->
+<nav class="fixed left-0 top-0 h-full p-4 flex flex-col gap-2 bg-[#f3f3f3] dark:bg-[#1a1c1c] h-screen w-64 rounded-r-xl shadow-[20px_0px_40px_rgba(26,28,28,0.03)] z-40">
+<div class="mb-8 px-4 py-2">
+<h1 class="text-lg font-bold tracking-tight text-[#0d631b] font-headline">Heritage Harvest</h1>
+<p class="text-xs text-on-surface-variant font-label uppercase tracking-widest opacity-70">Supplier Portal</p>
+</div>
+<div class="flex flex-col gap-1 flex-grow">
+<!-- Navigation Items Mapping -->
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="assignment_turned_in">assignment_turned_in</span>
+<span>Requisitions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 hover:translate-x-1 font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+<span>Order Processing</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#ffffff] dark:bg-[#252525] text-[#0d631b] dark:text-[#2e7d32] font-bold rounded-lg shadow-sm font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span>Supplier Orders</span>
+</a>
+</div>
+<div class="mt-auto flex flex-col gap-1">
+<div class="bg-[#f3f3f3] dark:bg-[#252525] h-px w-full my-4"></div>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] rounded-lg transition-all font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span>Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] rounded-lg transition-all font-['Be_Vietnam_Pro'] text-sm leading-relaxed" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="ml-64 p-8 min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-6 py-4 w-full bg-[#f9f9f9]/80 backdrop-blur-xl sticky top-0 z-30 mb-8 rounded-xl">
+<div>
+<h2 class="text-2xl font-bold text-primary tracking-tight font-headline">Supplier Orders</h2>
+<p class="text-sm text-on-surface-variant font-label">Manage your fulfillment and tracking</p>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-surface-container overflow-hidden">
+<img alt="Supplier Profile" class="h-full w-full object-cover" data-alt="portrait of a professional asian warehouse manager in a clean modern facility background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7LU8uFvOjNR3zQw1NpzuvQc8pXPEAlNdCc8u4T4qyzoBp7PVBKSK1AV_eZAY7gcCozlS-KZzP4suREqsG62hXjDfwUBgQAD027RevoLkpmqmtZNa89CrIFIDMuTGO3dlTKsan2T90A1nLy3DRcQsCEMtpL35u3hypAqwPg3EP1JpHFJyT0kS2qtNVOjUdN344UesSKGJRzVSlAdsYD1KMCFxIgFBHz8NxjihtwHcpiIONjfyzTFH_Unnhub_jFLrcwIZjsrz7GUU"/>
+</div>
+</div>
+</header>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-8">
+<!-- Statistics Row (Asymmetric) -->
+<div class="col-span-12 lg:col-span-8 grid grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-primary/10">
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-2">Pending Fulfillment</p>
+<h3 class="text-3xl font-bold text-primary font-headline">12</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-tertiary/10">
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-2">In Transit</p>
+<h3 class="text-3xl font-bold text-tertiary font-headline">08</h3>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-b-2 border-secondary/10">
+<p class="text-xs font-label text-on-surface-variant uppercase tracking-wider mb-2">Total Monthly Revenue</p>
+<h3 class="text-3xl font-bold text-secondary font-headline">₫142M</h3>
+</div>
+</div>
+<!-- Main Order List (High-End Table) -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-xl overflow-hidden shadow-[0px_20px_40px_rgba(26,28,28,0.03)]">
+<div class="px-6 py-5 border-b border-outline-variant/15 flex justify-between items-center bg-surface-bright">
+<h4 class="font-headline font-semibold text-on-surface">Incoming Purchase Orders</h4>
+<div class="flex gap-2">
+<button class="px-4 py-2 text-xs font-label bg-surface-container-low rounded-full hover:bg-surface-container transition-colors">All Orders</button>
+<button class="px-4 py-2 text-xs font-label text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">Awaiting Shipment</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low">
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70">Order ID</th>
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70">Date</th>
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70">Total Amount</th>
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70">Payment</th>
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70">Delivery</th>
+<th class="px-6 py-4 text-[10px] font-label font-bold uppercase tracking-widest text-on-surface-variant/70 text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Active Selection Row -->
+<tr class="bg-primary/5 border-l-4 border-primary">
+<td class="px-6 py-5 font-bold text-sm">#HH-7721</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 24, 2023</td>
+<td class="px-6 py-5 text-sm font-semibold">₫12,450,000</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-surface-container-high text-secondary-container">PENDING</span>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-primary/10 text-primary">PROCESSING</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:underline text-xs font-bold font-label">View Detail</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-5 font-bold text-sm">#HH-7698</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 22, 2023</td>
+<td class="px-6 py-5 text-sm font-semibold">₫8,900,000</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-primary/10 text-primary">PAID</span>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-tertiary/10 text-tertiary">SHIPPED</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:underline text-xs font-bold font-label">View Detail</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-5 font-bold text-sm">#HH-7650</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 20, 2023</td>
+<td class="px-6 py-5 text-sm font-semibold">₫15,200,000</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-primary/10 text-primary">PAID</span>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-on-primary-container text-primary">DELIVERED</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:underline text-xs font-bold font-label">View Detail</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="px-6 py-5 font-bold text-sm">#HH-7512</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 18, 2023</td>
+<td class="px-6 py-5 text-sm font-semibold">₫4,120,000</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-error-container text-error">CANCELLED</span>
+</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 text-[10px] font-label font-bold rounded-full bg-surface-container-high text-on-surface-variant">CANCELLED</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="text-primary hover:underline text-xs font-bold font-label">View Detail</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-surface-container-low text-center">
+<button class="text-xs font-label font-bold text-on-surface-variant hover:text-primary transition-colors uppercase tracking-widest">Load More History</button>
+</div>
+</div>
+<!-- Order Detail View (Floating Sidebar Style) -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_20px_40px_rgba(26,28,28,0.03)] border-t-4 border-primary">
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="text-[10px] font-label font-bold text-on-surface-variant uppercase tracking-widest block mb-1">Detailed View</span>
+<h4 class="text-xl font-bold font-headline text-on-surface">Order #HH-7721</h4>
+</div>
+<button class="p-2 hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="print">print</span>
+</button>
+</div>
+<div class="space-y-6">
+<!-- Product Items List -->
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0">
+<img alt="Specialty Coffee" class="h-full w-full object-cover" data-alt="close up of artisan roasted vietnamese coffee beans in a woven basket" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCumd_8JQcMFTTMQeripom-N3UQ9uV-Z49jby_pqcnEFcF5FQvu92VHaFpLZGiICnasM1bFr6Vfqh8tGoxDpqWxp4l3OKvgXgN_ScDfuJ2Jz7lQKe_RA5KZ9PegqFyfTeo0VvLWtK6qwyvISdD8RtsXyvLB-Lz0_o8dAhiN_6rmKYdFECKTDhOYV9Bkyu5ENuaPn7zjQfFRkX1llLZ4_XzMVnMKQ8jj0zX4wam1MFb_bOKRb_XQfbpNoiE-Xfew6ZMrr-t_bU9M9VY"/>
+</div>
+<div class="flex-grow">
+<p class="text-sm font-semibold font-headline">Da Lat Highland Coffee</p>
+<p class="text-xs text-on-surface-variant font-label">250g Premium Roast</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold">x50</p>
+<p class="text-[10px] text-on-surface-variant">₫150,000/u</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-12 w-12 rounded-lg bg-surface-container-low overflow-hidden flex-shrink-0">
+<img alt="Lotus Tea" class="h-full w-full object-cover" data-alt="dried lotus flowers and premium green tea leaves on a bamboo mat" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoIpOj_A5be48AV7tCB3z7cIFr8gt5Xep0S_tP7FWqMOdD7PY7WH89bnDNYmcLsTBadrVwJEG2vzBLiNsHvCFDa6KDKdhswdaxTL8mJ89YKFkReHXV-wFEnAUszFmXF8msuRtJXpyL3IsjQji_e_kesPgFYWMpr9x5pX1nVCQYFxCmmaOLstBqyN6NNdLWFkxTsNT_AxBLw68EHU264SarRGZctLflZyNPSXtRo6goF0RTFAVbVlwFPV0zus6itrc70diYuZdKSoQ"/>
+</div>
+<div class="flex-grow">
+<p class="text-sm font-semibold font-headline">Ancient Lotus Tea</p>
+<p class="text-xs text-on-surface-variant font-label">100g Loose Leaf</p>
+</div>
+<div class="text-right">
+<p class="text-sm font-bold">x20</p>
+<p class="text-[10px] text-on-surface-variant">₫245,000/u</p>
+</div>
+</div>
+</div>
+<!-- Summary Tonal Divider -->
+<div class="h-px bg-outline-variant/20 w-full"></div>
+<div class="space-y-2">
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Subtotal</span>
+<span class="font-medium text-on-surface">₫12,400,000</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-on-surface-variant">Processing Fee</span>
+<span class="font-medium text-on-surface">₫50,000</span>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="font-bold text-on-surface">Total Order Value</span>
+<span class="text-lg font-bold text-primary">₫12,450,000</span>
+</div>
+</div>
+<!-- Action Controls -->
+<div class="pt-4 space-y-3">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-bold font-headline shadow-lg shadow-primary/20 hover:opacity-90 transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+                                Accept Order &amp; Generate Invoice
+                            </button>
+<button class="w-full bg-surface-container-high text-on-surface py-3 rounded-xl font-bold font-headline hover:bg-surface-container transition-all">
+                                Request Amendment
+                            </button>
+</div>
+</div>
+</div>
+<!-- Shipping Address Card -->
+<div class="bg-surface-container-highest rounded-xl p-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="location_on">location_on</span>
+<h5 class="font-headline font-bold text-sm">Delivery Destination</h5>
+</div>
+<p class="text-xs font-label text-on-surface-variant leading-relaxed">
+                        Central Distribution Warehouse<br/>
+                        District 7, Hi-Tech Park<br/>
+                        Ho Chi Minh City, Vietnam
+                    </p>
+</div>
+</div>
+</div>
+<!-- Heritage Motif Divider -->
+<div class="flex justify-center my-12">
+<svg class="opacity-30 text-outline-variant" fill="none" height="48" viewbox="0 0 48 48" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M24 4L27.5 16.5H40L30 24L33.5 36.5L24 29L14.5 36.5L18 24L8 16.5H20.5L24 4Z" fill="currentColor"></path>
+</svg>
+</div>
+</main>
+<!-- Contextual FAB (Hidden on detail view typically, but shown here for Order Creation) -->
+<button class="fixed bottom-8 right-8 bg-tertiary text-on-tertiary h-16 w-16 rounded-full shadow-[0px_20px_40px_rgba(26,28,28,0.2)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-3xl" data-icon="add_box">add_box</span>
+</button>
+</body></html>

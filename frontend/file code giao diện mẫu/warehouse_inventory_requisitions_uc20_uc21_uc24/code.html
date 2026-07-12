@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Heritage Harvest | Warehouse Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed-dim": "#ffb68f",
+              "on-tertiary-fixed": "#331200",
+              "primary-fixed": "#a3f69c",
+              "outline": "#707a6c",
+              "on-primary-fixed-variant": "#005312",
+              "surface-container-low": "#f3f3f3",
+              "surface-container-highest": "#e2e2e2",
+              "error": "#ba1a1a",
+              "secondary-container": "#fed7ca",
+              "background": "#f9f9f9",
+              "tertiary-container": "#b45000",
+              "surface-bright": "#f9f9f9",
+              "tertiary-fixed": "#ffdbca",
+              "on-surface": "#1a1c1c",
+              "on-error": "#ffffff",
+              "on-secondary": "#ffffff",
+              "on-error-container": "#93000a",
+              "primary-fixed-dim": "#88d982",
+              "inverse-surface": "#2f3131",
+              "primary": "#0d631b",
+              "surface-dim": "#dadada",
+              "secondary-fixed": "#ffdbce",
+              "on-tertiary-fixed-variant": "#773200",
+              "surface-container": "#eeeeee",
+              "on-secondary-container": "#795c51",
+              "surface-tint": "#1b6d24",
+              "on-secondary-fixed-variant": "#5b4137",
+              "primary-container": "#2e7d32",
+              "outline-variant": "#bfcaba",
+              "on-surface-variant": "#40493d",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary-container": "#ffeee6",
+              "inverse-primary": "#88d982",
+              "on-secondary-fixed": "#2b160f",
+              "on-primary-container": "#cbffc2",
+              "inverse-on-surface": "#f0f1f1",
+              "error-container": "#ffdad6",
+              "surface": "#f9f9f9",
+              "surface-container-high": "#e8e8e8",
+              "surface-variant": "#e2e2e2",
+              "on-background": "#1a1c1c",
+              "tertiary": "#8e3d00",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#e4beb2",
+              "secondary": "#75584d",
+              "on-tertiary": "#ffffff",
+              "on-primary-fixed": "#002204"
+            },
+            fontFamily: {
+              "headline": ["Be Vietnam Pro"],
+              "body": ["Be Vietnam Pro"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #bfcaba; border-radius: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-background font-body text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-64 bg-[#f3f3f3] dark:bg-[#1a1c1c] p-4 flex flex-col gap-2 z-40 shadow-[20px_0px_40px_rgba(26,28,28,0.03)] border-r border-transparent">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">eco</span>
+</div>
+<div>
+<h1 class="text-lg font-bold tracking-tight text-[#0d631b] font-headline leading-tight">Heritage Harvest</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-semibold">Warehouse Portal</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-[#252525] text-[#0d631b] dark:text-[#2e7d32] font-bold rounded-lg shadow-sm transition-transform ease-out hover:translate-x-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span>Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 transition-transform ease-out hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">assignment_turned_in</span>
+<span>Requisitions</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 transition-transform ease-out hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">package_2</span>
+<span>Order Processing</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] dark:hover:bg-[#2e2e2e] rounded-lg transition-all duration-300 transition-transform ease-out hover:translate-x-1" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span>Supplier Orders</span>
+</a>
+</nav>
+<div class="pt-4 mt-auto flex flex-col gap-1">
+<div class="h-px w-full bg-outline-variant/20 mb-4"></div>
+<a class="flex items-center gap-3 px-4 py-2 text-[#444746] dark:text-[#c4c7c5] hover:text-[#0d631b] hover:bg-[#f9f9f9] rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined text-sm">help</span>
+<span class="text-sm">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-error hover:bg-error-container/20 rounded-lg transition-all duration-300" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+<span class="text-sm">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-30 flex justify-between items-center px-8 py-4 w-full bg-[#f9f9f9]/80 backdrop-blur-xl transition-all">
+<div class="flex items-center gap-8">
+<h2 class="text-xl font-bold font-headline text-primary tracking-tight">Inventory Overview</h2>
+<div class="hidden md:flex items-center gap-2 bg-surface-container-low px-4 py-2 rounded-full w-96">
+<span class="material-symbols-outlined text-on-surface-variant text-xl">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full placeholder:text-on-surface-variant/60" placeholder="Search SKU, name or supplier..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors relative">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-background"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+<div class="h-8 w-px bg-outline-variant/30 mx-2"></div>
+<div class="flex items-center gap-3 pl-2 group cursor-pointer">
+<div class="text-right">
+<p class="text-sm font-semibold text-on-surface leading-none">Nguyen Van An</p>
+<p class="text-[11px] text-on-surface-variant">Warehouse Manager</p>
+</div>
+<img alt="Warehouse Manager Profile" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10 group-hover:ring-primary transition-all" data-alt="professional headshot of a middle-aged asian man with a kind smile wearing a modern collared shirt in a bright office" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2MYg4lqCCX5y399Ak0-mM4HajLOjTaWD50Z8tRy6usGZsCfscQu0IyAB8Kpr7zaN8xpxoi2FBjhi397ObF2Pq0-85R7ubpweBmmPpPiHrIbvlK5Z128hu1gTbocYsPRy0NiLrC5_2eCFnIjOn6lFb_gv2LrE9qxhhZN6L4Mw_Jx810j-aJl78klJTenXCJfwVBtJ1_VlbIoarBZP4efqEaJ6nBz9PfiDcmyz8HpWdJJN6um7U2PLfHklW2PZJkNFrgSr3u7aP0lg"/>
+</div>
+</div>
+</header>
+<div class="px-8 py-6 space-y-8 max-w-[1600px]">
+<!-- KPI Cards - Bento Style -->
+<section class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+<!-- KPI 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-primary-container/10 rounded-xl text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory</span>
+</div>
+<span class="text-primary text-xs font-bold font-label bg-primary/5 px-2 py-1 rounded-full">+12% vs LY</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label uppercase tracking-widest font-semibold">Total SKU Count</p>
+<p class="text-3xl font-bold font-headline mt-1">1,284</p>
+</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-surface-container-low transition-colors">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-error-container/30 rounded-xl text-error">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<span class="text-error text-xs font-bold font-label bg-error/5 px-2 py-1 rounded-full">Urgent</span>
+</div>
+<div>
+<p class="text-on-surface-variant text-sm font-label uppercase tracking-widest font-semibold">Low Stock Alerts</p>
+<p class="text-3xl font-bold font-headline mt-1">24</p>
+</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl flex flex-col justify-between group hover:bg-surface-container-low transition-colors lg:col-span-2">
+<div class="flex justify-between items-start mb-4">
+<div class="p-3 bg-tertiary-fixed-dim/40 rounded-xl text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+</div>
+<div class="flex gap-2">
+<span class="text-tertiary text-xs font-bold font-label bg-tertiary-fixed/30 px-2 py-1 rounded-full">Asset Valuation</span>
+</div>
+</div>
+<div class="flex items-end justify-between">
+<div>
+<p class="text-on-surface-variant text-sm font-label uppercase tracking-widest font-semibold">Total Inventory Value</p>
+<p class="text-3xl font-bold font-headline mt-1">₫428,500,000</p>
+</div>
+<div class="h-12 w-32 bg-gradient-to-t from-primary/10 to-transparent rounded-lg relative overflow-hidden">
+<!-- Placeholder for a mini sparkline chart -->
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-primary/40 flex items-end">
+<div class="w-1/4 h-2 bg-primary"></div>
+<div class="w-1/4 h-6 bg-primary"></div>
+<div class="w-1/4 h-4 bg-primary"></div>
+<div class="w-1/4 h-8 bg-primary"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Content: Inventory Table -->
+<section class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<div class="p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-surface-container-low">
+<div class="flex items-center gap-4">
+<h3 class="text-lg font-bold font-headline text-on-surface">Product Catalog</h3>
+<div class="flex gap-2">
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-xs font-medium cursor-pointer hover:bg-surface-container hover:text-primary transition-colors">All Categories</span>
+<span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-xs font-medium cursor-pointer">Vietnamese Coffee</span>
+<span class="bg-surface-container-low text-on-surface-variant px-3 py-1 rounded-full text-xs font-medium cursor-pointer hover:bg-surface-container hover:text-primary transition-colors">Premium Tea</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-4 py-2 text-sm font-semibold border border-outline-variant/30 rounded-xl hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                            Filter
+                        </button>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-br from-primary to-primary-container text-white rounded-xl font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-[0.98]">
+<span class="material-symbols-outlined text-lg">add</span>
+                            New Requisition
+                        </button>
+</div>
+</div>
+<!-- Table Content -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label">Product Details</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label">SKU</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label">Category</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label text-center">Stock Level</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label">Purchase Price</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<img alt="Dalat Arabica Beans" class="w-12 h-12 rounded-lg object-cover bg-surface-container" data-alt="Premium roasted coffee beans in a hessian sack with a rustic wooden background and soft warm lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYKZJogyGTDY3g8iWIpHivJcfR5Pjo16PYoN2klBcIpLptu_blgN2nsy6xXW8RM3MLvgWwdJlZUdwd152Kf_DDg9GpD6IqD2nQhMJM_Sg2l_s6J5xWHRFJIuiKlGCz_G4gcnN0om_dHTIScVDa6GZfEwwObTBDuSyBNCKU85_Bdm7bqPBE4MZd2QfgmW2S5yQCd8Z0PYFGwd4IgI-0JwsdbvAuVduE2XdfWCTJZuVeeNYLMpDK3zBL55U5HPqiZzrdSZdxK2zuXgo"/>
+<div>
+<p class="font-bold text-on-surface leading-tight">Dalat Heritage Arabica</p>
+<p class="text-xs text-on-surface-variant">250g Vacuum Sealed</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="font-mono text-sm text-on-surface-variant">HH-COF-001</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium">Coffee</span>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="flex flex-col items-center gap-1">
+<span class="text-xs font-bold text-on-primary-container bg-primary px-2 py-0.5 rounded-full">In Stock</span>
+<span class="text-sm font-semibold">452 units</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-semibold">₫125,000</span>
+</td>
+<td class="px-6 py-4 text-right space-x-2">
+<button class="p-2 text-primary hover:bg-primary-container/10 rounded-lg transition-colors" title="Update Stock">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+<button class="p-2 text-tertiary hover:bg-tertiary-container/10 rounded-lg transition-colors" title="Request Requisition">
+<span class="material-symbols-outlined">shopping_cart_checkout</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<img alt="Phu Quoc Pepper" class="w-12 h-12 rounded-lg object-cover bg-surface-container" data-alt="black peppercorns spilled from a small ceramic bowl onto an aged stone surface, editorial food photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrfd4Y84I-CfGgx9MXtzlB0HcR2aHaWbUXrbfd3fY92VcfEGQczEayabeWYwGd-7rPXWHLL1uRzH-T0ndvS9SgAYg1qulmq9NbE_XWBP_bD9s5K0ul4FxOXzpdplWA2dpTm-AFA1ZPlvD8ZsL3QHFSvLdlXgR8U4TKB7IdMzD6X3I3q__1kH8J4sHVKGC9aqnKQjbAO8TrUjpZbLpRRs9yfyvUuRHoEXWUEJo2Zy5rh8Nsq4ztd0_bxmXF_2OrXYTwO46Cg-B3UHA"/>
+<div>
+<p class="font-bold text-on-surface leading-tight">Phu Quoc Black Pepper</p>
+<p class="text-xs text-on-surface-variant">Bulk Wholesale (5kg)</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="font-mono text-sm text-on-surface-variant">HH-SPI-042</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium">Spices</span>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="flex flex-col items-center gap-1">
+<span class="text-xs font-bold text-tertiary-container bg-tertiary-fixed-dim px-2 py-0.5 rounded-full">Low Stock</span>
+<span class="text-sm font-semibold text-tertiary">12 units</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-semibold">₫850,000</span>
+</td>
+<td class="px-6 py-4 text-right space-x-2">
+<button class="p-2 text-primary hover:bg-primary-container/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+<button class="p-2 text-tertiary bg-tertiary-fixed/30 hover:bg-tertiary-container/20 rounded-lg transition-colors shadow-sm">
+<span class="material-symbols-outlined">shopping_cart_checkout</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<img alt="Moc Chau Oolong" class="w-12 h-12 rounded-lg object-cover bg-surface-container" data-alt="tightly rolled green oolong tea leaves in a traditional celadon cup with soft steam rising, tranquil zen aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCt0zgmkvJDJrxWo0YT4aaHu659UViP7IiVTLUXqdCwwuBkTkC6vv-P4RF79MrwRiZMO2d4hl12z2D5rezuWqSMgt45Tv6Wf8j4mx-wGZ74G5s9GFdPqTDw5zpp7mPQotw33RfSImNv_EgJbYlAwZb2bbM4mmRlZDUWLBALIE7O0xJ5Uqc4Uc6o2zccO9l35VqedoBuBa3A2NjAqEEXLejMVZAI4jUaq0UCtCxCXdgtoY04d4pqvviA77f980uVBishcztWyNBODh8"/>
+<div>
+<p class="font-bold text-on-surface leading-tight">Moc Chau Oolong Tea</p>
+<p class="text-xs text-on-surface-variant">100g Collector's Tin</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="font-mono text-sm text-on-surface-variant">HH-TEA-009</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium">Tea</span>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="flex flex-col items-center gap-1">
+<span class="text-xs font-bold text-on-error-container bg-error-container px-2 py-0.5 rounded-full">Out of Stock</span>
+<span class="text-sm font-semibold text-error">0 units</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-semibold">₫180,000</span>
+</td>
+<td class="px-6 py-4 text-right space-x-2">
+<button class="p-2 text-primary hover:bg-primary-container/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+<button class="p-2 text-error animate-pulse bg-error-container/50 rounded-lg shadow-sm">
+<span class="material-symbols-outlined">shopping_cart_checkout</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-4">
+<img alt="Lotus Seeds" class="w-12 h-12 rounded-lg object-cover bg-surface-container" data-alt="dried white lotus seeds in a simple linen pouch on a dark wooden background, minimalist still life photography" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRpisYbbyD6fpR7Xmqqt-N2IlVeqqWGZqrVLLrJQ5O0TqeVxc0GEDznGW_5OCeXnzOGVYByPJ9dJlHoO_0JPhndb3ZJh-AnsiO7Rdp35Ho2HPngZaELolEk5Rc3T1Ddndu3uAhAuzOnA9QWZDZq4XIr-FE0N9Pz3oj8jVXUz3WufLrdrHb7XbBczuF6NWxxsy_D0Ifr_v4RhAVvHTkWtR_Mo0gNxr8i4_WMBqdmNOb6Ynt-cb8DW9JKHhoq4OhZlSXhi3zAyfAIA4"/>
+<div>
+<p class="font-bold text-on-surface leading-tight">Hue Royal Dried Lotus</p>
+<p class="text-xs text-on-surface-variant">500g Pack</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="font-mono text-sm text-on-surface-variant">HH-SNK-112</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-medium">Dry Goods</span>
+</td>
+<td class="px-6 py-4 text-center">
+<div class="flex flex-col items-center gap-1">
+<span class="text-xs font-bold text-on-primary-container bg-primary px-2 py-0.5 rounded-full">In Stock</span>
+<span class="text-sm font-semibold">88 units</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm font-semibold">₫320,000</span>
+</td>
+<td class="px-6 py-4 text-right space-x-2">
+<button class="p-2 text-primary hover:bg-primary-container/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">edit_square</span>
+</button>
+<button class="p-2 text-tertiary hover:bg-tertiary-container/10 rounded-lg transition-colors">
+<span class="material-symbols-outlined">shopping_cart_checkout</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Footer -->
+<div class="px-6 py-4 flex items-center justify-between border-t border-surface-container-low">
+<p class="text-sm text-on-surface-variant">Showing <span class="font-bold text-on-surface">1-4</span> of <span class="font-bold text-on-surface">1,284</span> SKUs</p>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-white font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">3</button>
+<span class="px-2">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Overlay Backseat (for Drawer) -->
+<div class="fixed inset-0 bg-on-surface/20 backdrop-blur-sm z-50 flex justify-end">
+<!-- Requisition Drawer -->
+<div class="w-full max-w-lg bg-white h-full shadow-[-20px_0px_40px_rgba(26,28,28,0.1)] flex flex-col p-8 overflow-y-auto no-scrollbar">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h2 class="text-2xl font-bold font-headline text-primary">New Purchase Requisition</h2>
+<p class="text-on-surface-variant text-sm mt-1">Ref: REQ-2023-11-008</p>
+</div>
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Content Form -->
+<form class="space-y-6 flex-1">
+<div class="space-y-4">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label border-b border-surface-container-low pb-2">Selected Product</h3>
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-4">
+<img alt="Phu Quoc Pepper" class="w-16 h-16 rounded-lg object-cover" data-alt="close up of premium black peppercorns" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASomBQ0eH2jJIp-nkljjhzva3Q9ZbSGNgegCWUS4axbYfx6At2kKk0Nx6aGKSsH40sWcREgClwx2mgh86B47yWEwHyDsLkZ8Z4tJDUMcCyM5DU3Q-d0Wg0YLPzY01rJ-lW_2f93g6GI3cEyWjExVcaR_T9ADZDDvagXBASKSda7Rob75l__RZ9NckV2gwRoFKKydgxM4S5P0vrMFPJ2ZefcX_pg5q-BUbKCIhmZKmSKtY6mVBGree_4rEyLrpClKrQMmAUtYlkkHo"/>
+<div>
+<p class="font-bold text-on-surface">Phu Quoc Black Pepper</p>
+<p class="text-xs text-on-surface-variant">Current Stock: 12 units</p>
+</div>
+</div>
+</div>
+<div class="space-y-4">
+<h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant font-label border-b border-surface-container-low pb-2">Supplier Details</h3>
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 bg-white text-[10px] font-bold text-primary uppercase">Assigned Supplier</label>
+<select class="w-full pt-3 pb-2 border-none bg-surface-container-highest rounded-lg focus:ring-0 text-sm font-medium">
+<option>Dalat Highlands Co-op</option>
+<option selected="">Phu Quoc Spice Growers Alliance</option>
+<option>Mekong Delta Artisans</option>
+</select>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-primary"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 bg-white text-[10px] font-bold text-primary uppercase">Order Quantity</label>
+<input class="w-full pt-3 pb-2 border-none bg-surface-container-highest rounded-lg focus:ring-0 text-sm font-medium" type="number" value="100"/>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-primary"></div>
+</div>
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 bg-white text-[10px] font-bold text-on-surface-variant uppercase">Target Date</label>
+<input class="w-full pt-3 pb-2 border-none bg-surface-container-highest rounded-lg focus:ring-0 text-sm font-medium" type="date" value="2023-12-01"/>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-outline-variant"></div>
+</div>
+</div>
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 bg-white text-[10px] font-bold text-on-surface-variant uppercase">Notes for Supplier</label>
+<textarea class="w-full pt-4 pb-2 border-none bg-surface-container-highest rounded-lg focus:ring-0 text-sm" placeholder="Add special instructions for packaging or quality control..." rows="3"></textarea>
+<div class="absolute bottom-0 left-0 w-full h-[2px] bg-outline-variant"></div>
+</div>
+<div class="bg-primary/5 p-6 rounded-xl space-y-3">
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface-variant">Estimated Unit Price:</span>
+<span class="font-bold">₫850,000</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface-variant">Bulk Order Discount (15%):</span>
+<span class="font-bold text-primary">-₫12,750,000</span>
+</div>
+<div class="h-px bg-primary/10 my-2"></div>
+<div class="flex justify-between items-center">
+<span class="font-bold text-on-surface">Total Est. Value:</span>
+<span class="text-xl font-extrabold text-primary">₫72,250,000</span>
+</div>
+</div>
+</form>
+<div class="mt-8 flex gap-3">
+<button class="flex-1 py-3 text-sm font-bold text-on-surface-variant bg-surface-container-low rounded-xl hover:bg-surface-container transition-colors">
+                    Save as Draft
+                </button>
+<button class="flex-[2] py-3 text-sm font-bold text-white bg-gradient-to-br from-primary to-primary-container rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.01] transition-transform">
+                    Submit Requisition
+                </button>
+</div>
+</div>
+</div>
+</body></html>
