@@ -119,6 +119,8 @@ router.use('/operations', requireRole('WAREHOUSE_STAFF', 'ADMIN'), operations);
 // ---------------- Admin: /api/admin/* ----------------
 const adminRouter = Router();
 adminRouter.get('/dashboard', admin.dashboard);
+adminRouter.get('/complaints', misc.adminListComplaints);
+adminRouter.patch('/complaints/:complaint/resolve', misc.adminResolveComplaint);
 adminRouter.get('/community', admin.listCommunity);
 adminRouter.post('/community/invitations', admin.storeInvitation);
 adminRouter.get('/posts', admin.listAdminPosts);

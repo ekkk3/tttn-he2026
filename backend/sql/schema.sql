@@ -195,6 +195,10 @@ CREATE TABLE IF NOT EXISTS `products` (
   `description` TEXT NULL,
   `image_url` VARCHAR(500) NULL,
   `sale_price` DECIMAL(15,2) NOT NULL DEFAULT 0,
+  -- Tuan 3: quan ly kho (UC 2.2.21) — gia nhap, nguong ton kho toi thieu, vi tri ke.
+  `purchase_price` DECIMAL(15,2) NULL COMMENT 'Gia nhap (UC 2.2.24)',
+  `reorder_level` INT NOT NULL DEFAULT 10,
+  `aisle` VARCHAR(50) NULL,
   `stock_quantity` INT NOT NULL DEFAULT 0,
   -- Tuan 2: nguon goc/truy xuat (UC 2.2.6 "Nguon goc san pham") + mo ta ngan cho card.
   `origin` VARCHAR(255) NULL COMMENT 'Nguon goc / truy xuat san pham',
@@ -280,6 +284,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `note` VARCHAR(500) NULL,
   `cancelled_at` DATETIME NULL,
   `delivered_at` DATETIME NULL,
+  `shipped_at` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -401,6 +406,8 @@ CREATE TABLE IF NOT EXISTS `delivery_requests` (
   `requested_by_user_id` BIGINT UNSIGNED NOT NULL,
   `product_id` BIGINT UNSIGNED NOT NULL,
   `requested_qty` INT NOT NULL,
+  `approved_qty` INT NULL,
+  `eta_days` INT NULL,
   `reason` VARCHAR(500) NULL,
   `status` VARCHAR(30) NOT NULL DEFAULT 'PENDING',
   `approved_by_user_id` BIGINT UNSIGNED NULL,

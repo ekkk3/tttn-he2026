@@ -1,22 +1,144 @@
 import bcrypt from 'bcryptjs';
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
-import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../../utils/serializers.js';
+import { PRODUCT_SELECT, serializeProduct, serializeProducts, serializeOrderDetail, serializeOrderSummary } from '../../utils/serializers.js';
 
 // Tat ca cac handler duoi day tuong ung 1-1 voi cac Controller trong
 // app/Http/Controllers/Api/Admin/*.php cua repo Laravel goc, giu nguyen duong dan route
 // (xem src/routes/api.routes.js) de frontend khong phai sua gi.
 
 // ---------------- Dashboard ----------------
+// Frontend (admin-dashboard-page.jsx) doc mot response giau: metrics, revenue_chart,
+// top_customers, work_queue, low_stock_products, featured_products, recent_orders, filters.
+// "Doanh thu thuc thu" = don da giao (DELIVERED). Xem UC 2.2.19 Bao cao thong ke.
 export const dashboard = asyncHandler(async (req, res) => {
-  const [[{ total_orders }]] = [await query('SELECT COUNT(*) AS total_orders FROM orders')];
-  const [[{ total_revenue }]] = [
-    await query("SELECT COALESCE(SUM(total_amount),0) AS total_revenue FROM orders WHERE status NOT IN ('CANCELLED')"),
+  const chartRange = req.query.chart_range || '30d';
+  const dateTo = req.query.date_to || new Date().toISOString().slice(0, 10);
+  const dateFrom = req.query.date_from ||
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+
+  const [settings] = await query('SELECT low_stock_threshold FROM admin_settings ORDER BY id ASC LIMIT 1');
+  const lowStockThreshold = settings?.low_stock_threshold ?? 10;
+
+  const countByStatus = async (statuses) => {
+    const [{ c }] = await query(
+      `SELECT COUNT(*) AS c FROM orders WHERE status IN (${statuses.map(() => '?').join(',')})`, statuses
+    );
+    return c;
+  };
+
+  const [{ revenue, successful_orders }] = await query(
+    "SELECT COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS successful_orders FROM orders WHERE status = 'DELIVERED'"
+  );
+  const [{ today_revenue }] = await query(
+    "SELECT COALESCE(SUM(total_amount),0) AS today_revenue FROM orders WHERE status = 'DELIVERED' AND DATE(delivered_at) = CURDATE()"
+  );
+  const [{ product_count }] = await query('SELECT COUNT(*) AS product_count FROM products WHERE is_deleted = 0 AND is_active = 1');
+  const [{ low_stock_products }] = await query(
+    'SELECT COUNT(*) AS low_stock_products FROM products WHERE is_deleted = 0 AND stock_quantity <= ?', [lowStockThreshold]
+  );
+  const [{ customer_reported_transfer }] = await query(
+    "SELECT COUNT(*) AS customer_reported_transfer FROM orders WHERE status = 'AWAITING_PAYMENT_CONFIRMATION'"
+  );
+
+  const metrics = {
+    revenue: Number(revenue),
+    successful_orders,
+    processing_orders: await countByStatus(['PENDING', 'CONFIRMED', 'PACKED', 'SHIPPED']),
+    pending_orders: await countByStatus(['PENDING']),
+    bank_transfer_pending: await countByStatus(['AWAITING_PAYMENT_CONFIRMATION']),
+    customer_reported_transfer,
+    shipping_orders: await countByStatus(['SHIPPED']),
+    delivery_failed_orders: await countByStatus(['DELIVERY_FAILED']),
+    low_stock_products,
+    low_stock_threshold: lowStockThreshold,
+    average_order_value: successful_orders > 0 ? Math.round(Number(revenue) / successful_orders) : 0,
+    today_revenue: Number(today_revenue),
+    product_count,
+  };
+
+  // Bieu do doanh thu theo ngay (so ngay tuy chart_range).
+  const days = chartRange === '7d' ? 7 : chartRange === 'this_month' ? new Date().getDate() : 30;
+  const revenueRows = await query(
+    `SELECT DATE(delivered_at) AS d, COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS successful_orders
+     FROM orders WHERE status = 'DELIVERED' AND delivered_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+     GROUP BY DATE(delivered_at) ORDER BY d ASC`,
+    [days]
+  );
+  const revenueMap = new Map(revenueRows.map((r) => [r.d, r]));
+  const revenue_chart = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    const row = revenueMap.get(key);
+    revenue_chart.push({
+      label: `${date.getDate()}/${date.getMonth() + 1}`,
+      revenue: row ? Number(row.revenue) : 0,
+      successful_orders: row ? row.successful_orders : 0,
+    });
+  }
+
+  const top_customers = await query(
+    `SELECT u.id, u.full_name, u.email, COUNT(o.id) AS successful_orders,
+            COALESCE(SUM(o.total_amount),0) AS total_revenue, MAX(o.delivered_at) AS last_delivered_at
+     FROM users u JOIN orders o ON o.user_id = u.id AND o.status = 'DELIVERED'
+     GROUP BY u.id ORDER BY total_revenue DESC LIMIT 5`
+  );
+
+  const recentOrders = await query(
+    `SELECT o.*, u.full_name AS customer_name,
+            (SELECT payment_status FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_status
+     FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.id DESC LIMIT 8`
+  );
+  const withCustomer = (o) => ({ ...o, customer: { full_name: o.customer_name }, total_amount: Number(o.total_amount) });
+  const recent_orders = recentOrders.map(withCustomer);
+
+  const queueGroups = [
+    { key: 'pending', label: 'Chờ xác nhận', statuses: ['PENDING'] },
+    { key: 'transfer', label: 'Chờ xác nhận chuyển khoản', statuses: ['AWAITING_PAYMENT_CONFIRMATION'] },
+    { key: 'packing', label: 'Chờ đóng gói / giao', statuses: ['CONFIRMED', 'PACKED'] },
+    { key: 'shipping', label: 'Đang giao', statuses: ['SHIPPED'] },
   ];
-  const [[{ total_users }]] = [await query('SELECT COUNT(*) AS total_users FROM users WHERE is_deleted = 0')];
-  const [[{ total_products }]] = [await query('SELECT COUNT(*) AS total_products FROM products WHERE is_deleted = 0')];
-  const recentOrders = await query('SELECT * FROM orders ORDER BY id DESC LIMIT 10');
-  res.json({ total_orders, total_revenue, total_users, total_products, recent_orders: recentOrders });
+  const work_queue = [];
+  for (const g of queueGroups) {
+    const orders = await query(
+      `SELECT o.*, u.full_name AS customer_name,
+              (SELECT payment_status FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_status
+       FROM orders o LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.status IN (${g.statuses.map(() => '?').join(',')}) ORDER BY o.id DESC LIMIT 5`,
+      g.statuses
+    );
+    work_queue.push({ key: g.key, label: g.label, count: orders.length, orders: orders.map(withCustomer) });
+  }
+
+  const lowStockList = await query(
+    'SELECT id, name, sku, sale_price, stock_quantity FROM products WHERE is_deleted = 0 AND stock_quantity <= ? ORDER BY stock_quantity ASC LIMIT 6',
+    [lowStockThreshold]
+  );
+
+  const featured = await query(
+    `SELECT p.id, p.sku, p.name, p.stock_quantity,
+            COALESCE(SUM(oi.quantity),0) AS sold_quantity, COALESCE(SUM(oi.line_total),0) AS revenue
+     FROM products p
+     LEFT JOIN order_items oi ON oi.product_id = p.id
+     LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+     WHERE p.is_deleted = 0
+     GROUP BY p.id ORDER BY sold_quantity DESC, p.id DESC LIMIT 5`
+  );
+
+  res.json({
+    data: {
+      filters: { date_from: dateFrom, date_to: dateTo, chart_range: chartRange },
+      metrics,
+      revenue_chart,
+      top_customers: top_customers.map((c) => ({ ...c, total_revenue: Number(c.total_revenue) })),
+      work_queue,
+      low_stock_products: lowStockList.map((p) => ({ ...p, sale_price: Number(p.sale_price) })),
+      featured_products: featured.map((p) => ({ ...p, revenue: Number(p.revenue), sold_quantity: Number(p.sold_quantity) })),
+      recent_orders,
+    },
+  });
 });
 
 // ---------------- Users ----------------
@@ -204,84 +326,249 @@ export const destroyProduct = asyncHandler(async (req, res) => {
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 
-// ---------------- Orders (admin) ----------------
-export const listOrders = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM orders ORDER BY id DESC');
-  res.json({ orders: rows });
-});
-export const showOrder = asyncHandler(async (req, res) => {
-  const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+// ---------------- Orders (admin) — UC 2.2.17 Quan ly don hang ----------------
+// Frontend (admin-logistics-page.jsx + use-admin-orders-store.js) doc { data } voi
+// customer/payment/shipment long, allowed_next_statuses (state machine),
+// allowed_payment_statuses, status_history, payment_status_history.
+
+const ORDER_TRANSITIONS = {
+  PENDING: ['CONFIRMED', 'CANCELLED'],
+  AWAITING_PAYMENT_CONFIRMATION: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['PACKED', 'CANCELLED'],
+  PACKED: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED', 'DELIVERY_FAILED'],
+  DELIVERY_FAILED: ['SHIPPED', 'CANCELLED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
+const PAYMENT_TRANSITIONS = {
+  PENDING: ['SUCCESS', 'FAILED'],
+  FAILED: ['PENDING', 'SUCCESS'],
+  SUCCESS: ['REFUNDED'],
+  REFUNDED: [],
+};
+const BULK_ACTION_STATUS = {
+  CONFIRM: 'CONFIRMED', SHIP: 'SHIPPED', DELIVER: 'DELIVERED',
+  MARK_DELIVERY_FAILED: 'DELIVERY_FAILED', CANCEL: 'CANCELLED', RESHIP: 'SHIPPED',
+};
+
+async function notifyOrderUser(order, title, message) {
+  await query(
+    'INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, ?, ?, ?, ?)',
+    [order.user_id, 'ORDER_STATUS', title, message, `/account/orders/${order.id}`]
+  );
+}
+
+async function loadAdminOrderDetail(orderId) {
+  const [order] = await query(
+    `SELECT o.*, u.id AS customer_id, u.full_name AS customer_name, u.email AS customer_email
+     FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?`,
+    [orderId]
+  );
+  if (!order) return null;
   const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
-  res.json({ order: { ...order, items } });
-});
-export const bulkUpdateStatus = asyncHandler(async (req, res) => {
-  const { order_ids, status } = req.body;
-  if (!order_ids?.length) return res.status(422).json({ message: 'order_ids la bat buoc.' });
-  await query(
-    `UPDATE orders SET status = ? WHERE id IN (${order_ids.map(() => '?').join(',')})`,
-    [status, ...order_ids]
+  const statusHistory = await query(
+    'SELECT *, created_at AS changed_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC', [order.id]
   );
-  res.json({ message: 'Da cap nhat trang thai cac don hang.' });
-});
-export const updateOrderStatus = asyncHandler(async (req, res) => {
-  const { status, note } = req.body;
-  await query('UPDATE orders SET status = ? WHERE id = ?', [status, req.params.order]);
-  await query(
-    'INSERT INTO order_status_history (order_id, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?)',
-    [req.params.order, status, note || null, req.user.id]
+  const paymentHistory = await query(
+    'SELECT *, created_at AS changed_at FROM payment_status_history WHERE order_id = ? ORDER BY id ASC', [order.id]
   );
-  res.json({ message: 'Da cap nhat trang thai don hang.' });
-});
-export const updatePaymentStatus = asyncHandler(async (req, res) => {
-  const { payment_status } = req.body;
-  await query('UPDATE payments SET payment_status = ? WHERE order_id = ?', [payment_status, req.params.order]);
-  res.json({ message: 'Da cap nhat trang thai thanh toan.' });
+  const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+  const [shipment] = await query(
+    `SELECT s.*, c.name AS carrier_name, c.provider AS carrier_provider
+     FROM order_shipments s LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
+     WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1`,
+    [order.id]
+  );
+  const base = serializeOrderDetail(order, { items, statusHistory, payment: payment || null });
+  return {
+    ...base,
+    customer: { id: order.customer_id, full_name: order.customer_name, email: order.customer_email },
+    shipping_carrier: shipment?.carrier_name ?? null,
+    shipping_code: shipment?.tracking_code ?? null,
+    shipment: shipment ? {
+      id: shipment.id,
+      provider: shipment.provider,
+      status: shipment.status,
+      tracking_code: shipment.tracking_code,
+      tracking_url: shipment.tracking_url,
+      shipping_fee: shipment.shipping_fee !== null ? Number(shipment.shipping_fee) : null,
+      cod_amount: shipment.cod_amount !== null ? Number(shipment.cod_amount) : null,
+      synced_at: shipment.synced_at ?? null,
+      cancelled_at: shipment.cancelled_at ?? null,
+      carrier: shipment.shipping_carrier_id ? { id: shipment.shipping_carrier_id, name: shipment.carrier_name } : null,
+    } : null,
+    payment_status_history: paymentHistory.map((h) => ({
+      id: h.id, from_status: h.from_status, to_status: h.to_status, note: h.note, changed_at: h.changed_at,
+    })),
+    allowed_next_statuses: ORDER_TRANSITIONS[order.status] ?? [],
+    allowed_payment_statuses: PAYMENT_TRANSITIONS[payment?.payment_status ?? 'PENDING'] ?? [],
+  };
+}
+
+export const listOrders = asyncHandler(async (req, res) => {
+  const rows = await query(
+    `SELECT o.*, u.full_name AS customer_name, u.email AS customer_email,
+            (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
+     FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`
+  );
+  const data = [];
+  for (const o of rows) {
+    const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [o.id]);
+    const [shipment] = await query(
+      'SELECT s.tracking_code, c.name AS carrier_name FROM order_shipments s LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1',
+      [o.id]
+    );
+    data.push({
+      ...serializeOrderSummary(o, { itemCount: o.item_count, payment: payment || null }),
+      customer: { id: o.user_id, full_name: o.customer_name, email: o.customer_email },
+      shipping_code: shipment?.tracking_code ?? null,
+      shipping_carrier: shipment?.carrier_name ?? null,
+    });
+  }
+  res.json({ data });
 });
 
-// ---------------- Order shipment ----------------
-export const storeShipment = asyncHandler(async (req, res) => {
-  const { shipping_carrier_id, weight, length, width, height } = req.body;
-  const result = await query(
-    `INSERT INTO order_shipments (order_id, shipping_carrier_id, provider, status, weight, length, width, height, created_by_user_id)
-     VALUES (?, ?, 'GHN', 'created', ?, ?, ?, ?, ?)`,
-    [req.params.order, shipping_carrier_id, weight, length, width, height, req.user.id]
+export const showOrder = asyncHandler(async (req, res) => {
+  const detail = await loadAdminOrderDetail(req.params.order);
+  if (!detail) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  res.json({ data: detail });
+});
+
+export const updateOrderStatus = asyncHandler(async (req, res) => {
+  const { status, note, restock_inventory } = req.body;
+  const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(status)) {
+    return res.status(422).json({ message: `Khong the chuyen tu ${order.status} sang ${status}.` });
+  }
+  const sets = ['status = ?'];
+  const params = [status];
+  if (status === 'SHIPPED') { sets.push('shipped_at = COALESCE(shipped_at, NOW())'); }
+  if (status === 'DELIVERED') { sets.push('delivered_at = NOW()'); }
+  if (status === 'CANCELLED') { sets.push('cancelled_at = NOW()'); }
+  await query(`UPDATE orders SET ${sets.join(', ')} WHERE id = ?`, [...params, order.id]);
+  await query(
+    'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
+    [order.id, order.status, status, note || null, req.user.id]
   );
-  // TODO: goi GHN "tao don hang" API tai day (utils/ghn.js) va luu tracking_code/tracking_url tra ve.
-  res.status(201).json({ id: result.insertId });
+  // Hoan kho khi huy don (neu chon restock_inventory) — UC 2.2.17/2.2.21.
+  if (status === 'CANCELLED' && restock_inventory) {
+    const items = await query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
+    for (const it of items) {
+      if (it.product_id) await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [it.quantity, it.product_id]);
+    }
+  }
+  await notifyOrderUser(order, 'Cap nhat don hang', `Don ${order.order_no} chuyen sang trang thai ${status}.`);
+  res.json({ data: await loadAdminOrderDetail(order.id) });
+});
+
+export const updatePaymentStatus = asyncHandler(async (req, res) => {
+  const { payment_status, note } = req.body;
+  const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+  const current = payment?.payment_status ?? 'PENDING';
+  if (!(PAYMENT_TRANSITIONS[current] ?? []).includes(payment_status)) {
+    return res.status(422).json({ message: `Khong the chuyen thanh toan tu ${current} sang ${payment_status}.` });
+  }
+  const paidAtSql = payment_status === 'SUCCESS' ? ', paid_at = NOW()' : '';
+  await query(`UPDATE payments SET payment_status = ?${paidAtSql} WHERE order_id = ?`, [payment_status, order.id]);
+  await query(
+    'INSERT INTO payment_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
+    [order.id, current, payment_status, note || null, req.user.id]
+  );
+  res.json({ data: await loadAdminOrderDetail(order.id) });
+});
+
+export const bulkUpdateStatus = asyncHandler(async (req, res) => {
+  const { orderIds, order_ids, action, status } = req.body;
+  const ids = orderIds || order_ids || [];
+  const targetStatus = action ? BULK_ACTION_STATUS[action] : status;
+  if (!ids.length || !targetStatus) return res.status(422).json({ message: 'Thieu orderIds hoac action.' });
+
+  const results = [];
+  for (const id of ids) {
+    const [order] = await query('SELECT * FROM orders WHERE id = ?', [id]);
+    if (!order) { results.push({ orderId: id, orderNo: null, success: false, message: 'Khong tim thay don.' }); continue; }
+    if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(targetStatus)) {
+      results.push({ orderId: id, orderNo: order.order_no, success: false, message: `Khong the chuyen ${order.status} -> ${targetStatus}.` });
+      continue;
+    }
+    const sets = ['status = ?'];
+    const params = [targetStatus];
+    if (targetStatus === 'SHIPPED') sets.push('shipped_at = COALESCE(shipped_at, NOW())');
+    if (targetStatus === 'DELIVERED') sets.push('delivered_at = NOW()');
+    if (targetStatus === 'CANCELLED') sets.push('cancelled_at = NOW()');
+    await query(`UPDATE orders SET ${sets.join(', ')} WHERE id = ?`, [...params, id]);
+    await query(
+      'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
+      [id, order.status, targetStatus, req.body.note || null, req.user.id]
+    );
+    await notifyOrderUser(order, 'Cap nhat don hang', `Don ${order.order_no} chuyen sang ${targetStatus}.`);
+    results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Da chuyen sang ${targetStatus}.` });
+  }
+  const success = results.filter((r) => r.success).length;
+  res.json({ data: { total: ids.length, success, failed: ids.length - success, results } });
+});
+
+// ---------------- Order shipment (UC 2.2.17) ----------------
+// GHN that can token; khong co token -> tao van don thu cong (manual) + tracking mock.
+export const storeShipment = asyncHandler(async (req, res) => {
+  const {
+    shipping_carrier_id, tracking_code, tracking_url, weight, length, width, height,
+  } = req.body;
+  const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [shipping_carrier_id]);
+  const trackingCode = tracking_code || `${carrier?.code || 'SHIP'}${Date.now()}`;
+  await query(
+    `INSERT INTO order_shipments (order_id, shipping_carrier_id, provider, status, tracking_code, tracking_url,
+       weight, length, width, height, created_by_user_id)
+     VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)`,
+    [req.params.order, shipping_carrier_id, carrier?.provider || 'MANUAL', trackingCode, tracking_url || null,
+      weight || null, length || null, width || null, height || null, req.user.id]
+  );
+  res.status(201).json({ data: await loadAdminOrderDetail(req.params.order) });
 });
 export const syncShipment = asyncHandler(async (req, res) => {
-  // TODO: goi GHN "chi tiet don hang" API de dong bo lai status/tracking.
-  res.json({ message: 'Chua noi voi GHN — can bo sung goi API "order detail" tai day.' });
+  // GHN sandbox chua noi — chi cap nhat synced_at de UI phan anh (xem README muc GHTK/GHN).
+  await query('UPDATE order_shipments SET synced_at = NOW() WHERE order_id = ?', [req.params.order]);
+  res.json({ data: await loadAdminOrderDetail(req.params.order) });
 });
 export const destroyShipment = asyncHandler(async (req, res) => {
+  await query('UPDATE order_shipments SET cancelled_at = NOW() WHERE order_id = ?', [req.params.order]);
   await query('DELETE FROM order_shipments WHERE order_id = ?', [req.params.order]);
-  res.json({ message: 'Da xoa van don.' });
+  res.json({ data: await loadAdminOrderDetail(req.params.order) });
 });
 
 // ---------------- Shipping carriers ----------------
 export const listShippingCarriers = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM shipping_carriers WHERE is_deleted = 0 ORDER BY id DESC');
-  res.json({ shipping_carriers: rows });
+  const onlyActive = req.query.active_only === 'true' || req.query.active_only === '1';
+  const rows = await query(
+    `SELECT * FROM shipping_carriers WHERE is_deleted = 0 ${onlyActive ? 'AND is_active = 1' : ''} ORDER BY id DESC`
+  );
+  res.json({ data: rows });
 });
 export const storeShippingCarrier = asyncHandler(async (req, res) => {
   const { code, name, provider = 'MANUAL' } = req.body;
   const result = await query('INSERT INTO shipping_carriers (code, name, provider) VALUES (?, ?, ?)', [
     code, name, provider,
   ]);
-  res.status(201).json({ id: result.insertId });
+  const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [result.insertId]);
+  res.status(201).json({ data: carrier });
 });
 export const updateShippingCarrier = asyncHandler(async (req, res) => {
   const { name, is_active } = req.body;
   await query(
     'UPDATE shipping_carriers SET name = COALESCE(?, name), is_active = COALESCE(?, is_active) WHERE id = ?',
-    [name, is_active, req.params.carrier]
+    [name ?? null, is_active === undefined ? null : (is_active ? 1 : 0), req.params.carrier]
   );
-  res.json({ message: 'Da cap nhat don vi van chuyen.' });
+  const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [req.params.carrier]);
+  res.json({ data: carrier });
 });
 export const destroyShippingCarrier = asyncHandler(async (req, res) => {
   await query('UPDATE shipping_carriers SET is_deleted = 1 WHERE id = ?', [req.params.carrier]);
-  res.json({ message: 'Da xoa don vi van chuyen.' });
+  const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [req.params.carrier]);
+  res.json({ data: carrier });
 });
 
 // ---------------- Settings ----------------

@@ -1,109 +1,113 @@
 # TMDT Backend — Node.js + Express
 
-Backend moi, viet lai bang **Node.js + Express + MySQL** (thay cho ban Laravel/PHP cu),
-de dung dung nhu de cuong da ghi (muc 2.1 Backend). Frontend React (`5_9_TMDT_Frontend`)
-khong doi gi ca — chi can tro `VITE_API_URL` sang server nay.
+Backend cho đề tài **"Xây dựng website thương mại điện tử bán đặc sản vùng miền Việt Nam"**
+(Nhóm 23), viết bằng **Node.js + Express + MySQL** đúng theo Chương 6 (Công nghệ) của
+tài liệu `NHÓM 2_TTTN.docx`. Frontend React (`../frontend`) chỉ cần trỏ `VITE_API_BASE_URL`
+sang server này.
 
-Da kiem tra: syntax toan bo file OK, server boot thanh cong, routing/auth middleware/error
-handling hoat dong dung (test bang `npm install` + khoi dong server that trong sandbox).
-
-## 1. Cai dat
+## 1. Cài đặt
 
 ```bash
-cd backend-node
+cd backend
 npm install
 cp .env.example .env
 ```
 
-Sua `.env`: dien `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME` tro vao MySQL cua ban.
+Sửa `.env`: điền `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME` trỏ vào MySQL của bạn.
 
-## 2. Tao database (dung LAI schema tu repo Laravel cu)
+## 2. Tạo database (schema tự chứa, KHÔNG cần repo ngoài)
 
 ```bash
-mysql -u root -p < ../5_9_TMDT_Backend/database/ecommerce_schema_mysql.sql
-mysql -u root -p ecommerce_db < ../5_9_TMDT_Backend/database/ecommerce_seed_data.sql
-
-# Bo sung bang vouchers (de cuong yeu cau nhung schema Laravel goc khong co):
-mysql -u root -p ecommerce_db < sql/add_vouchers.sql
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS ecommerce_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root -p --default-character-set=utf8mb4 ecommerce_db < sql/schema.sql
+mysql -u root -p --default-character-set=utf8mb4 ecommerce_db < sql/seed.sql
 ```
 
-## 3. Chay server
+> `sql/schema.sql` chứa toàn bộ 30+ bảng theo Chương 4 (Class Diagram + Thiết kế CSDL).
+> `sql/seed.sql` tạo tài khoản mẫu để đăng nhập thử:
+> - `admin@example.com` / `Admin@123` (ADMIN)
+> - `customer@example.com` / `Customer@123` (CUSTOMER)
+> - `supplier@example.com` / `Supplier@123` (SUPPLIER, đã duyệt)
+> - Nhân viên kho tạo qua trang Admin (vai trò WAREHOUSE_STAFF).
+
+## 3. Chạy server
 
 ```bash
-npm run dev      # tu restart khi sua code (node --watch)
-# hoac
+npm run dev      # tự restart khi sửa code (node --watch)
+# hoặc
 npm start
 ```
 
-Kiem tra: `GET http://127.0.0.1:8000/backend-status` va `GET http://127.0.0.1:8000/api/test`.
+Kiểm tra: `GET http://127.0.0.1:8000/backend-status` và `GET http://127.0.0.1:8000/api/test`.
 
-## 4. Noi voi Frontend
+## 4. Nối với Frontend
 
-Trong `5_9_TMDT_Frontend/.env`, tro bien API base URL (xem `.env.example` cua frontend va
-`api_backend.md`) ve `http://127.0.0.1:8000/api`. Khong can sua code frontend vi tat ca
-route/path trong `src/routes/api.routes.js` duoc giu **dung nguyen** theo
-`routes/api.php` cua Laravel.
+Trong `../frontend/.env`, đặt `VITE_API_BASE_URL=http://127.0.0.1:8000/api`.
+Backend cho phép CORS từ `http://localhost:5173` và `http://127.0.0.1:5173`.
 
-## 5. Nhung gi da lam that / dang chay duoc
+## 5. Tính năng đã làm & đã kiểm thử E2E
 
-- Auth (register/login/me/logout) — JWT, bcrypt.
-- Categories, Products (tim kiem fallback MySQL LIKE, tu dong dung Elasticsearch fuzzy
-  search neu ban cau hinh `ELASTICSEARCH_NODE`), Regions, Suppliers — public + Admin CRUD.
-- Cart — cache-aside qua Redis neu co `REDIS_URL`, tu fallback MySQL neu khong.
-- Checkout/Orders — tao don hang that (transaction MySQL), tru gio hang, luu lich su
-  trang thai; tao URL redirect VNPay / MoMo that (dung dung thuat toan ky HMAC cong khai
-  cua 2 cong, chi can dien API key that vao `.env`).
-- Account (profile, doi mat khau, dia chi, wishlist, doi diem thuong), Notifications,
-  Complaints, Support tickets, Newsletter, Posts (blog + like/comment).
-- Warehouse staff: `/api/operations/*` (ton kho, yeu cau nhap hang, don cung cap,
-  fulfillment tasks).
-- Admin: dashboard, users, admin accounts, products, categories, suppliers, orders
-  (status/payment status/bulk update), shipping carriers, settings, community
-  (moi NCC), posts + kiem duyet binh luan.
-- Middleware phan quyen 4 vai tro (CUSTOMER/ADMIN/WAREHOUSE_STAFF/SUPPLIER) dung JWT.
-- `/api/chat` — AI Chatbot (OpenAI hoac Gemini, chon qua `AI_PROVIDER` trong `.env`) —
-  tinh nang MOI, chua ton tai ben repo Laravel goc, them theo dung de cuong Tuan 5.
+**Tuần 1 — Nền tảng & Người dùng**
+- Auth (register/login/me/logout) JWT + bcrypt; middleware phân quyền 4 vai trò.
+- Quên mật khẩu (reset qua email, fallback log console nếu chưa cấu hình SMTP).
+- Đăng nhập Google/Facebook (google-auth-library + Graph API).
+- Đăng ký Nhà cung cấp tự phục vụ (upload giấy phép) + Admin duyệt/từ chối.
+- Admin quản lý người dùng.
 
-## 6. Con thieu / TODO (can lam tiep khi trien khai that)
+**Tuần 2 — Sản phẩm & Mua hàng**
+- Sản phẩm (list phân trang + Elasticsearch fuzzy search, fallback MySQL LIKE; quan hệ
+  danh mục/NCC/vùng miền; nguồn gốc/QR truy xuất), danh mục, vùng miền.
+- Giỏ hàng (Redis cache-aside, fallback MySQL) + kiểm tra tồn kho.
+- Đặt hàng/Checkout (COD + chuyển khoản QR), trừ tồn kho, lịch sử trạng thái, thông báo.
+- Wishlist, tài khoản (profile/địa chỉ/điểm thưởng).
+- Admin CRUD sản phẩm/danh mục/NCC.
 
-- **Elasticsearch indexing pipeline**: code da san sang goi ES khi tim kiem, nhung
-  chua co script dong bo du lieu tu MySQL sang ES khi tao/sua san pham. Xem TODO trong
-  `src/config/elasticsearch.js` va `src/controllers/admin/admin.controller.js`.
-- **Phi/van don GHN that**: `src/utils/ghn.js` da co goi provinces/districts/wards that,
-  nhung phan tinh phi van chuyen (`/v2/shipping-order/fee`) va tao don
-  (`/v2/shipping-order/create`) con la TODO — checkout dang dung phi co dinh 30.000d.
-- **VNPay/MoMo**: thuat toan ky va goi API la that, nhung can dien merchant that
-  (`VNPAY_TMN_CODE`, `MOMO_PARTNER_CODE`, ...) trong `.env` va xu ly them route nhan
-  callback IPN/return (chua co trong file nay).
-- **Voucher**: schema Laravel goc KHONG co bang vouchers. Da them migration
-  `sql/add_vouchers.sql`, nhung logic ap dung voucher trong `orderController.checkout()`
-  con dang la placeholder (`discount_amount = 0`) — can noi lai sau khi chay migration.
-- **JWT logout/blacklist**: hien tai logout la stateless (khong huy token ngay lap tuc).
-  Neu can, luu blacklist token trong Redis.
+**Tuần 3 — Quản trị & Kiểm thử**
+- Admin Dashboard (doanh thu, biểu đồ, hàng đợi xử lý, cảnh báo tồn kho, top khách).
+- Quản lý đơn hàng/logistics (state machine PENDING→…→DELIVERED, tạo vận đơn, xử lý
+  hàng loạt, hoàn kho khi hủy).
+- Khiếu nại (khách gửi → Admin xử lý).
+- Quản lý kho (tồn kho, phiếu nhập → nhập kho cộng tồn, giá nhập).
+- AI Chatbot (`/api/chat`, OpenAI/Gemini; fallback tìm sản phẩm nội bộ khi chưa có API key).
 
-## 7. Doi chieu voi de cuong — nhung diem lech da phat hien
+## 6. Cấu hình tuỳ chọn (tính năng tự hạ cấp khi thiếu)
 
-- Repo `5_9_TMDT_Backend` (Laravel/PHP) **khac** cong nghe voi de cuong (Node.js +
-  Express) — day la ly do backend nay duoc viet lai. Ban da chon huong: **giu dung
-  de cuong (Node.js)**, dung Laravel chi de tham khao schema/logic.
-- Schema Laravel khong co bang `vouchers` du de cuong co nhac tinh nang nay — da bo
-  sung o `sql/add_vouchers.sql` (xem muc 6).
-- AI Chatbot (`/api/chat`) chua ton tai trong Laravel — da them moi hoan toan o day.
+Các dịch vụ ngoài đều **tự fallback**, không làm sập server nếu chưa cấu hình:
 
-## Cau truc thu muc
+| Biến `.env` | Khi bỏ trống |
+|---|---|
+| `REDIS_URL` | Giỏ hàng đọc/ghi thẳng MySQL (không cache). |
+| `ELASTICSEARCH_NODE` | Tìm kiếm dùng MySQL LIKE thay vì fuzzy search. |
+| `SMTP_HOST` | Email "quên mật khẩu" in ra console kèm link reset. |
+| `GOOGLE_CLIENT_ID` / `FACEBOOK_APP_ID` | Endpoint OAuth trả 501 rõ ràng. |
+| `GEMINI_API_KEY` / `OPENAI_API_KEY` | Chatbot trả lời dựa trên tìm kiếm sản phẩm thật trong DB. |
+| `VNPAY_*` / `MOMO_*` | Checkout dùng COD + chuyển khoản ngân hàng (frontend đang dùng). |
+| `GHN_TOKEN` | Tạo vận đơn thủ công (manual) + tracking mô phỏng. |
+
+## 7. Ghi chú phạm vi (backend-ready, frontend chưa có UI riêng)
+
+Một số tính năng có endpoint backend nhưng frontend chưa có trang UI để thao tác
+(theo nguyên tắc "frontend là nguồn sự thật của contract"):
+- Admin xử lý khiếu nại (`/api/admin/complaints`) — khách gửi + xem đã chạy; trang Admin
+  duyệt chưa có trong frontend.
+- Kiểm duyệt đánh giá sản phẩm, Voucher, Flash Sale, Refund/Return — chưa có UI trong
+  frontend hiện tại nên chưa ghép.
+
+## Cấu trúc thư mục
 
 ```
-backend-node/
+backend/
   src/
     app.js, server.js
-    config/        # db (MySQL), redis, elasticsearch
-    middleware/     # auth (JWT), role, errorHandler
-    utils/          # jwt, vnpay, momo, ghn, asyncHandler
-    controllers/     # auth, account, category, product, region, supplier,
-                      # cart, order, ghnLocation, misc (notifications/complaints/
-                      # support/newsletter/posts), operation (warehouse), chat
-    controllers/admin/  # admin.controller.js (dashboard/users/products/orders/...)
-    routes/api.routes.js  # mirror 1-1 voi routes/api.php cua Laravel
-  sql/add_vouchers.sql
-  .env.example
+    config/         # db (MySQL utf8mb4), redis (fail-fast), elasticsearch
+    middleware/     # auth (JWT), role, upload (multer), errorHandler
+    utils/          # jwt, serializers (shape contract), mailer, oauth, vnpay, momo, ghn
+    controllers/    # auth, account, category, product, region, supplier, cart, order,
+                    # ghnLocation, misc, operation (kho), chat
+    controllers/admin/  # admin.controller.js (dashboard, users, products, orders, ...)
+    routes/api.routes.js
+  sql/
+    schema.sql      # toàn bộ CSDL (tự chứa)
+    seed.sql        # dữ liệu mẫu
+    add_vouchers.sql
 ```
