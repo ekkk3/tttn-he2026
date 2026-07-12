@@ -131,6 +131,12 @@ export function LoginPage() {
                     <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Tối thiểu 8 ký tự"/>
                 </label>
 
+                {mode === "login" ? (<div className="text-right text-sm">
+                        <Link to={routes.forgotPassword} className="text-primary hover:underline">
+                            Quên mật khẩu?
+                        </Link>
+                    </div>) : null}
+
                 {mode === "register" ? (<label className="block space-y-2 text-sm">
                         <span className="font-medium text-on-surface">
                             Xác nhận mật khẩu
@@ -155,6 +161,13 @@ export function LoginPage() {
                 {mode === "register" ? "Đã có tài khoản?" : "Chưa có tài khoản?"}{" "}
                 <Link to={mode === "register" ? routes.login : routes.register} className="font-semibold text-primary hover:underline">
                     {mode === "register" ? "Đăng nhập ngay" : "Đăng ký tại đây"}
+                </Link>
+            </div>
+
+            <div className="text-center text-sm text-on-surface-variant">
+                Là đối tác cung cấp đặc sản?{" "}
+                <Link to={routes.supplierRegister} className="font-semibold text-primary hover:underline">
+                    Đăng ký làm Nhà cung cấp
                 </Link>
             </div>
         </SurfaceCard>
