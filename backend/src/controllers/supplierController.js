@@ -1,7 +1,66 @@
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { PRODUCT_SELECT, serializeProducts } from '../utils/serializers.js';
+import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
+
+// --- UC 2.2.15 (phan NCC): NCC quan ly san pham CUA MINH ---
+async function currentSupplierId(req) {
+  const [supplier] = await query(
+    "SELECT id FROM suppliers WHERE user_id = ? AND status = 'APPROVED' LIMIT 1", [req.user.id]
+  );
+  return supplier ? supplier.id : null;
+}
+function slugify(input) {
+  return String(input).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+export const myProducts = asyncHandler(async (req, res) => {
+  const supplierId = await currentSupplierId(req);
+  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  const rows = await query(`${PRODUCT_SELECT} WHERE p.supplier_id = ? AND p.is_deleted = 0 ORDER BY p.id DESC`, [supplierId]);
+  res.json({ data: serializeProducts(rows) });
+});
+
+export const storeMyProduct = asyncHandler(async (req, res) => {
+  const supplierId = await currentSupplierId(req);
+  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  const { category_id, region_id, sku, name, description, short_description, origin, image_url,
+    sale_price, stock_quantity = 0 } = req.body;
+  if (!name || !category_id) return res.status(422).json({ message: 'Ten va danh muc la bat buoc.' });
+  const slug = `${slugify(name)}-${Date.now()}`;
+  const result = await query(
+    `INSERT INTO products (category_id, supplier_id, region_id, sku, slug, name, description,
+       short_description, origin, image_url, sale_price, stock_quantity, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+    [category_id, supplierId, region_id || null, sku || null, slug, name, description || null,
+      short_description || null, origin || null, image_url || null, sale_price || 0, stock_quantity]
+  );
+  const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [result.insertId]);
+  res.status(201).json({ data: serializeProduct(row) });
+});
+
+export const updateMyProduct = asyncHandler(async (req, res) => {
+  const supplierId = await currentSupplierId(req);
+  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  // Chi cho sua san pham CUA CHINH NCC nay.
+  const [owned] = await query('SELECT id FROM products WHERE id = ? AND supplier_id = ?', [req.params.id, supplierId]);
+  if (!owned) return res.status(403).json({ message: 'Ban chi co the sua san pham cua minh.' });
+  const fields = ['category_id', 'region_id', 'sku', 'name', 'description', 'short_description',
+    'origin', 'image_url', 'sale_price', 'stock_quantity'];
+  const updates = [];
+  const params = [];
+  for (const f of fields) {
+    if (req.body[f] !== undefined) { updates.push(`${f} = ?`); params.push(req.body[f]); }
+  }
+  if (req.body.is_active !== undefined) { updates.push('is_active = ?'); params.push(req.body.is_active ? 1 : 0); }
+  if (updates.length) {
+    params.push(req.params.id);
+    await query(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
+  }
+  const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [req.params.id]);
+  res.json({ data: serializeProduct(row) });
+});
 
 // Chi liet ke NCC da duyet (APPROVED) cho storefront. Frontend doc { data: [...] }.
 export const index = asyncHandler(async (req, res) => {

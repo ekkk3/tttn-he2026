@@ -11,6 +11,14 @@ function inventoryStatus(quantity, reorderLevel) {
   return 'in-stock';
 }
 
+// Neu nguoi goi la NCC -> tra ve supplier_id cua ho de loc du lieu (chi thay san
+// pham/don cua minh). WAREHOUSE_STAFF/ADMIN -> null (thay tat ca).
+async function supplierScopeId(req) {
+  if (req.user.role !== 'SUPPLIER') return null;
+  const [supplier] = await query('SELECT id FROM suppliers WHERE user_id = ? LIMIT 1', [req.user.id]);
+  return supplier ? supplier.id : -1; // -1: NCC chua co ban ghi supplier -> khong thay gi
+}
+
 // Tinh so luong dang giu cho (reserved) = tong quantity trong cac don chua ket thuc.
 async function reservedByProduct() {
   const rows = await query(
@@ -24,11 +32,13 @@ async function reservedByProduct() {
 
 // --- Ton kho (derive tu products) ---
 export const inventory = asyncHandler(async (req, res) => {
+  const scopeId = await supplierScopeId(req);
   const rows = await query(
     `SELECT p.id AS product_id, p.sku, p.name AS product_name, p.stock_quantity, p.reorder_level,
             p.purchase_price, p.aisle, p.supplier_id, s.name AS supplier_name, s.address AS supplier_location
      FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
-     WHERE p.is_deleted = 0 ORDER BY p.stock_quantity ASC`
+     WHERE p.is_deleted = 0 ${scopeId !== null ? 'AND p.supplier_id = ?' : ''} ORDER BY p.stock_quantity ASC`,
+    scopeId !== null ? [scopeId] : []
   );
   const reserved = await reservedByProduct();
   const data = rows.map((r) => ({
@@ -73,7 +83,11 @@ const REQUISITION_SELECT = `
   LEFT JOIN suppliers s ON s.id = p.supplier_id
 `;
 export const requisitions = asyncHandler(async (req, res) => {
-  const rows = await query(`${REQUISITION_SELECT} ORDER BY dr.id DESC`);
+  const scopeId = await supplierScopeId(req);
+  const rows = await query(
+    `${REQUISITION_SELECT} ${scopeId !== null ? 'WHERE p.supplier_id = ?' : ''} ORDER BY dr.id DESC`,
+    scopeId !== null ? [scopeId] : []
+  );
   res.json({ data: rows.map(serializeRequisition) });
 });
 export const storeRequisition = asyncHandler(async (req, res) => {
@@ -136,10 +150,18 @@ async function buildOperationOrder(order) {
   };
 }
 export const supplierOrders = asyncHandler(async (req, res) => {
-  const orders = await query(
-    `SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id
-     ORDER BY o.id DESC LIMIT 30`
-  );
+  const scopeId = await supplierScopeId(req);
+  // NCC chi thay don co chua san pham cua ho.
+  const orders = scopeId !== null
+    ? await query(
+        `SELECT DISTINCT o.*, u.full_name AS customer_name FROM orders o
+         LEFT JOIN users u ON u.id = o.user_id
+         JOIN order_items oi ON oi.order_id = o.id
+         JOIN products p ON p.id = oi.product_id AND p.supplier_id = ?
+         ORDER BY o.id DESC LIMIT 30`, [scopeId])
+    : await query(
+        `SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id
+         ORDER BY o.id DESC LIMIT 30`);
   const data = [];
   for (const o of orders) data.push(await buildOperationOrder(o));
   res.json({ data });
@@ -178,10 +200,17 @@ async function buildFulfillmentTask(order) {
   };
 }
 export const fulfillmentTasks = asyncHandler(async (req, res) => {
-  const orders = await query(
-    `SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id
-     WHERE o.status IN ('CONFIRMED','PACKED','SHIPPED') ORDER BY o.id ASC`
-  );
+  const scopeId = await supplierScopeId(req);
+  const orders = scopeId !== null
+    ? await query(
+        `SELECT DISTINCT o.*, u.full_name AS customer_name FROM orders o
+         LEFT JOIN users u ON u.id = o.user_id
+         JOIN order_items oi ON oi.order_id = o.id
+         JOIN products p ON p.id = oi.product_id AND p.supplier_id = ?
+         WHERE o.status IN ('CONFIRMED','PACKED','SHIPPED') ORDER BY o.id ASC`, [scopeId])
+    : await query(
+        `SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id
+         WHERE o.status IN ('CONFIRMED','PACKED','SHIPPED') ORDER BY o.id ASC`);
   const data = [];
   for (const o of orders) data.push(await buildFulfillmentTask(o));
   res.json({ data });
