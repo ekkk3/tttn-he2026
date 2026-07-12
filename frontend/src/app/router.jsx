@@ -16,6 +16,9 @@ import { AccountSecurityPage } from "@/pages/account-security/ui/account-securit
 import { AdminCommunityPage } from "@/pages/admin-community/ui/admin-community-page";
 import { AdminAdminsPage } from "@/pages/admin-admins/ui/admin-admins-page";
 import { AdminSupplierApplicationsPage } from "@/pages/admin-supplier-applications/ui/admin-supplier-applications-page";
+import { AdminComplaintsPage } from "@/pages/admin-complaints/ui/admin-complaints-page";
+import { AdminReviewsPage } from "@/pages/admin-reviews/ui/admin-reviews-page";
+import { AdminVouchersPage } from "@/pages/admin-vouchers/ui/admin-vouchers-page";
 import { ForgotPasswordPage } from "@/pages/forgot-password/ui/forgot-password-page";
 import { ResetPasswordPage } from "@/pages/reset-password/ui/reset-password-page";
 import { SupplierRegisterPage } from "@/pages/supplier-register/ui/supplier-register-page";
@@ -37,6 +40,7 @@ import { ProductDetailPage } from "@/pages/product-detail/ui/product-detail-page
 import { RegionsPage } from "@/pages/regions/ui/regions-page";
 import { StoryPage } from "@/pages/story/ui/story-page";
 import { SupplierHelpPage } from "@/pages/supplier-help/ui/supplier-help-page";
+import { SupplierProductsPage } from "@/pages/supplier-products/ui/supplier-products-page";
 import { SupplierInventoryPage } from "@/pages/supplier-inventory/ui/supplier-inventory-page";
 import { SupplierOrdersPage } from "@/pages/supplier-orders/ui/supplier-orders-page";
 import { SupplierProcessingPage } from "@/pages/supplier-processing/ui/supplier-processing-page";
@@ -141,6 +145,15 @@ export function AppRoutes() {
                 <Route path={appRoutes.adminSupplierApplications} element={<AdminModuleGuard moduleId="supplierApplications">
                             <AdminSupplierApplicationsPage />
                         </AdminModuleGuard>}/>
+                <Route path={appRoutes.adminComplaints} element={<AdminModuleGuard moduleId="complaints">
+                            <AdminComplaintsPage />
+                        </AdminModuleGuard>}/>
+                <Route path={appRoutes.adminReviews} element={<AdminModuleGuard moduleId="reviews">
+                            <AdminReviewsPage />
+                        </AdminModuleGuard>}/>
+                <Route path={appRoutes.adminVouchers} element={<AdminModuleGuard moduleId="vouchers">
+                            <AdminVouchersPage />
+                        </AdminModuleGuard>}/>
                 <Route path={appRoutes.adminShippingCarriers} element={<AdminModuleGuard moduleId="shippingCarriers">
                             <AdminShippingCarriersPage />
                         </AdminModuleGuard>}/>
@@ -190,6 +203,7 @@ export function AppRoutes() {
             <Route element={<RouteGuard allowedRoles={["supplier", "warehouse"]}>
                         <PortalLayout />
                     </RouteGuard>}>
+                <Route path={appRoutes.supplierProducts} element={<SupplierProductsPage />}/>
                 <Route path={appRoutes.supplierInventory} element={<SupplierInventoryPage />}/>
                 <Route path={appRoutes.supplierRequisitions} element={<SupplierRequisitionsPage />}/>
                 <Route path={appRoutes.supplierProcessing} element={<SupplierProcessingPage />}/>
