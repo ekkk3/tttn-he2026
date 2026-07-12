@@ -2,17 +2,62 @@ import { query, pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
+import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
 
 function generateOrderNo() {
   return `DH${Date.now()}`;
 }
 
+// Phi van chuyen tinh phia server, giu dong logic voi checkout-page.jsx de tong tien
+// hien thi tren UI khop voi don hang thuc te luu trong DB.
+function normalizeVietnamese(value) {
+  return String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/đ/g, 'd')
+    .replace(/[̀-ͯ]/g, '');
+}
+function calculateShippingFee(subtotal, shippingAddress) {
+  if (subtotal >= 500000) return 0;
+  const addr = normalizeVietnamese(shippingAddress);
+  if (addr.includes('ha noi')) return 20000;
+  const northern = ['ha giang', 'cao bang', 'bac kan', 'tuyen quang', 'lao cai', 'yen bai', 'thai nguyen',
+    'lang son', 'quang ninh', 'bac giang', 'phu tho', 'vinh phuc', 'bac ninh', 'hai duong', 'hai phong',
+    'hung yen', 'thai binh', 'ha nam', 'nam dinh', 'ninh binh', 'hoa binh', 'son la', 'dien bien', 'lai chau'];
+  if (northern.some((k) => addr.includes(k))) return 30000;
+  return 45000;
+}
+
+// Doc order + items + status_history + payment roi serialize theo dinh dang frontend.
+async function loadOrderDetail(orderId, userId = null) {
+  const params = userId ? [orderId, userId] : [orderId];
+  const [order] = await query(
+    `SELECT * FROM orders WHERE id = ?${userId ? ' AND user_id = ?' : ''}`,
+    params
+  );
+  if (!order) return null;
+  const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
+  const statusHistory = await query(
+    'SELECT *, created_at AS changed_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC',
+    [order.id]
+  );
+  const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+  return serializeOrderDetail(order, { items, statusHistory, payment: payment || null });
+}
+
+async function notifyUser(userId, type, title, message, linkUrl = null) {
+  await query(
+    'INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, ?, ?, ?, ?)',
+    [userId, type, title, message, linkUrl]
+  );
+}
+
 // POST /api/orders/checkout
-// Ghi chu: 'voucher_code' hien khong co bang tuong ung trong schema Laravel goc.
-// Da them file sql/add_vouchers.sql (bang vouchers + order_vouchers) — chay migration do
-// truoc, roi bo comment doan tinh discount_amount ben duoi neu muon dung.
 export const checkout = asyncHandler(async (req, res) => {
-  const { recipient_name, recipient_phone, shipping_address, payment_method, note } = req.body;
+  const { recipient_name, recipient_phone, shipping_address, payment_method = 'COD', payment_gateway, note } = req.body;
+  if (!recipient_name || !recipient_phone || !shipping_address) {
+    return res.status(422).json({ message: 'Thieu thong tin nguoi nhan hoac dia chi giao hang.' });
+  }
 
   const connection = await pool.getConnection();
   try {
@@ -24,19 +69,34 @@ export const checkout = asyncHandler(async (req, res) => {
     );
     if (!cart) throw Object.assign(new Error('Gio hang dang trong.'), { status: 422 });
 
-    const [items] = await connection.query('SELECT * FROM cart_items WHERE cart_id = ?', [cart.id]);
+    const [items] = await connection.query(
+      `SELECT ci.*, p.name AS product_name, p.stock_quantity
+       FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.cart_id = ?`,
+      [cart.id]
+    );
     if (!items.length) throw Object.assign(new Error('Gio hang dang trong.'), { status: 422 });
 
+    // Kiem tra ton kho truoc khi tao don.
+    for (const item of items) {
+      if (item.stock_quantity !== null && item.quantity > item.stock_quantity) {
+        throw Object.assign(
+          new Error(`San pham "${item.product_name}" chi con ${item.stock_quantity} trong kho.`),
+          { status: 422 }
+        );
+      }
+    }
+
     const subtotal = items.reduce((sum, i) => sum + Number(i.line_total), 0);
-    const shipping_fee = 30000; // TODO: thay bang phi thuc te tinh qua GHN (xem utils/ghn.js)
-    const discount_amount = 0; // TODO: tinh tu vouchers sau khi chay sql/add_vouchers.sql
+    const shipping_fee = calculateShippingFee(subtotal, shipping_address);
+    const discount_amount = 0; // Voucher: xem PLAN (backend-ready, chua ghep vao UI checkout).
     const total_amount = subtotal + shipping_fee - discount_amount;
+    const orderNo = generateOrderNo();
 
     const [orderResult] = await connection.query(
       `INSERT INTO orders (user_id, order_no, recipient_name, recipient_phone, shipping_address,
         payment_method, status, subtotal, shipping_fee, discount_amount, total_amount, note)
        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)`,
-      [req.user.id, generateOrderNo(), recipient_name, recipient_phone, shipping_address,
+      [req.user.id, orderNo, recipient_name, recipient_phone, shipping_address,
         payment_method, subtotal, shipping_fee, discount_amount, total_amount, note || null]
     );
     const orderId = orderResult.insertId;
@@ -44,20 +104,50 @@ export const checkout = asyncHandler(async (req, res) => {
     for (const item of items) {
       await connection.query(
         `INSERT INTO order_items (order_id, product_id, product_name_snapshot, quantity, unit_price, line_total)
-         SELECT ?, ?, name, ?, ?, ? FROM products WHERE id = ?`,
-        [orderId, item.product_id, item.quantity, item.unit_price, item.line_total, item.product_id]
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total]
+      );
+      // Tru ton kho.
+      await connection.query(
+        'UPDATE products SET stock_quantity = GREATEST(0, stock_quantity - ?) WHERE id = ?',
+        [item.quantity, item.product_id]
       );
     }
+
+    // Tao ban ghi thanh toan. BANK_TRANSFER luu huong dan chuyen khoan vao raw_payload
+    // (checkout-page.jsx doc payment.raw_payload de hien modal QR + so tai khoan).
+    let rawPayload = null;
+    if (payment_method === 'BANK_TRANSFER') {
+      rawPayload = JSON.stringify({
+        bank_name: process.env.BANK_NAME || 'MB Bank',
+        account_name: process.env.BANK_ACCOUNT_NAME || 'HERITAGE HARVEST',
+        account_number: process.env.BANK_ACCOUNT_NUMBER || '0123456789',
+        transfer_content: orderNo,
+      });
+    }
+    await connection.query(
+      `INSERT INTO payments (order_id, provider, payment_method, amount, payment_status, gateway_name, raw_payload)
+       VALUES (?, ?, ?, ?, 'PENDING', ?, ?)`,
+      [orderId, payment_method, payment_method, total_amount, payment_gateway || null, rawPayload]
+    );
 
     await connection.query('DELETE FROM cart_items WHERE cart_id = ?', [cart.id]);
     await connection.query("UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?", [cart.id]);
     await connection.query(
-      "INSERT INTO order_status_history (order_id, to_status, note) VALUES (?, 'PENDING', 'Order created')",
+      "INSERT INTO order_status_history (order_id, to_status, note) VALUES (?, 'PENDING', 'Khach hang dat hang')",
       [orderId]
     );
 
     await connection.commit();
 
+    // Thong bao "Da dat hang" (UC 2.2.5a).
+    await notifyUser(
+      req.user.id, 'ORDER_PLACED', 'Dat hang thanh cong',
+      `Don hang ${orderNo} da duoc tao va dang cho xu ly.`, `/account/orders/${orderId}`
+    );
+
+    // Voucher VNPay/MoMo van hoat dong neu frontend gui payment_method tuong ung (bonus,
+    // frontend hien tai chi dung COD + BANK_TRANSFER).
     let paymentRedirectUrl = null;
     if (payment_method === 'VNPAY') {
       paymentRedirectUrl = buildVnpayUrl({ orderId, amount: total_amount, ipAddr: req.ip });
@@ -65,7 +155,8 @@ export const checkout = asyncHandler(async (req, res) => {
       paymentRedirectUrl = await createMomoPayment({ orderId, amount: total_amount });
     }
 
-    res.status(201).json({ order_id: orderId, total_amount, payment_redirect_url: paymentRedirectUrl });
+    const detail = await loadOrderDetail(orderId, req.user.id);
+    res.status(201).json({ data: { ...detail, payment_redirect_url: paymentRedirectUrl } });
   } catch (err) {
     await connection.rollback();
     throw err;
@@ -74,39 +165,62 @@ export const checkout = asyncHandler(async (req, res) => {
   }
 });
 
+// GET /api/orders?page=&per_page=
 export const index = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
-  res.json({ orders: rows });
+  const { page, perPage, offset } = parsePagination(req.query);
+  const [{ total }] = await query('SELECT COUNT(*) AS total FROM orders WHERE user_id = ?', [req.user.id]);
+  const orders = await query(
+    `SELECT o.*, (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
+     FROM orders o WHERE o.user_id = ? ORDER BY o.id DESC LIMIT ? OFFSET ?`,
+    [req.user.id, perPage, offset]
+  );
+  const data = [];
+  for (const order of orders) {
+    const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
+    data.push(serializeOrderSummary(order, { itemCount: order.item_count, payment: payment || null }));
+  }
+  res.json(paginated(data, { page, perPage, total }));
 });
 
 export const show = asyncHandler(async (req, res) => {
-  const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
-  const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
-  res.json({ order: { ...order, items } });
+  const detail = await loadOrderDetail(req.params.order, req.user.id);
+  if (!detail) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  res.json({ data: detail });
 });
 
 export const cancel = asyncHandler(async (req, res) => {
-  await query("UPDATE orders SET status = 'CANCELLED', cancelled_at = NOW() WHERE id = ? AND user_id = ?", [
-    req.params.order, req.user.id,
-  ]);
+  const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  await query("UPDATE orders SET status = 'CANCELLED', cancelled_at = NOW() WHERE id = ?", [order.id]);
   await query(
-    "INSERT INTO order_status_history (order_id, to_status, note) VALUES (?, 'CANCELLED', 'Cancelled by customer')",
-    [req.params.order]
+    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
+    [order.id, order.status, req.body.reason || 'Khach hang huy don', req.user.id]
   );
-  res.json({ message: 'Da huy don hang.' });
+  await notifyUser(req.user.id, 'ORDER_CANCELLED', 'Da huy don hang', `Don hang ${order.order_no} da duoc huy.`, `/account/orders/${order.id}`);
+  const detail = await loadOrderDetail(order.id, req.user.id);
+  res.json({ data: detail });
 });
 
 export const confirmBankTransferSubmitted = asyncHandler(async (req, res) => {
-  await query("UPDATE orders SET status = 'AWAITING_PAYMENT_CONFIRMATION' WHERE id = ? AND user_id = ?", [
-    req.params.order, req.user.id,
-  ]);
-  res.json({ message: 'Da bao da chuyen khoan, cho xac nhan.' });
+  const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  await query("UPDATE orders SET status = 'AWAITING_PAYMENT_CONFIRMATION' WHERE id = ?", [order.id]);
+  await query(
+    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'AWAITING_PAYMENT_CONFIRMATION', 'Khach bao da chuyen khoan', ?)",
+    [order.id, order.status, req.user.id]
+  );
+  const detail = await loadOrderDetail(order.id, req.user.id);
+  res.json({ data: detail });
 });
 
 export const confirmDelivery = asyncHandler(async (req, res) => {
-  await query("UPDATE orders SET status = 'DELIVERED', delivered_at = NOW() WHERE id = ? AND user_id = ?", [
-    req.params.order, req.user.id,
-  ]);
-  res.json({ message: 'Da xac nhan giao hang thanh cong.' });
+  const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  await query("UPDATE orders SET status = 'DELIVERED', delivered_at = NOW() WHERE id = ?", [order.id]);
+  await query(
+    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'DELIVERED', 'Khach xac nhan da nhan hang', ?)",
+    [order.id, order.status, req.user.id]
+  );
+  const detail = await loadOrderDetail(order.id, req.user.id);
+  res.json({ data: detail });
 });

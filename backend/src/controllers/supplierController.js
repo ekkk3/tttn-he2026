@@ -1,55 +1,67 @@
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { PRODUCT_SELECT, serializeProducts } from '../utils/serializers.js';
 
+// Chi liet ke NCC da duyet (APPROVED) cho storefront. Frontend doc { data: [...] }.
 export const index = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM suppliers WHERE is_active = 1 AND is_deleted = 0 ORDER BY name');
-  res.json({ suppliers: rows });
+  const rows = await query(
+    "SELECT * FROM suppliers WHERE is_active = 1 AND is_deleted = 0 AND status = 'APPROVED' ORDER BY name"
+  );
+  res.json({ data: rows });
 });
 
 export const show = asyncHandler(async (req, res) => {
   const [supplier] = await query('SELECT * FROM suppliers WHERE id = ? AND is_deleted = 0', [req.params.supplier]);
   if (!supplier) return res.status(404).json({ message: 'Khong tim thay nha cung cap.' });
-  res.json({ supplier });
+  res.json({ data: supplier });
 });
 
 export const getProducts = asyncHandler(async (req, res) => {
   const rows = await query(
-    'SELECT * FROM products WHERE supplier_id = ? AND is_active = 1 AND is_deleted = 0 ORDER BY id DESC',
+    `${PRODUCT_SELECT} WHERE p.supplier_id = ? AND p.is_active = 1 AND p.is_deleted = 0 ORDER BY p.id DESC`,
     [req.params.supplier]
   );
-  res.json({ products: rows });
+  res.json({ data: serializeProducts(rows) });
 });
 
 // --- Admin ---
 export const adminIndex = asyncHandler(async (req, res) => {
   const rows = await query('SELECT * FROM suppliers WHERE is_deleted = 0 ORDER BY id DESC');
-  res.json({ suppliers: rows });
+  res.json({ data: rows });
 });
 
 export const store = asyncHandler(async (req, res) => {
   const { supplier_code, name, contact_name, phone, email, address } = req.body;
+  if (!name) return res.status(422).json({ message: 'Ten nha cung cap la bat buoc.' });
   const result = await query(
-    'INSERT INTO suppliers (supplier_code, name, contact_name, phone, email, address) VALUES (?, ?, ?, ?, ?, ?)',
-    [supplier_code, name, contact_name || null, phone, email || null, address || null]
+    `INSERT INTO suppliers (supplier_code, name, contact_name, phone, email, address, status, approved_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'APPROVED', NOW())`,
+    [supplier_code || null, name, contact_name || null, phone || null, email || null, address || null]
   );
-  res.status(201).json({ id: result.insertId });
+  const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [result.insertId]);
+  res.status(201).json({ data: supplier });
 });
 
 export const update = asyncHandler(async (req, res) => {
-  const { name, contact_name, phone, email, address, is_active } = req.body;
+  const { supplier_code, name, contact_name, phone, email, address, is_active, is_deleted } = req.body;
   await query(
-    `UPDATE suppliers SET name = COALESCE(?, name), contact_name = COALESCE(?, contact_name),
-       phone = COALESCE(?, phone), email = COALESCE(?, email), address = COALESCE(?, address),
-       is_active = COALESCE(?, is_active) WHERE id = ?`,
-    [name, contact_name, phone, email, address, is_active, req.params.supplier]
+    `UPDATE suppliers SET supplier_code = COALESCE(?, supplier_code), name = COALESCE(?, name),
+       contact_name = COALESCE(?, contact_name), phone = COALESCE(?, phone), email = COALESCE(?, email),
+       address = COALESCE(?, address), is_active = COALESCE(?, is_active), is_deleted = COALESCE(?, is_deleted)
+     WHERE id = ?`,
+    [supplier_code ?? null, name ?? null, contact_name ?? null, phone ?? null, email ?? null, address ?? null,
+      is_active === undefined ? null : (is_active ? 1 : 0),
+      is_deleted === undefined ? null : (is_deleted ? 1 : 0), req.params.supplier]
   );
-  res.json({ message: 'Da cap nhat nha cung cap.' });
+  const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.supplier]);
+  res.json({ data: supplier });
 });
 
 export const destroy = asyncHandler(async (req, res) => {
-  await query('UPDATE suppliers SET is_deleted = 1 WHERE id = ?', [req.params.supplier]);
-  res.json({ message: 'Da xoa nha cung cap.' });
+  await query('UPDATE suppliers SET is_active = 0 WHERE id = ?', [req.params.supplier]);
+  const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.supplier]);
+  res.json({ data: supplier });
 });
 
 // ---------------- UC 2.2.12a: Dang ky Nha cung cap (public, self-service) ----------------

@@ -12,6 +12,7 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   dateStrings: true,
+  charset: 'utf8mb4', // Tieng Viet co dau: dam bao doc/ghi dung utf8mb4.
 });
 
 export async function query(sql, params = []) {

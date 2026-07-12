@@ -10,7 +10,12 @@ export async function getRedis() {
   if (!process.env.REDIS_URL) return null;
   if (client) return client;
   if (!connecting) {
-    const c = createClient({ url: process.env.REDIS_URL });
+    // reconnectStrategy:false + connectTimeout ngan: neu Redis khong chay, connect()
+    // that bai NGAY thay vi retry vo han (tranh treo request path khi may khong co Redis).
+    const c = createClient({
+      url: process.env.REDIS_URL,
+      socket: { reconnectStrategy: false, connectTimeout: 1000 },
+    });
     c.on('error', (err) => console.error('[redis] error:', err.message));
     connecting = c
       .connect()
