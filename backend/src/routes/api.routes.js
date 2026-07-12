@@ -128,6 +128,7 @@ const supplierPortal = Router();
 supplierPortal.get('/products', supplierController.myProducts);
 supplierPortal.post('/products', supplierController.storeMyProduct);
 supplierPortal.put('/products/:id', supplierController.updateMyProduct);
+supplierPortal.get('/revenue', supplierController.myRevenue);
 router.use('/supplier', requireRole('SUPPLIER'), supplierPortal);
 
 // ---------------- Admin: /api/admin/* ----------------

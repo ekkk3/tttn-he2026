@@ -41,6 +41,7 @@ import { RegionsPage } from "@/pages/regions/ui/regions-page";
 import { StoryPage } from "@/pages/story/ui/story-page";
 import { SupplierHelpPage } from "@/pages/supplier-help/ui/supplier-help-page";
 import { SupplierProductsPage } from "@/pages/supplier-products/ui/supplier-products-page";
+import { SupplierRevenuePage } from "@/pages/supplier-revenue/ui/supplier-revenue-page";
 import { SupplierInventoryPage } from "@/pages/supplier-inventory/ui/supplier-inventory-page";
 import { SupplierOrdersPage } from "@/pages/supplier-orders/ui/supplier-orders-page";
 import { SupplierProcessingPage } from "@/pages/supplier-processing/ui/supplier-processing-page";
@@ -204,6 +205,7 @@ export function AppRoutes() {
                         <PortalLayout />
                     </RouteGuard>}>
                 <Route path={appRoutes.supplierProducts} element={<SupplierProductsPage />}/>
+                <Route path={appRoutes.supplierRevenue} element={<SupplierRevenuePage />}/>
                 <Route path={appRoutes.supplierInventory} element={<SupplierInventoryPage />}/>
                 <Route path={appRoutes.supplierRequisitions} element={<SupplierRequisitionsPage />}/>
                 <Route path={appRoutes.supplierProcessing} element={<SupplierProcessingPage />}/>

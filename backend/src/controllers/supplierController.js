@@ -40,6 +40,70 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
   res.status(201).json({ data: serializeProduct(row) });
 });
 
+// UC "Bao cao doanh thu cho NCC": doanh thu tu don DA GIAO chua san pham cua NCC.
+export const myRevenue = asyncHandler(async (req, res) => {
+  const supplierId = await currentSupplierId(req);
+  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+
+  const [{ total_revenue, units_sold }] = await query(
+    `SELECT COALESCE(SUM(oi.line_total),0) AS total_revenue, COALESCE(SUM(oi.quantity),0) AS units_sold
+     FROM order_items oi
+     JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+     JOIN products p ON p.id = oi.product_id AND p.supplier_id = ?`,
+    [supplierId]
+  );
+  const [{ order_count }] = await query(
+    `SELECT COUNT(DISTINCT o.id) AS order_count
+     FROM orders o JOIN order_items oi ON oi.order_id = o.id
+     JOIN products p ON p.id = oi.product_id AND p.supplier_id = ?
+     WHERE o.status = 'DELIVERED'`,
+    [supplierId]
+  );
+  const [{ product_count }] = await query(
+    'SELECT COUNT(*) AS product_count FROM products WHERE supplier_id = ? AND is_deleted = 0', [supplierId]
+  );
+
+  const topProducts = await query(
+    `SELECT p.id, p.name, p.sku, COALESCE(SUM(oi.quantity),0) AS sold_quantity,
+            COALESCE(SUM(oi.line_total),0) AS revenue
+     FROM products p
+     LEFT JOIN order_items oi ON oi.product_id = p.id
+     LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+     WHERE p.supplier_id = ? AND p.is_deleted = 0
+     GROUP BY p.id ORDER BY revenue DESC LIMIT 10`,
+    [supplierId]
+  );
+
+  const revenueRows = await query(
+    `SELECT DATE(o.delivered_at) AS d, COALESCE(SUM(oi.line_total),0) AS revenue
+     FROM orders o JOIN order_items oi ON oi.order_id = o.id
+     JOIN products p ON p.id = oi.product_id AND p.supplier_id = ?
+     WHERE o.status = 'DELIVERED' AND o.delivered_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+     GROUP BY DATE(o.delivered_at) ORDER BY d ASC`,
+    [supplierId]
+  );
+  const revenueMap = new Map(revenueRows.map((r) => [r.d, Number(r.revenue)]));
+  const revenue_chart = [];
+  for (let i = 29; i >= 0; i -= 1) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const key = date.toISOString().slice(0, 10);
+    revenue_chart.push({ label: `${date.getDate()}/${date.getMonth() + 1}`, revenue: revenueMap.get(key) || 0 });
+  }
+
+  res.json({
+    data: {
+      total_revenue: Number(total_revenue),
+      units_sold: Number(units_sold),
+      order_count,
+      product_count,
+      average_order_value: order_count > 0 ? Math.round(Number(total_revenue) / order_count) : 0,
+      top_products: topProducts.map((p) => ({ ...p, sold_quantity: Number(p.sold_quantity), revenue: Number(p.revenue) })),
+      revenue_chart,
+    },
+  });
+});
+
 export const updateMyProduct = asyncHandler(async (req, res) => {
   const supplierId = await currentSupplierId(req);
   if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
