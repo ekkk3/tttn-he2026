@@ -15,6 +15,10 @@ import { AccountRewardsPage } from "@/pages/account-rewards/ui/account-rewards-p
 import { AccountSecurityPage } from "@/pages/account-security/ui/account-security-page";
 import { AdminCommunityPage } from "@/pages/admin-community/ui/admin-community-page";
 import { AdminAdminsPage } from "@/pages/admin-admins/ui/admin-admins-page";
+import { AdminSupplierApplicationsPage } from "@/pages/admin-supplier-applications/ui/admin-supplier-applications-page";
+import { ForgotPasswordPage } from "@/pages/forgot-password/ui/forgot-password-page";
+import { ResetPasswordPage } from "@/pages/reset-password/ui/reset-password-page";
+import { SupplierRegisterPage } from "@/pages/supplier-register/ui/supplier-register-page";
 import { AdminDashboardPage } from "@/pages/admin-dashboard/ui/admin-dashboard-page";
 import { AdminLogisticsPage } from "@/pages/admin-logistics/ui/admin-logistics-page";
 import { AdminRepositoryPage } from "@/pages/admin-repository/ui/admin-repository-page";
@@ -76,6 +80,9 @@ export function AppRoutes() {
                 <Route path={appRoutes.home} element={<HomePage />}/>
                 <Route path={appRoutes.login} element={<LoginPage />}/>
                 <Route path={appRoutes.register} element={<LoginPage />}/>
+                <Route path={appRoutes.forgotPassword} element={<ForgotPasswordPage />}/>
+                <Route path={appRoutes.resetPassword} element={<ResetPasswordPage />}/>
+                <Route path={appRoutes.supplierRegister} element={<SupplierRegisterPage />}/>
                 <Route path={appRoutes.logout} element={<LogoutPage />}/>
                 <Route path={appRoutes.unauthorized} element={<UnauthorizedPage />}/>
                 <Route path={appRoutes.products} element={<ProductCatalogPage />}/>
@@ -130,6 +137,9 @@ export function AppRoutes() {
                         </AdminModuleGuard>}/>
                 <Route path={appRoutes.adminSuppliers} element={<AdminModuleGuard moduleId="suppliers">
                             <AdminRepositoryPage lockedTab="suppliers"/>
+                        </AdminModuleGuard>}/>
+                <Route path={appRoutes.adminSupplierApplications} element={<AdminModuleGuard moduleId="supplierApplications">
+                            <AdminSupplierApplicationsPage />
                         </AdminModuleGuard>}/>
                 <Route path={appRoutes.adminShippingCarriers} element={<AdminModuleGuard moduleId="shippingCarriers">
                             <AdminShippingCarriersPage />

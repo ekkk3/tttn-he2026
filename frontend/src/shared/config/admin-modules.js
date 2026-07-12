@@ -37,6 +37,13 @@ export const adminModules = [
         section: "commerce",
     },
     {
+        id: "supplierApplications",
+        label: "NCC chờ duyệt",
+        to: routes.adminSupplierApplications,
+        icon: "hourglass_top",
+        section: "commerce",
+    },
+    {
         id: "shippingCarriers",
         label: "Vận chuyển",
         to: routes.adminShippingCarriers,

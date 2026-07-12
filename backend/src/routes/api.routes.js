@@ -15,6 +15,7 @@ import * as misc from '../controllers/miscController.js';
 import * as operationController from '../controllers/operationController.js';
 import * as chatController from '../controllers/chatController.js';
 import * as admin from '../controllers/admin/admin.controller.js';
+import { uploadSupplierLicense } from '../middleware/upload.js';
 
 const router = Router();
 
@@ -26,6 +27,15 @@ const router = Router();
 // ---------------- Public ----------------
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+
+// Bo sung Tuan 1: quen mat khau + dang nhap Google/Facebook (ngoai pham vi UC goc).
+router.post('/password/forgot', authController.forgotPassword);
+router.post('/password/reset', authController.resetPassword);
+router.post('/auth/google', authController.loginWithGoogle);
+router.post('/auth/facebook', authController.loginWithFacebook);
+
+// UC 2.2.12a: Dang ky Nha cung cap (public, cho Admin duyet o UC 2.2.12b ben duoi).
+router.post('/suppliers/apply', uploadSupplierLicense, supplierController.apply);
 
 router.get('/products', productController.index);
 router.get('/products/:id', productController.show);
@@ -160,9 +170,12 @@ router.use('/admin/categories', requireRole('ADMIN'), adminCategories);
 
 const adminSuppliers = Router();
 adminSuppliers.get('/', supplierController.adminIndex);
+adminSuppliers.get('/pending', supplierController.pending);
 adminSuppliers.post('/', supplierController.store);
 adminSuppliers.put('/:supplier', supplierController.update);
 adminSuppliers.delete('/:supplier', supplierController.destroy);
+adminSuppliers.patch('/:supplier/approve', supplierController.approve);
+adminSuppliers.patch('/:supplier/reject', supplierController.reject);
 router.use('/admin/suppliers', requireRole('ADMIN'), adminSuppliers);
 
 export default router;

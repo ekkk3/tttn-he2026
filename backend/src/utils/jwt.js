@@ -11,3 +11,12 @@ export function signToken(payload) {
 export function verifyToken(token) {
   return jwt.verify(token, SECRET);
 }
+
+// Frontend (use-auth-store.js) mong doi ca "access_token" + "expires_at" (ISO string)
+// tu response dang nhap/dang ky, khong chi "token". Ham nay giai ma lai claim "exp"
+// vua ky de tra ve dung dinh dang, tranh phai tu tinh toan lai thoi han.
+export function tokenExpiresAtIso(token) {
+  const decoded = jwt.decode(token);
+  if (!decoded?.exp) return null;
+  return new Date(decoded.exp * 1000).toISOString();
+}

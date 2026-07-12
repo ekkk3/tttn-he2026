@@ -59,6 +59,9 @@ export function StorefrontFooter() {
                         <Link className="text-zinc-500 transition-colors hover:text-[#0d631b]" to={routes.accountProfile}>
                             Liên hệ
                         </Link>
+                        <Link className="text-zinc-500 transition-colors hover:text-[#0d631b]" to={routes.supplierRegister}>
+                            Đăng ký NCC
+                        </Link>
                     </div>
 
                     <div className="flex space-x-4">
@@ -89,6 +92,11 @@ export function StorefrontFooter() {
                         <li>
                             <Link className="inline-block text-zinc-600 transition-all hover:-translate-y-px hover:text-green-700" to={routes.regions}>
                                 Hành trình nguồn gốc
+                            </Link>
+                        </li>
+                        <li>
+                            <Link className="inline-block text-zinc-600 transition-all hover:-translate-y-px hover:text-green-700" to={routes.supplierRegister}>
+                                Đăng ký Nhà cung cấp
                             </Link>
                         </li>
                     </ul>
