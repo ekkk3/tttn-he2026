@@ -101,10 +101,17 @@ export const adminResolveComplaint = asyncHandler(async (req, res) => {
   res.json({ data: row ? serializeComplaint(row) : null });
 });
 
-// --- Support tickets ---
+// --- Support tickets --- (operations store adaptTicket doc { data })
+function serializeTicket(t) {
+  return { id: t.id, subject: t.subject, message: t.message, channel: t.channel, status: t.status, created_at: t.created_at };
+}
 export const listSupportTickets = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM support_tickets WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
-  res.json({ tickets: rows });
+  // WAREHOUSE_STAFF/ADMIN xem toan bo; khach hang chi xem cua minh.
+  const isStaff = ['ADMIN', 'WAREHOUSE_STAFF'].includes(req.user.role);
+  const rows = isStaff
+    ? await query('SELECT * FROM support_tickets ORDER BY id DESC')
+    : await query('SELECT * FROM support_tickets WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+  res.json({ data: rows.map(serializeTicket) });
 });
 export const storeSupportTicket = asyncHandler(async (req, res) => {
   const { subject, message, channel = 'WEB' } = req.body;
@@ -112,14 +119,16 @@ export const storeSupportTicket = asyncHandler(async (req, res) => {
     'INSERT INTO support_tickets (user_id, subject, message, channel) VALUES (?, ?, ?, ?)',
     [req.user.id, subject, message, channel]
   );
-  res.status(201).json({ id: result.insertId });
+  const [row] = await query('SELECT * FROM support_tickets WHERE id = ?', [result.insertId]);
+  res.status(201).json({ data: serializeTicket(row) });
 });
 export const resolveSupportTicket = asyncHandler(async (req, res) => {
   await query(
     "UPDATE support_tickets SET status = 'RESOLVED', resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ?",
     [req.user.id, req.params.ticket]
   );
-  res.json({ message: 'Da xu ly yeu cau ho tro.' });
+  const [row] = await query('SELECT * FROM support_tickets WHERE id = ?', [req.params.ticket]);
+  res.json({ data: row ? serializeTicket(row) : null });
 });
 
 // --- Newsletter ---
