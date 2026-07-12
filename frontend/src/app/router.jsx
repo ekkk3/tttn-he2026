@@ -55,7 +55,6 @@ import { WarehouseSupplierOrdersPage } from "@/pages/warehouse-supplier-orders/u
 import { getFirstAccessibleAdminModule } from "@/shared/config/admin-modules";
 import { routes as appRoutes } from "@/shared/config/routes";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
-import ProductTest from "@/pages/product-test/product-test";
 function AdminIndexRoute() {
     const user = useAuthStore((state) => state.session?.user ?? null);
     const firstModule = getFirstAccessibleAdminModule(user);
@@ -81,7 +80,6 @@ function AdminUserOrdersGuard({ children }) {
 export function AppRoutes() {
     return (<Routes>
             <Route element={<StorefrontLayout />}>
-                <Route path={appRoutes.productTest} element={<ProductTest />}/>
                 <Route path={appRoutes.home} element={<HomePage />}/>
                 <Route path={appRoutes.login} element={<LoginPage />}/>
                 <Route path={appRoutes.register} element={<LoginPage />}/>
