@@ -36,7 +36,8 @@ INSERT INTO `users`
 VALUES
   (1, 'Quan tri vien', 'admin@example.com', '0900000001',
    '$2a$10$1bjNnkixhHjiBxAzje1MTujrUkRwPKs7zpL0q/F9u5sopjcB1S/72', 'ADMIN', 1, 1)
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`),
+  `password_hash` = VALUES(`password_hash`), `role` = VALUES(`role`), `is_active` = VALUES(`is_active`);
 
 -- password_hash = bcrypt('Customer@123', 10)
 INSERT INTO `users`
@@ -44,7 +45,8 @@ INSERT INTO `users`
 VALUES
   (2, 'Khach hang mau', 'customer@example.com', '0900000002',
    '$2a$10$NOuTwd.J9XVW/sDb67rPBeXDksqdpSNfW2I9Tu3LAhNbqplPRTCHu', 'CUSTOMER', 1)
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`),
+  `password_hash` = VALUES(`password_hash`), `role` = VALUES(`role`), `is_active` = VALUES(`is_active`);
 
 -- password_hash = bcrypt('Supplier@123', 10) — NCC mau da duoc duyet san
 INSERT INTO `users`
@@ -52,7 +54,8 @@ INSERT INTO `users`
 VALUES
   (3, 'Nha cung cap mau', 'supplier@example.com', '0900000003',
    '$2a$10$wl.5DnUjfH/7B/kpxPKZ.OgyIYBAFk0wmVBmCGj/16mjm3OYIGB3K', 'SUPPLIER', 1)
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`),
+  `password_hash` = VALUES(`password_hash`), `role` = VALUES(`role`), `is_active` = VALUES(`is_active`);
 
 INSERT INTO `suppliers`
   (`id`, `supplier_code`, `name`, `contact_name`, `phone`, `email`, `address`,
