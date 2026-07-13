@@ -294,6 +294,13 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `recipient_name` VARCHAR(150) NOT NULL,
   `recipient_phone` VARCHAR(20) NOT NULL,
   `shipping_address` VARCHAR(255) NOT NULL,
+  -- Dia chi GHN (tinh/huyen/xa) luu kem de tao van don & tinh phi (UC 2.2.17/2.2.22).
+  `shipping_province_id` INT NULL,
+  `shipping_province_name` VARCHAR(120) NULL,
+  `shipping_district_id` INT NULL,
+  `shipping_district_name` VARCHAR(120) NULL,
+  `shipping_ward_code` VARCHAR(20) NULL,
+  `shipping_ward_name` VARCHAR(120) NULL,
   `payment_method` VARCHAR(30) NOT NULL,
   `status` VARCHAR(40) NOT NULL DEFAULT 'PENDING',
   `subtotal` DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -339,6 +346,22 @@ CREATE TABLE IF NOT EXISTS `order_status_history` (
   KEY `idx_order_status_history_order` (`order_id`),
   CONSTRAINT `fk_order_status_history_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_order_status_history_user` FOREIGN KEY (`changed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Lich su trang thai thanh toan (UC 2.2.9/2.2.25): admin cap nhat tay hoac cong
+-- thanh toan (VNPay/MoMo) callback ve. changed_by_user_id NULL = do cong thanh toan.
+CREATE TABLE IF NOT EXISTS `payment_status_history` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id` BIGINT UNSIGNED NOT NULL,
+  `from_status` VARCHAR(40) NULL,
+  `to_status` VARCHAR(40) NOT NULL,
+  `note` VARCHAR(255) NULL,
+  `changed_by_user_id` BIGINT UNSIGNED NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_payment_status_history_order` (`order_id`),
+  CONSTRAINT `fk_payment_status_history_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_payment_status_history_user` FOREIGN KEY (`changed_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tuan 2: bo sung cot de shape khop adaptPayment() cua frontend
@@ -389,6 +412,13 @@ CREATE TABLE IF NOT EXISTS `order_shipments` (
   `length` DECIMAL(10,2) NULL,
   `width` DECIMAL(10,2) NULL,
   `height` DECIMAL(10,2) NULL,
+  -- Tuan 5: tich hop GHN that (UC 2.2.17/2.2.22) — phi van chuyen, tien COD thu ho,
+  -- thoi diem dong bo trang thai va thoi diem huy van don.
+  `shipping_fee` DECIMAL(15,2) NULL,
+  `cod_amount` DECIMAL(15,2) NULL,
+  `expected_delivery_time` DATETIME NULL,
+  `synced_at` DATETIME NULL,
+  `cancelled_at` DATETIME NULL,
   `created_by_user_id` BIGINT UNSIGNED NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

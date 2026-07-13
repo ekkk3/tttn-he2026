@@ -43,3 +43,30 @@ export function buildVnpayUrl({ orderId, amount, ipAddr }) {
 
   return `${process.env.VNPAY_URL}?${new URLSearchParams(vnpParams).toString()}`;
 }
+
+// Xac minh chu ky tren query tra ve tu VNPay (ReturnUrl hoac IPN). Tinh lai HMAC-SHA512
+// tren cac tham so con lai (sau khi bo vnp_SecureHash) va so voi chu ky VNPay gui.
+export function verifyVnpayReturn(queryParams) {
+  if (!process.env.VNPAY_HASH_SECRET) return { valid: false, reason: 'NOT_CONFIGURED' };
+  const params = { ...queryParams };
+  const secureHash = params.vnp_SecureHash;
+  delete params.vnp_SecureHash;
+  delete params.vnp_SecureHashType;
+
+  const sorted = sortObject(params);
+  const signData = new URLSearchParams(sorted).toString();
+  const signed = crypto
+    .createHmac('sha512', process.env.VNPAY_HASH_SECRET)
+    .update(Buffer.from(signData, 'utf-8'))
+    .digest('hex');
+
+  return {
+    valid: signed === secureHash,
+    orderId: params.vnp_TxnRef ? Number(params.vnp_TxnRef) : null,
+    // '00' = giao dich thanh cong (ca ma phan hoi lan trang thai giao dich).
+    success: params.vnp_ResponseCode === '00' && params.vnp_TransactionStatus === '00',
+    responseCode: params.vnp_ResponseCode,
+    transactionCode: params.vnp_TransactionNo || null,
+    amount: params.vnp_Amount ? Number(params.vnp_Amount) / 100 : null,
+  };
+}

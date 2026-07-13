@@ -49,3 +49,34 @@ export async function createMomoPayment({ orderId, amount }) {
 
   return data.payUrl || null;
 }
+
+// Xac minh chu ky MoMo tra ve (IPN POST hoac redirectUrl GET). MoMo ky HMAC-SHA256 tren
+// chuoi rawSignature voi cac truong sap xep theo alphabet (theo tai lieu MoMo v2).
+// orderId MoMo co dang `${orderIdNoiBo}-${requestId}` -> tach lay id noi bo.
+export function verifyMomoCallback(payload) {
+  if (!process.env.MOMO_SECRET_KEY) return { valid: false, reason: 'NOT_CONFIGURED' };
+  const raw =
+    `accessKey=${process.env.MOMO_ACCESS_KEY}` +
+    `&amount=${payload.amount}` +
+    `&extraData=${payload.extraData}` +
+    `&message=${payload.message}` +
+    `&orderId=${payload.orderId}` +
+    `&orderInfo=${payload.orderInfo}` +
+    `&orderType=${payload.orderType}` +
+    `&partnerCode=${payload.partnerCode}` +
+    `&payType=${payload.payType}` +
+    `&requestId=${payload.requestId}` +
+    `&responseTime=${payload.responseTime}` +
+    `&resultCode=${payload.resultCode}` +
+    `&transId=${payload.transId}`;
+  const signature = crypto.createHmac('sha256', process.env.MOMO_SECRET_KEY).update(raw).digest('hex');
+
+  return {
+    valid: signature === payload.signature,
+    orderId: payload.orderId ? Number(String(payload.orderId).split('-')[0]) : null,
+    // resultCode 0 = thanh cong (theo tai lieu MoMo).
+    success: String(payload.resultCode) === '0',
+    transactionCode: payload.transId ? String(payload.transId) : null,
+    amount: payload.amount != null ? Number(payload.amount) : null,
+  };
+}

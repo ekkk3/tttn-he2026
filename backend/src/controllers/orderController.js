@@ -55,7 +55,11 @@ async function notifyUser(userId, type, title, message, linkUrl = null) {
 
 // POST /api/orders/checkout
 export const checkout = asyncHandler(async (req, res) => {
-  const { recipient_name, recipient_phone, shipping_address, payment_method = 'COD', payment_gateway, note, voucher_code } = req.body;
+  const {
+    recipient_name, recipient_phone, shipping_address, payment_method = 'COD', payment_gateway, note, voucher_code,
+    shipping_province_id, shipping_province_name, shipping_district_id, shipping_district_name,
+    shipping_ward_code, shipping_ward_name,
+  } = req.body;
   if (!recipient_name || !recipient_phone || !shipping_address) {
     return res.status(422).json({ message: 'Thieu thong tin nguoi nhan hoac dia chi giao hang.' });
   }
@@ -103,9 +107,14 @@ export const checkout = asyncHandler(async (req, res) => {
 
     const [orderResult] = await connection.query(
       `INSERT INTO orders (user_id, order_no, recipient_name, recipient_phone, shipping_address,
+        shipping_province_id, shipping_province_name, shipping_district_id, shipping_district_name,
+        shipping_ward_code, shipping_ward_name,
         payment_method, status, subtotal, shipping_fee, discount_amount, total_amount, note)
-       VALUES (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?)`,
       [req.user.id, orderNo, recipient_name, recipient_phone, shipping_address,
+        shipping_province_id || null, shipping_province_name || null,
+        shipping_district_id || null, shipping_district_name || null,
+        shipping_ward_code || null, shipping_ward_name || null,
         payment_method, subtotal, shipping_fee, discount_amount, total_amount, note || null]
     );
     const orderId = orderResult.insertId;

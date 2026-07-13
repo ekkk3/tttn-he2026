@@ -12,9 +12,9 @@ Nhà cung cấp**.
 | CSDL | MySQL 8 (utf8mb4) |
 | Frontend | ReactJS (Vite) + Tailwind CSS |
 | Cache giỏ hàng | Redis *(tuỳ chọn — fallback MySQL)* |
-| Tìm kiếm | Elasticsearch *(tuỳ chọn — fallback MySQL LIKE)* |
-| Thanh toán | COD, chuyển khoản (QR); VNPay/MoMo *(có sẵn code)* |
-| Vận chuyển | GHN *(tra cứu địa chỉ; tạo vận đơn xem hướng dẫn)* |
+| Tìm kiếm | Elasticsearch fuzzy *(tự index + `npm run reindex`; fallback MySQL LIKE)* |
+| Thanh toán | COD, chuyển khoản (QR); VNPay/MoMo *(cổng + callback return/IPN đã tích hợp)* |
+| Vận chuyển | GHN *(tra cứu địa chỉ + tính phí + tạo/huỷ/đồng bộ vận đơn thật)* |
 | AI Chatbot | OpenAI / Gemini *(fallback tìm sản phẩm nội bộ)* |
 
 ## 2. Yêu cầu môi trường

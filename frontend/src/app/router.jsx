@@ -36,6 +36,7 @@ import { HomePage } from "@/pages/home/ui/home-page";
 import { LoginPage } from "@/pages/login/ui/login-page";
 import { LogoutPage } from "@/pages/logout/ui/logout-page";
 import { OrderSuccessPage } from "@/pages/order-success/ui/order-success-page";
+import { PaymentResultPage } from "@/pages/payment-result/ui/payment-result-page";
 import { ProductDetailPage } from "@/pages/product-detail/ui/product-detail-page";
 import { RegionsPage } from "@/pages/regions/ui/regions-page";
 import { StoryPage } from "@/pages/story/ui/story-page";
@@ -93,6 +94,8 @@ export function AppRoutes() {
                 <Route path={appRoutes.story} element={<StoryPage />}/>
                 <Route path={appRoutes.regions} element={<RegionsPage />}/>
                 <Route path={appRoutes.checkout} element={<CheckoutPage />}/>
+                <Route path={appRoutes.vnpayReturn} element={<PaymentResultPage gateway="vnpay"/>}/>
+                <Route path={appRoutes.momoReturn} element={<PaymentResultPage gateway="momo"/>}/>
                 <Route path={appRoutes.orderSuccess()} element={<RouteGuard allowedRoles={["customer"]}>
                             <OrderSuccessPage />
                         </RouteGuard>}/>

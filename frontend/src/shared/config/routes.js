@@ -33,6 +33,8 @@ export const routes = {
     regions: "/regions",
     checkout: "/checkout",
     orderSuccess: (orderId = ":orderId") => `/checkout/success/${orderId}`,
+    vnpayReturn: "/checkout/vnpay-return",
+    momoReturn: "/checkout/momo-return",
     accountProfile: "/account/profile",
     accountSecurity: "/account/security",
     accountNotifications: "/account/notifications",

@@ -6,7 +6,8 @@
   "description": "Node.js + Express backend cho de tai TMDT dac san vung mien (thay the Laravel backend theo dung de cuong).",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "reindex": "node src/scripts/reindex-products.js"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.15.0",

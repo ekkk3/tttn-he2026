@@ -24,8 +24,22 @@ export const index = asyncHandler(async (req, res) => {
     try {
       const result = await esClient.search({
         index: PRODUCTS_INDEX,
-        query: { fuzzy: { name: { value: searchTerm, fuzziness: 'AUTO' } } },
         size: 200,
+        query: {
+          bool: {
+            // fuzziness AUTO -> chiu duoc loi go/sai chinh ta; multi_match tim tren nhieu
+            // truong (ten uu tien cao nhat, roi nguon goc/vung mien/mo ta).
+            must: [{
+              multi_match: {
+                query: searchTerm,
+                fields: ['name^3', 'origin^2', 'region_name^2', 'short_description', 'category_name', 'description'],
+                fuzziness: 'AUTO',
+                type: 'best_fields',
+              },
+            }],
+            filter: [{ term: { is_active: true } }, { term: { is_deleted: false } }],
+          },
+        },
       });
       esProductIds = result.hits.hits.map((h) => h._source.id);
       if (esProductIds.length === 0) {

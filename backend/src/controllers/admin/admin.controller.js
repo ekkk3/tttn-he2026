@@ -3,6 +3,10 @@ import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts, serializeOrderDetail, serializeOrderSummary } from '../../utils/serializers.js';
 import { POST_SELECT, serializePost, loadPostComments } from '../miscController.js';
+import { indexProduct } from '../../utils/productIndex.js';
+import {
+  ghnConfigured, calculateFee, createShippingOrder, getShippingOrderDetail, cancelShippingOrder,
+} from '../../utils/ghn.js';
 
 // Tat ca cac handler duoi day tuong ung 1-1 voi cac Controller trong
 // app/Http/Controllers/Api/Admin/*.php cua repo Laravel goc, giu nguyen duong dan route
@@ -304,7 +308,7 @@ export const storeProduct = asyncHandler(async (req, res) => {
       description || null, short_description || null, origin || null, image_url || null,
       sale_price || 0, stock_quantity, is_active ? 1 : 0]
   );
-  // TODO: index san pham nay vao Elasticsearch tai day (esClient.index) de fuzzy search cap nhat kip thoi.
+  await indexProduct(result.insertId); // Dong bo Elasticsearch de fuzzy search cap nhat ngay.
   res.status(201).json({ data: await loadAdminProduct(result.insertId) });
 });
 export const updateProduct = asyncHandler(async (req, res) => {
@@ -321,15 +325,18 @@ export const updateProduct = asyncHandler(async (req, res) => {
     params.push(req.params.id);
     await query(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
   }
+  await indexProduct(req.params.id);
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 export const updateProductStatus = asyncHandler(async (req, res) => {
   await query('UPDATE products SET is_active = ? WHERE id = ?', [req.body.is_active ? 1 : 0, req.params.id]);
+  await indexProduct(req.params.id);
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 export const destroyProduct = asyncHandler(async (req, res) => {
   // "Xoa" = an san pham (is_active=0) de van hien trong danh sach admin voi trang thai Tam dung.
   await query('UPDATE products SET is_active = 0 WHERE id = ?', [req.params.id]);
+  await indexProduct(req.params.id); // is_active=false -> search se loc ra khoi ket qua.
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 
@@ -519,30 +526,136 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
   res.json({ data: { total: ids.length, success, failed: ids.length - success, results } });
 });
 
-// ---------------- Order shipment (UC 2.2.17) ----------------
-// GHN that can token; khong co token -> tao van don thu cong (manual) + tracking mock.
+// ---------------- Order shipment (UC 2.2.17 / 2.2.22) ----------------
+// GHN thuc: neu carrier la GHN + da cau hinh GHN_TOKEN/GHN_SHOP_ID + don co dia chi
+// huyen/xa -> goi API tao van don that (co ma van don, phi, thoi gian giao du kien).
+// Nguoc lai -> tao van don thu cong (ma noi bo) de van van hanh khi chua co token.
+function parseGhnTime(v) {
+  if (!v) return null;
+  const d = typeof v === 'number' ? new Date(v * 1000) : new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// POST /api/admin/orders/:order/shipment/fee-preview — xem truoc phi GHN truoc khi tao van don.
+export const previewShipmentFee = asyncHandler(async (req, res) => {
+  const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  const toDistrict = req.body.to_district_id || order.shipping_district_id;
+  const toWard = req.body.to_ward_code || order.shipping_ward_code;
+
+  if (!ghnConfigured()) {
+    return res.json({
+      data: { configured: false, source: 'ORDER', fee: order.shipping_fee != null ? Number(order.shipping_fee) : null },
+    });
+  }
+  if (!toDistrict || !toWard) {
+    return res.status(422).json({ message: 'Don hang thieu quan/huyen hoac phuong/xa GHN de tinh phi.' });
+  }
+  try {
+    const fee = await calculateFee({ toDistrictId: toDistrict, toWardCode: toWard, insuranceValue: Number(order.total_amount) });
+    res.json({ data: { configured: true, source: 'GHN', fee: fee?.total != null ? Number(fee.total) : null, detail: fee } });
+  } catch (err) {
+    res.status(502).json({ message: 'GHN tinh phi that bai: ' + (err.response?.data?.message || err.message) });
+  }
+});
+
 export const storeShipment = asyncHandler(async (req, res) => {
   const {
     shipping_carrier_id, tracking_code, tracking_url, weight, length, width, height,
+    to_district_id, to_ward_code, cod_amount,
   } = req.body;
+  const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
+  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
   const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [shipping_carrier_id]);
-  const trackingCode = tracking_code || `${carrier?.code || 'SHIP'}${Date.now()}`;
+
+  const provider = carrier?.provider || 'MANUAL';
+  const toDistrict = to_district_id || order.shipping_district_id;
+  const toWard = to_ward_code || order.shipping_ward_code;
+  // COD: mac dinh thu ho tong tien don neu thanh toan COD, con thanh toan online -> 0.
+  const codAmount = cod_amount != null ? Number(cod_amount)
+    : (order.payment_method === 'COD' ? Number(order.total_amount) : 0);
+
+  let trackingCode = tracking_code || null;
+  let trackingUrl = tracking_url || null;
+  let shippingFee = null;
+  let expectedDelivery = null;
+  let status = 'created';
+  let ghnError = null;
+
+  if (provider === 'GHN' && ghnConfigured() && toDistrict && toWard) {
+    try {
+      const items = await query(
+        'SELECT product_name_snapshot AS name, quantity FROM order_items WHERE order_id = ?', [order.id]
+      );
+      const ghnRes = await createShippingOrder({
+        order, toDistrictId: toDistrict, toWardCode: toWard,
+        items: items.map((it) => ({ name: it.name, quantity: it.quantity, weight: 200 })),
+        weight, length, width, height, codAmount, insuranceValue: Number(order.total_amount),
+      });
+      if (ghnRes) {
+        trackingCode = ghnRes.order_code;
+        trackingUrl = `https://donhang.ghn.vn/?order_code=${ghnRes.order_code}`;
+        shippingFee = ghnRes.total_fee != null ? Number(ghnRes.total_fee) : null;
+        expectedDelivery = parseGhnTime(ghnRes.expected_delivery_time);
+        status = 'ready_to_pick';
+      }
+    } catch (err) {
+      ghnError = err.response?.data?.message || err.message;
+      console.error('[ghn] createShippingOrder that bai, tao van don thu cong:', ghnError);
+    }
+  }
+
+  // Fallback thu cong: sinh ma van don noi bo + lay phi tu don hang neu GHN khong tra.
+  if (!trackingCode) trackingCode = `${carrier?.code || 'SHIP'}${Date.now()}`;
+  if (shippingFee == null) shippingFee = order.shipping_fee != null ? Number(order.shipping_fee) : null;
+
   await query(
     `INSERT INTO order_shipments (order_id, shipping_carrier_id, provider, status, tracking_code, tracking_url,
-       weight, length, width, height, created_by_user_id)
-     VALUES (?, ?, ?, 'created', ?, ?, ?, ?, ?, ?, ?)`,
-    [req.params.order, shipping_carrier_id, carrier?.provider || 'MANUAL', trackingCode, tracking_url || null,
-      weight || null, length || null, width || null, height || null, req.user.id]
+       weight, length, width, height, shipping_fee, cod_amount, expected_delivery_time, created_by_user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [order.id, shipping_carrier_id, provider, status, trackingCode, trackingUrl,
+      weight || null, length || null, width || null, height || null,
+      shippingFee, codAmount, expectedDelivery, req.user.id]
   );
-  res.status(201).json({ data: await loadAdminOrderDetail(req.params.order) });
+  res.status(201).json({ data: await loadAdminOrderDetail(order.id), ghn_error: ghnError });
 });
+
 export const syncShipment = asyncHandler(async (req, res) => {
-  // GHN sandbox chua noi — chi cap nhat synced_at de UI phan anh (xem README muc GHTK/GHN).
-  await query('UPDATE order_shipments SET synced_at = NOW() WHERE order_id = ?', [req.params.order]);
+  const [shipment] = await query(
+    `SELECT s.*, c.provider AS carrier_provider FROM order_shipments s
+     LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
+     WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1`,
+    [req.params.order]
+  );
+  if (!shipment) return res.status(404).json({ message: 'Don hang chua co van don.' });
+
+  let newStatus = shipment.status;
+  if (shipment.provider === 'GHN' && ghnConfigured() && shipment.tracking_code) {
+    try {
+      const detail = await getShippingOrderDetail(shipment.tracking_code);
+      if (detail?.status) newStatus = detail.status;
+    } catch (err) {
+      console.error('[ghn] getShippingOrderDetail that bai:', err.response?.data?.message || err.message);
+    }
+  }
+  await query('UPDATE order_shipments SET status = ?, synced_at = NOW() WHERE id = ?', [newStatus, shipment.id]);
   res.json({ data: await loadAdminOrderDetail(req.params.order) });
 });
+
 export const destroyShipment = asyncHandler(async (req, res) => {
-  await query('UPDATE order_shipments SET cancelled_at = NOW() WHERE order_id = ?', [req.params.order]);
+  const [shipment] = await query(
+    `SELECT s.*, c.provider AS carrier_provider FROM order_shipments s
+     LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
+     WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1`,
+    [req.params.order]
+  );
+  if (shipment && shipment.provider === 'GHN' && ghnConfigured() && shipment.tracking_code) {
+    try {
+      await cancelShippingOrder(shipment.tracking_code);
+    } catch (err) {
+      console.error('[ghn] cancelShippingOrder that bai:', err.response?.data?.message || err.message);
+    }
+  }
   await query('DELETE FROM order_shipments WHERE order_id = ?', [req.params.order]);
   res.json({ data: await loadAdminOrderDetail(req.params.order) });
 });

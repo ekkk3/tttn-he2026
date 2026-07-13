@@ -16,6 +16,7 @@ import * as operationController from '../controllers/operationController.js';
 import * as chatController from '../controllers/chatController.js';
 import * as reviewController from '../controllers/reviewController.js';
 import * as voucherController from '../controllers/voucherController.js';
+import * as paymentController from '../controllers/paymentController.js';
 import * as admin from '../controllers/admin/admin.controller.js';
 import { uploadSupplierLicense } from '../middleware/upload.js';
 
@@ -47,6 +48,14 @@ router.post('/newsletter-subscriptions', misc.subscribeNewsletter);
 router.get('/shipping/ghn/provinces', ghnLocationController.provinces);
 router.get('/shipping/ghn/districts', ghnLocationController.districts);
 router.get('/shipping/ghn/wards', ghnLocationController.wards);
+router.post('/shipping/ghn/fee', ghnLocationController.fee);
+
+// Callback thanh toan (public, cong thanh toan goi ve — khong qua middleware auth).
+// UC 2.2.9 / 2.2.25. Return = trinh duyet khach quay ve; IPN = server->server.
+router.get('/payments/vnpay/return', paymentController.vnpayReturn);
+router.get('/payments/vnpay/ipn', paymentController.vnpayIpn);
+router.get('/payments/momo/return', paymentController.momoReturn);
+router.post('/payments/momo/ipn', paymentController.momoIpn);
 
 router.get('/posts', misc.listPosts);
 
@@ -179,6 +188,7 @@ adminRouter.get('/orders/:order', admin.showOrder);
 adminRouter.post('/orders/bulk-status', admin.bulkUpdateStatus);
 adminRouter.patch('/orders/:order/status', admin.updateOrderStatus);
 adminRouter.patch('/orders/:order/payment-status', admin.updatePaymentStatus);
+adminRouter.post('/orders/:order/shipment/fee-preview', admin.previewShipmentFee);
 adminRouter.post('/orders/:order/shipment', admin.storeShipment);
 adminRouter.post('/orders/:order/shipment/sync', admin.syncShipment);
 adminRouter.delete('/orders/:order/shipment', admin.destroyShipment);

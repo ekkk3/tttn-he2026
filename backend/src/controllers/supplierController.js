@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
+import { indexProduct } from '../utils/productIndex.js';
 
 // --- UC 2.2.15 (phan NCC): NCC quan ly san pham CUA MINH ---
 async function currentSupplierId(req) {
@@ -38,6 +39,7 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
     [category_id, supplierId, region_id || null, finalSku, slug, name, description || null,
       short_description || null, origin || null, image_url || null, sale_price || 0, stock_quantity]
   );
+  await indexProduct(result.insertId);
   const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [result.insertId]);
   res.status(201).json({ data: serializeProduct(row) });
 });
@@ -124,6 +126,7 @@ export const updateMyProduct = asyncHandler(async (req, res) => {
     params.push(req.params.id);
     await query(`UPDATE products SET ${updates.join(', ')} WHERE id = ?`, params);
   }
+  await indexProduct(req.params.id);
   const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [req.params.id]);
   res.json({ data: serializeProduct(row) });
 });

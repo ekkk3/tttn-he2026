@@ -22,6 +22,16 @@ const paymentOptions = [
         label: "Chuyển khoản ngân hàng",
         description: "Admin sẽ xác nhận thanh toán trước khi xử lý đơn hàng",
     },
+    {
+        id: "VNPAY",
+        label: "Ví điện tử / thẻ VNPay",
+        description: "Thanh toán online qua cổng VNPay, xác nhận tự động",
+    },
+    {
+        id: "MOMO",
+        label: "Ví MoMo",
+        description: "Thanh toán online qua ví MoMo, xác nhận tự động",
+    },
 ];
 function getDefaultAddress(profile) {
     return profile.addresses.find((address) => address.isDefault) ?? profile.addresses[0];
@@ -418,6 +428,21 @@ export function CheckoutPage() {
             city: form.shippingProvinceName,
         });
         await loadCart();
+        // VNPay/MoMo: backend tra ve URL cong thanh toan -> chuyen trinh duyet sang cong.
+        // Sau khi thanh toan, cong se redirect ve /checkout/{vnpay|momo}-return de hien ket qua.
+        if (result.paymentRedirectUrl) {
+            window.location.href = result.paymentRedirectUrl;
+            return;
+        }
+        if ((paymentMethod === "VNPAY" || paymentMethod === "MOMO") && !result.paymentRedirectUrl) {
+            // Chua cau hinh cong thanh toan (sandbox) -> tao don o trang thai cho, bao khach.
+            pushToast({
+                tone: "warning",
+                message: "Cổng thanh toán online chưa được cấu hình. Đơn đã được tạo, vui lòng chọn cách thanh toán khác.",
+            });
+            void navigate(routes.accountOrderDetail(result.data.id));
+            return;
+        }
         if (paymentMethod === "BANK_TRANSFER") {
             setCreatedBankTransferOrder(result.data);
             setBankTransferMessage("");

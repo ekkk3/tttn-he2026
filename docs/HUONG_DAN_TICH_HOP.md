@@ -2,8 +2,9 @@
 
 Tài liệu này hướng dẫn **từng bước** để bật các tích hợp cần credential/khoá của bên thứ ba.
 Toàn bộ hệ thống đã được thiết kế **tự hạ cấp an toàn**: khi chưa cấu hình, tính năng vẫn
-chạy ở chế độ fallback (không sập). Khi điền đủ biến `.env` (và với 3 mục cần thêm code
-frontend/callback thì dán các đoạn ở cuối tài liệu), các luồng sẽ hoạt động thật.
+chạy ở chế độ fallback (không sập). Hầu hết chỉ cần điền `.env` là chạy thật (bao gồm
+VNPay/MoMo và GHN — đã tích hợp sẵn callback + tạo vận đơn). Riêng đăng nhập Google/Facebook
+cần dán thêm nút ở frontend (mục 1).
 
 > Mọi biến đặt trong `backend/.env` (copy từ `backend/.env.example`). Sau khi sửa `.env`,
 > khởi động lại backend (`npm run dev` tự restart).
@@ -14,11 +15,11 @@ Bảng tổng quan mức độ sẵn sàng:
 |---|---|---|
 | AI Chatbot (Gemini/OpenAI) | ✅ Có | Điền key là chạy thật; không có key thì fallback tìm SP nội bộ |
 | Email quên mật khẩu (SMTP) | ✅ Có | Không có SMTP thì in link reset ra console |
-| Tìm kiếm Elasticsearch | ✅ Có | Không có thì fallback MySQL LIKE |
+| Tìm kiếm Elasticsearch (fuzzy) | ✅ Có | Index tự tạo + tự đồng bộ khi CRUD; `npm run reindex` để index lại. Không có ES thì fallback MySQL LIKE |
 | Giỏ hàng Redis | ✅ Có | Không có thì đọc/ghi thẳng MySQL |
+| **VNPay / MoMo** | ✅ Có (điền `.env`) | Cổng thanh toán + **callback return/IPN** đã tích hợp sẵn; cập nhật trạng thái đơn tự động (mục 2) |
+| **GHN (vận đơn + phí thật)** | ✅ Có (điền `.env`) | Tra cứu địa chỉ + **tính phí + tạo/huỷ/đồng bộ vận đơn** đã tích hợp sẵn (mục 3) |
 | **Đăng nhập Google/Facebook** | ⚠️ Gần đủ | Điền `.env` + dán nút đăng nhập ở frontend (mục 1) |
-| **VNPay / MoMo** | ⚠️ Gần đủ | Điền `.env` + thêm tùy chọn thanh toán + route callback (mục 2) |
-| **GHN (vận đơn thật)** | ⚠️ Gần đủ | Tra cứu tỉnh/huyện/xã chạy ngay; tạo vận đơn/phí cần hoàn thiện `storeShipment` (mục 3) |
 
 ---
 
@@ -52,8 +53,12 @@ SMTP_FROM=no-reply@dacsanvungmien.local
 ELASTICSEARCH_NODE=http://127.0.0.1:9200
 REDIS_URL=redis://127.0.0.1:6379
 ```
-- Bỏ trống hoàn toàn OK (fallback MySQL). Muốn dùng ES fuzzy search cần chạy script
-  index sản phẩm sang ES (chưa có sẵn — xem `backend/src/config/elasticsearch.js`).
+- Bỏ trống hoàn toàn OK (fallback MySQL LIKE). Khi có `ELASTICSEARCH_NODE`:
+  - Backend **tự tạo index và tự nạp dữ liệu** lúc khởi động nếu index rỗng
+    (`bootstrapProductIndex` trong `backend/src/utils/productIndex.js`).
+  - Mỗi lần admin/NCC tạo–sửa sản phẩm, sản phẩm được **đồng bộ ngay** vào ES.
+  - Muốn index lại toàn bộ (ví dụ sau khi nạp lại `seed.sql`): `cd backend && npm run reindex`.
+  - Tìm kiếm dùng `multi_match` + `fuzziness: AUTO` (chịu lỗi gõ/sai chính tả, có bỏ dấu).
 
 ---
 
@@ -158,77 +163,27 @@ MOMO_RETURN_URL=http://localhost:5173/checkout/momo-return
 MOMO_NOTIFY_URL=http://127.0.0.1:8000/api/payments/momo/ipn
 ```
 
-### 2.3. Trạng thái code
-- **Backend tạo URL thanh toán đã sẵn**: khi `POST /api/orders/checkout` với
-  `payment_method: "VNPAY"` hoặc `"MOMO"`, hệ thống ký HMAC đúng chuẩn và trả về
-  `data.payment_redirect_url`. Xem `backend/src/utils/vnpay.js`, `momo.js`,
-  `orderController.checkout()`.
-- **Còn cần 2 mảnh**:
-  1. **Frontend**: thêm 2 tùy chọn thanh toán VNPAY/MoMo ở checkout và **redirect** người
-     dùng sang `payment_redirect_url`.
-  2. **Backend**: route nhận **callback** từ cổng để xác minh chữ ký và cập nhật trạng thái
-     thanh toán đơn hàng.
+### 2.3. Trạng thái code — ĐÃ TÍCH HỢP SẴN
+Chỉ cần điền `.env` ở trên là chạy full luồng, **không phải dán thêm code**:
+- **Tạo URL thanh toán**: `POST /api/orders/checkout` với `payment_method: "VNPAY"|"MOMO"`
+  ký HMAC đúng chuẩn, trả `data.payment_redirect_url` (`utils/vnpay.js`, `utils/momo.js`).
+- **Frontend**: trang checkout đã có 2 tuỳ chọn VNPay/MoMo và tự `window.location` sang cổng
+  (`pages/checkout/ui/checkout-page.jsx`). Nếu chưa cấu hình `.env`, hệ thống báo và tạo đơn
+  chờ để khách chọn cách khác.
+- **Callback**: `backend/src/controllers/paymentController.js` xác minh chữ ký (return + IPN),
+  cập nhật `payments.payment_status`, ghi `payment_status_history`, chuyển đơn PENDING→CONFIRMED,
+  gửi thông báo cho khách. Cập nhật **idempotent** (return và IPN gọi cùng lúc không ghi trùng).
+- **Route** (đã khai báo public trong `routes/api.routes.js`, trên `router.use(auth)`):
+  ```
+  GET  /api/payments/vnpay/return   GET  /api/payments/vnpay/ipn
+  GET  /api/payments/momo/return    POST /api/payments/momo/ipn
+  ```
+- **Trang kết quả** cho khách: `/checkout/vnpay-return`, `/checkout/momo-return`
+  (`pages/payment-result/ui/payment-result-page.jsx`) — gọi endpoint return để xác minh và hiển thị.
 
-### 2.4. Đoạn code cần dán
-
-**(a) Frontend — thêm tùy chọn + redirect** `frontend/src/pages/checkout/ui/checkout-page.jsx`:
-```js
-// Thêm vào mảng paymentOptions:
-{ id: "VNPAY", label: "Ví VNPay / Thẻ ATM", description: "Thanh toán online qua cổng VNPay" },
-{ id: "MOMO",  label: "Ví MoMo", description: "Thanh toán qua ví điện tử MoMo" },
-
-// Trong handlePlaceOrder, sau khi checkout thành công, TRƯỚC khi navigate:
-if (result.data.payment_redirect_url) {
-    window.location.href = result.data.payment_redirect_url;
-    return;
-}
-```
-
-**(b) Backend — route callback** tạo `backend/src/controllers/paymentController.js`:
-```js
-import crypto from 'crypto';
-import { query } from '../config/db.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
-
-// VNPay redirect về: xác minh vnp_SecureHash rồi cập nhật payment.
-export const vnpayReturn = asyncHandler(async (req, res) => {
-  const params = { ...req.query };
-  const secureHash = params.vnp_SecureHash;
-  delete params.vnp_SecureHash; delete params.vnp_SecureHashType;
-  const sorted = Object.keys(params).sort().reduce((a, k) => (a[k] = params[k], a), {});
-  const signData = new URLSearchParams(sorted).toString();
-  const signed = crypto.createHmac('sha512', process.env.VNPAY_HASH_SECRET)
-    .update(Buffer.from(signData, 'utf-8')).digest('hex');
-  const ok = signed === secureHash && params.vnp_ResponseCode === '00';
-  const orderId = params.vnp_TxnRef;
-  if (ok) {
-    await query("UPDATE payments SET payment_status='SUCCESS', paid_at=NOW() WHERE order_id=?", [orderId]);
-    await query("UPDATE orders SET status='CONFIRMED' WHERE id=? AND status='PENDING'", [orderId]);
-  }
-  // Điều hướng người dùng về trang kết quả của frontend:
-  res.redirect(`${process.env.FRONTEND_URL}/checkout/success/${orderId}?paid=${ok ? 1 : 0}`);
-});
-
-// MoMo gọi IPN (server-to-server): xác minh chữ ký, cập nhật payment.
-export const momoIpn = asyncHandler(async (req, res) => {
-  const { orderId, resultCode } = req.body; // orderId dạng "<orderId>-<requestId>"
-  const realOrderId = String(orderId).split('-')[0];
-  if (String(resultCode) === '0') {
-    await query("UPDATE payments SET payment_status='SUCCESS', paid_at=NOW() WHERE order_id=?", [realOrderId]);
-    await query("UPDATE orders SET status='CONFIRMED' WHERE id=? AND status='PENDING'", [realOrderId]);
-  }
-  res.status(204).end();
-});
-```
-Rồi khai báo route (public, KHÔNG qua `auth`) trong `backend/src/routes/api.routes.js`,
-đặt phía trên `router.use(auth)`:
-```js
-import * as payment from '../controllers/paymentController.js';
-router.get('/payments/vnpay/return', payment.vnpayReturn);
-router.post('/payments/momo/ipn', payment.momoIpn);
-```
-> Lưu ý: đổi `VNPAY_RETURN_URL` thành `http://127.0.0.1:8000/api/payments/vnpay/return`
-> để VNPay gọi thẳng backend xác minh (route ở trên sẽ redirect tiếp về frontend).
+> `VNPAY_RETURN_URL`/`MOMO_RETURN_URL` trỏ về trang FE (đã đặt sẵn trong `.env.example`).
+> Trang FE gọi backend xác minh. Muốn VNPay gọi IPN server→server, khai báo thêm
+> `http://127.0.0.1:8000/api/payments/vnpay/ipn` trên cổng VNPay (biến `VNPAY_IPN_URL` gợi ý trong `.env.example`).
 
 ---
 
@@ -242,43 +197,28 @@ router.post('/payments/momo/ipn', payment.momoIpn);
 ```env
 GHN_TOKEN=<token>
 GHN_SHOP_ID=<shop_id>
+GHN_FROM_DISTRICT_ID=<district_id kho lấy hàng>   # dùng để tính phí (from_district_id)
 GHN_API_URL=https://online-gateway.ghn.vn/shiip/public-api   # hoặc dev-online-gateway.ghn.vn cho test
 ```
+> Cần **cả** `GHN_TOKEN` và `GHN_SHOP_ID` thì tính phí/tạo vận đơn thật mới bật
+> (`ghnConfigured()`); thiếu một trong hai sẽ tự quay về vận đơn thủ công.
 
-### 3.3. Trạng thái code
-- **Chạy ngay sau khi có token**: tra cứu Tỉnh/Huyện/Xã tại checkout & màn tạo vận đơn admin
-  (`GET /api/shipping/ghn/provinces|districts|wards`) — xem `backend/src/utils/ghn.js`.
-- **Cần hoàn thiện**: tính phí thật + tạo vận đơn thật. Hiện `storeShipment` tạo vận đơn
-  **thủ công/mô phỏng** (tracking sinh nội bộ). Bổ sung 2 hàm dưới rồi gọi trong
-  `admin.controller.js → storeShipment()`.
+### 3.3. Trạng thái code — ĐÃ TÍCH HỢP SẴN
+- **Tra cứu địa chỉ**: `GET /api/shipping/ghn/provinces|districts|wards` (checkout dùng để chọn
+  Tỉnh/Huyện/Xã; các ID được lưu vào đơn hàng khi đặt).
+- **Tính phí**: `POST /api/shipping/ghn/fee` (checkout) và
+  `POST /api/admin/orders/:order/shipment/fee-preview` (admin xem trước phí).
+- **Tạo vận đơn**: khi admin tạo vận đơn với carrier có `provider = 'GHN'`, `storeShipment`
+  gọi GHN `/v2/shipping-order/create` → lưu `order_code`, `tracking_url`, `shipping_fee`,
+  `cod_amount`, `expected_delivery_time`. Nếu chưa cấu hình GHN → tự tạo vận đơn thủ công.
+- **Đồng bộ / huỷ**: `syncShipment` gọi `/v2/shipping-order/detail` cập nhật trạng thái;
+  `destroyShipment` gọi `/v2/switch-status/cancel` huỷ vận đơn trên GHN.
+- Các hàm GHN: `backend/src/utils/ghn.js` (`calculateFee`, `createShippingOrder`,
+  `getShippingOrderDetail`, `cancelShippingOrder`, `ghnConfigured`).
 
-### 3.4. Đoạn code cần thêm vào `backend/src/utils/ghn.js`
-```js
-// Tính phí vận chuyển thật.
-export async function calculateFee({ toDistrictId, toWardCode, weight = 1000, ...dims }) {
-  const { data } = await ghn.post('/v2/shipping-order/fee', {
-    shop_id: Number(process.env.GHN_SHOP_ID),
-    service_type_id: 2,
-    to_district_id: toDistrictId,
-    to_ward_code: toWardCode,
-    weight, length: dims.length || 20, width: dims.width || 20, height: dims.height || 10,
-  }, { headers: { ShopId: process.env.GHN_SHOP_ID } });
-  return data.data; // { total, service_fee, ... }
-}
-
-// Tạo vận đơn thật -> trả tracking code.
-export async function createGhnOrder(payload) {
-  const { data } = await ghn.post('/v2/shipping-order/create', {
-    shop_id: Number(process.env.GHN_SHOP_ID),
-    payment_type_id: 1, required_note: 'KHONGCHOXEMHANG', service_type_id: 2,
-    ...payload, // to_name, to_phone, to_address, to_ward_code, to_district_id, weight, items...
-  }, { headers: { ShopId: process.env.GHN_SHOP_ID } });
-  return data.data; // { order_code, total_fee, expected_delivery_time }
-}
-```
-Trong `admin.controller.js → storeShipment()`, khi carrier là GHN thì gọi `createGhnOrder(...)`,
-lưu `order_code` trả về vào `order_shipments.tracking_code` thay cho mã sinh nội bộ; dùng
-`calculateFee(...)` lúc checkout nếu muốn phí GHN thật thay cho công thức phí hiện tại.
+> Lưu ý dữ liệu: đơn đặt sau khi thêm tính năng này sẽ lưu `shipping_district_id` /
+> `shipping_ward_code` để tạo vận đơn GHN. Với DB cũ, chạy `sql/upgrade-shipping-payment.sql`
+> để thêm các cột mới (đơn cũ chưa có địa chỉ GHN thì admin nhập tay `to_district_id`/`to_ward_code`).
 
 ---
 

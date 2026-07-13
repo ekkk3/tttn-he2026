@@ -4,8 +4,12 @@ import morgan from 'morgan';
 import 'dotenv/config';
 import apiRoutes from './routes/api.routes.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
+import { bootstrapProductIndex } from './utils/productIndex.js';
 
 const app = express();
+
+// Tao/dong bo index Elasticsearch luc khoi dong (best-effort, khong chan server).
+bootstrapProductIndex();
 
 // credentials:true khong the di chung voi origin '*' (browser se chan) — cho phep ca
 // localhost va 127.0.0.1 vi Vite dev server co the duoc mo bang ca hai dang.

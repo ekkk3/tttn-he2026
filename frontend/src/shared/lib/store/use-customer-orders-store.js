@@ -143,7 +143,8 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                     [order.id]: order,
                 },
             }));
-            return { success: true, data: order };
+            // payment_redirect_url: URL cong thanh toan VNPay/MoMo (neu chon), de checkout redirect.
+            return { success: true, data: order, paymentRedirectUrl: response.data?.payment_redirect_url ?? null };
         }
         catch (error) {
             if (isUnauthorizedApiError(error)) {
