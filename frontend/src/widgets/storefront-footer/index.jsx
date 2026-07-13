@@ -38,7 +38,7 @@ export function StorefrontFooter() {
                             Heritage Harvest
                         </div>
                         <p className="max-w-xs text-xs text-zinc-500">
-                            © 2024 Heritage Harvest. Tôn vinh đặc sản Việt và câu chuyện vùng nguyên
+                            © 2026 Heritage Harvest. Tôn vinh đặc sản Việt và câu chuyện vùng nguyên
                             liệu.
                         </p>
                     </div>
@@ -130,7 +130,7 @@ export function StorefrontFooter() {
                 </div>
             </div>
             <div className="border-t border-zinc-200 px-8 py-6 text-center text-zinc-500">
-                © 2024 Heritage Harvest. Tôn vinh đặc sản Việt và câu chuyện vùng nguyên liệu.
+                © 2026 Heritage Harvest. Tôn vinh đặc sản Việt và câu chuyện vùng nguyên liệu.
             </div>
         </footer>);
 }
