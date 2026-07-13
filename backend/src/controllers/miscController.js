@@ -138,27 +138,71 @@ export const subscribeNewsletter = asyncHandler(async (req, res) => {
   res.status(201).json({ message: 'Da dang ky nhan tin.' });
 });
 
-// --- Posts (blog / community, public + tuong tac) ---
+// --- Posts (blog / community) — frontend doc { data } voi likes_count, comments_count,
+// comments[] va author long (xem use-post-store.js + story-page.jsx). ---
+export const POST_SELECT = `
+  SELECT p.*, u.full_name AS author_name,
+    (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes_count,
+    (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id AND pc.status = 'VISIBLE') AS comments_count
+  FROM posts p LEFT JOIN users u ON u.id = p.created_by_user_id
+`;
+export async function loadPostComments(postId, includeHidden = false) {
+  const rows = await query(
+    `SELECT c.*, u.full_name AS author_name FROM post_comments c LEFT JOIN users u ON u.id = c.user_id
+     WHERE c.post_id = ? ${includeHidden ? '' : "AND c.status = 'VISIBLE'"} ORDER BY c.id DESC`,
+    [postId]
+  );
+  return rows.map((r) => ({
+    id: r.id, post_id: r.post_id, content: r.content, status: r.status, created_at: r.created_at,
+    author: { full_name: r.author_name },
+  }));
+}
+export function serializePost(row, comments = []) {
+  return {
+    id: row.id, title: row.title, excerpt: row.excerpt, body: row.body,
+    cover_image_url: row.cover_image_url, status: row.status,
+    published_at: row.published_at, created_at: row.created_at,
+    likes_count: Number(row.likes_count || 0), comments_count: Number(row.comments_count || 0),
+    author: row.created_by_user_id ? { full_name: row.author_name } : { full_name: 'Admin' },
+    comments,
+  };
+}
 export const listPosts = asyncHandler(async (req, res) => {
-  const rows = await query("SELECT * FROM posts WHERE status = 'PUBLISHED' ORDER BY published_at DESC");
-  res.json({ posts: rows });
+  const rows = await query(`${POST_SELECT} WHERE p.status = 'PUBLISHED' ORDER BY p.published_at DESC`);
+  const data = [];
+  for (const row of rows) data.push(serializePost(row, await loadPostComments(row.id)));
+  res.json({ data });
 });
 export const myLikedPosts = asyncHandler(async (req, res) => {
   const rows = await query('SELECT post_id FROM post_likes WHERE user_id = ?', [req.user.id]);
-  res.json({ post_ids: rows.map((r) => r.post_id) });
+  res.json({ data: { post_ids: rows.map((r) => r.post_id) } });
 });
 export const storeComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
-  const result = await query('INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)', [
-    req.params.post, req.user.id, content,
-  ]);
-  res.status(201).json({ id: result.insertId });
+  if (!content || content.trim().length < 2) return res.status(422).json({ message: 'Binh luan qua ngan.' });
+  const result = await query(
+    "INSERT INTO post_comments (post_id, user_id, content, status) VALUES (?, ?, ?, 'VISIBLE')",
+    [req.params.post, req.user.id, content.trim()]
+  );
+  const [row] = await query(
+    'SELECT c.*, u.full_name AS author_name FROM post_comments c LEFT JOIN users u ON u.id = c.user_id WHERE c.id = ?',
+    [result.insertId]
+  );
+  const [{ cnt }] = await query("SELECT COUNT(*) AS cnt FROM post_comments WHERE post_id = ? AND status = 'VISIBLE'", [req.params.post]);
+  res.status(201).json({
+    data: { id: row.id, post_id: row.post_id, content: row.content, status: row.status, created_at: row.created_at, author: { full_name: row.author_name } },
+    meta: { comments_count: cnt },
+  });
 });
+async function likesCount(postId) {
+  const [{ cnt }] = await query('SELECT COUNT(*) AS cnt FROM post_likes WHERE post_id = ?', [postId]);
+  return cnt;
+}
 export const likePost = asyncHandler(async (req, res) => {
   await query('INSERT IGNORE INTO post_likes (post_id, user_id) VALUES (?, ?)', [req.params.post, req.user.id]);
-  res.status(201).json({ message: 'Da thich bai viet.' });
+  res.status(201).json({ data: { likes_count: await likesCount(req.params.post), liked: true } });
 });
 export const unlikePost = asyncHandler(async (req, res) => {
   await query('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?', [req.params.post, req.user.id]);
-  res.json({ message: 'Da bo thich.' });
+  res.json({ data: { likes_count: await likesCount(req.params.post), liked: false } });
 });

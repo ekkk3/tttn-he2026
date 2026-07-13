@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts, serializeOrderDetail, serializeOrderSummary } from '../../utils/serializers.js';
+import { POST_SELECT, serializePost, loadPostComments } from '../miscController.js';
 
 // Tat ca cac handler duoi day tuong ung 1-1 voi cac Controller trong
 // app/Http/Controllers/Api/Admin/*.php cua repo Laravel goc, giu nguyen duong dan route
@@ -225,40 +226,45 @@ export const destroyUser = asyncHandler(async (req, res) => {
 });
 
 // ---------------- Admin accounts ----------------
+const ADMIN_SELECT = `
+  SELECT u.id, u.full_name, u.email, u.phone, u.is_active, u.admin_role_id, ar.name AS admin_role
+  FROM users u LEFT JOIN admin_roles ar ON ar.id = u.admin_role_id
+`;
+async function loadAdmin(id) {
+  const [row] = await query(`${ADMIN_SELECT} WHERE u.id = ?`, [id]);
+  return row || null;
+}
 export const listAdmins = asyncHandler(async (req, res) => {
-  const rows = await query(
-    `SELECT u.id, u.full_name, u.email, u.is_active, ar.name AS admin_role
-     FROM users u LEFT JOIN admin_roles ar ON ar.id = u.admin_role_id
-     WHERE u.role = 'ADMIN' AND u.is_deleted = 0 ORDER BY u.id DESC`
-  );
-  res.json({ admins: rows });
+  const rows = await query(`${ADMIN_SELECT} WHERE u.role = 'ADMIN' AND u.is_deleted = 0 ORDER BY u.id DESC`);
+  res.json({ data: rows });
 });
 export const storeAdmin = asyncHandler(async (req, res) => {
   const { full_name, email, phone, password, admin_role_id } = req.body;
+  if (!full_name || !email || !password) return res.status(422).json({ message: 'full_name, email, password la bat buoc.' });
   const password_hash = await bcrypt.hash(password, 10);
   const result = await query(
     `INSERT INTO users (full_name, email, phone, password_hash, role, admin_role_id, created_by_admin_id)
      VALUES (?, ?, ?, ?, 'ADMIN', ?, ?)`,
-    [full_name, email, phone, password_hash, admin_role_id || null, req.user.id]
+    [full_name, email, phone || null, password_hash, admin_role_id || null, req.user.id]
   );
-  res.status(201).json({ id: result.insertId });
+  res.status(201).json({ data: await loadAdmin(result.insertId) });
 });
 export const updateAdmin = asyncHandler(async (req, res) => {
   const { full_name, admin_role_id } = req.body;
   await query(
     'UPDATE users SET full_name = COALESCE(?, full_name), admin_role_id = COALESCE(?, admin_role_id) WHERE id = ?',
-    [full_name, admin_role_id, req.params.admin]
+    [full_name ?? null, admin_role_id ?? null, req.params.admin]
   );
-  res.json({ message: 'Da cap nhat admin.' });
+  res.json({ data: await loadAdmin(req.params.admin) });
 });
 export const updateAdminStatus = asyncHandler(async (req, res) => {
-  await query('UPDATE users SET is_active = ? WHERE id = ?', [req.body.is_active, req.params.admin]);
-  res.json({ message: 'Da cap nhat trang thai admin.' });
+  await query('UPDATE users SET is_active = ? WHERE id = ?', [req.body.is_active ? 1 : 0, req.params.admin]);
+  res.json({ data: await loadAdmin(req.params.admin) });
 });
 export const updateAdminPassword = asyncHandler(async (req, res) => {
   const password_hash = await bcrypt.hash(req.body.password, 10);
   await query('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, req.params.admin]);
-  res.json({ message: 'Da doi mat khau admin.' });
+  res.json({ data: await loadAdmin(req.params.admin) });
 });
 
 // ---------------- Products (admin CRUD) ----------------
@@ -289,11 +295,12 @@ export const storeProduct = asyncHandler(async (req, res) => {
   let { slug } = req.body;
   if (!name || !category_id) return res.status(422).json({ message: 'Ten va danh muc la bat buoc.' });
   slug = slug || `${slugify(name)}-${Date.now()}`;
+  const finalSku = (sku && String(sku).trim()) || `SP${Date.now().toString().slice(-6)}`;
   const result = await query(
     `INSERT INTO products (category_id, supplier_id, region_id, sku, slug, name, description,
        short_description, origin, image_url, sale_price, stock_quantity, is_active)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [category_id, supplier_id || null, region_id || null, sku || null, slug, name,
+    [category_id, supplier_id || null, region_id || null, finalSku, slug, name,
       description || null, short_description || null, origin || null, image_url || null,
       sale_price || 0, stock_quantity, is_active ? 1 : 0]
   );
@@ -571,10 +578,25 @@ export const destroyShippingCarrier = asyncHandler(async (req, res) => {
   res.json({ data: carrier });
 });
 
-// ---------------- Settings ----------------
+// ---------------- Settings ---------------- (frontend adaptSettings doc { data } voi
+// nhieu field; bang admin_settings chi co 4 cot nen bo sung default cho phan con lai).
+function serializeSettings(s) {
+  return {
+    store_name: s?.store_name ?? 'Heritage Harvest',
+    support_email: s?.support_email ?? '',
+    support_phone: s?.support_phone ?? '',
+    low_stock_threshold: s?.low_stock_threshold ?? 10,
+    dashboard_refresh_seconds: 60,
+    order_auto_confirm: false,
+    send_daily_summary: true,
+    maintenance_mode: false,
+    notes: '',
+    updated_at: s?.updated_at ?? null,
+  };
+}
 export const showSettings = asyncHandler(async (req, res) => {
   const [settings] = await query('SELECT * FROM admin_settings WHERE user_id = ?', [req.user.id]);
-  res.json({ settings: settings || null });
+  res.json({ data: serializeSettings(settings) });
 });
 export const updateSettings = asyncHandler(async (req, res) => {
   const { store_name, support_email, support_phone, low_stock_threshold } = req.body;
@@ -585,13 +607,30 @@ export const updateSettings = asyncHandler(async (req, res) => {
        support_phone = VALUES(support_phone), low_stock_threshold = VALUES(low_stock_threshold)`,
     [req.user.id, store_name, support_email, support_phone, low_stock_threshold]
   );
-  res.json({ message: 'Da cap nhat cai dat.' });
+  const [settings] = await query('SELECT * FROM admin_settings WHERE user_id = ?', [req.user.id]);
+  res.json({ data: serializeSettings(settings) });
 });
 
 // ---------------- Community (moi NCC + kiem duyet bai viet) ----------------
+// Frontend doc { data: { suppliers, customers, invitations } } (admin-community-page.jsx).
 export const listCommunity = asyncHandler(async (req, res) => {
-  const invitations = await query('SELECT * FROM supplier_invitations ORDER BY id DESC');
-  res.json({ invitations });
+  const suppliers = await query(
+    `SELECT s.id, s.name, s.contact_name, s.email, s.phone, s.address, s.status, s.is_active, s.is_deleted,
+            (SELECT COUNT(*) FROM products p WHERE p.supplier_id = s.id AND p.is_deleted = 0) AS product_count
+     FROM suppliers s WHERE s.is_deleted = 0 ORDER BY s.id DESC`
+  );
+  const customers = await query(
+    `SELECT u.id, u.full_name, u.email, u.phone, u.city, u.favorite_region, u.is_active, u.is_deleted,
+            (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS order_count,
+            (SELECT COALESCE(SUM(o.total_amount),0) FROM orders o WHERE o.user_id = u.id AND o.status = 'DELIVERED') AS total_spend
+     FROM users u WHERE u.role = 'CUSTOMER' AND u.is_deleted = 0 ORDER BY u.id DESC`
+  );
+  const invitationRows = await query('SELECT * FROM supplier_invitations ORDER BY id DESC');
+  // supplier_invitations khong co cot status/categories -> bo sung mac dinh cho frontend.
+  const invitations = invitationRows.map((inv) => ({
+    ...inv, status: inv.status ?? 'PENDING', categories: [],
+  }));
+  res.json({ data: { suppliers, customers, invitations } });
 });
 export const storeInvitation = asyncHandler(async (req, res) => {
   const { supplier_name, contact_name, email, note } = req.body;
@@ -599,34 +638,47 @@ export const storeInvitation = asyncHandler(async (req, res) => {
     'INSERT INTO supplier_invitations (supplier_name, contact_name, email, note, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [supplier_name, contact_name, email, note || null, req.user.id]
   );
-  res.status(201).json({ id: result.insertId });
+  const [row] = await query('SELECT * FROM supplier_invitations WHERE id = ?', [result.insertId]);
+  res.status(201).json({ data: { ...row, status: row.status ?? 'PENDING', categories: [] } });
 });
 
-// ---------------- Admin posts CRUD ----------------
+// ---------------- Admin posts CRUD ---------------- (frontend doc { data } + comments)
+async function loadAdminPost(id) {
+  const [row] = await query(`${POST_SELECT} WHERE p.id = ?`, [id]);
+  if (!row) return null;
+  return serializePost(row, await loadPostComments(id, true)); // includeHidden để admin kiểm duyệt
+}
 export const listAdminPosts = asyncHandler(async (req, res) => {
-  const rows = await query('SELECT * FROM posts ORDER BY id DESC');
-  res.json({ posts: rows });
+  const rows = await query(`${POST_SELECT} ORDER BY p.id DESC`);
+  const data = [];
+  for (const row of rows) data.push(serializePost(row, await loadPostComments(row.id, true)));
+  res.json({ data });
 });
 export const storePost = asyncHandler(async (req, res) => {
   const { title, excerpt, body, cover_image_url, status = 'DRAFT' } = req.body;
+  if (!title || !body) return res.status(422).json({ message: 'Tieu de va noi dung la bat buoc.' });
   const result = await query(
     `INSERT INTO posts (created_by_user_id, title, excerpt, body, cover_image_url, status, published_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [req.user.id, title, excerpt || null, body, cover_image_url || null, status, status === 'PUBLISHED' ? new Date() : null]
   );
-  res.status(201).json({ id: result.insertId });
+  res.status(201).json({ data: await loadAdminPost(result.insertId) });
 });
 export const updatePost = asyncHandler(async (req, res) => {
   const { title, excerpt, body, status } = req.body;
+  // Khi chuyển sang PUBLISHED mà chưa có published_at thì set thời điểm xuất bản.
   await query(
-    'UPDATE posts SET title = COALESCE(?, title), excerpt = COALESCE(?, excerpt), body = COALESCE(?, body), status = COALESCE(?, status) WHERE id = ?',
-    [title, excerpt, body, status, req.params.post]
+    `UPDATE posts SET title = COALESCE(?, title), excerpt = COALESCE(?, excerpt),
+       body = COALESCE(?, body), status = COALESCE(?, status),
+       published_at = CASE WHEN ? = 'PUBLISHED' AND published_at IS NULL THEN NOW() ELSE published_at END
+     WHERE id = ?`,
+    [title ?? null, excerpt ?? null, body ?? null, status ?? null, status ?? null, req.params.post]
   );
-  res.json({ message: 'Da cap nhat bai viet.' });
+  res.json({ data: await loadAdminPost(req.params.post) });
 });
 export const destroyPost = asyncHandler(async (req, res) => {
   await query('DELETE FROM posts WHERE id = ?', [req.params.post]);
-  res.json({ message: 'Da xoa bai viet.' });
+  res.json({ data: { id: Number(req.params.post) } });
 });
 export const updateCommentVisibility = asyncHandler(async (req, res) => {
   const { status } = req.body; // 'VISIBLE' | 'HIDDEN'
@@ -634,5 +686,9 @@ export const updateCommentVisibility = asyncHandler(async (req, res) => {
     'UPDATE post_comments SET status = ?, hidden_by_user_id = ?, hidden_at = NOW() WHERE id = ?',
     [status, req.user.id, req.params.comment]
   );
-  res.json({ message: 'Da cap nhat trang thai binh luan.' });
+  const [row] = await query(
+    'SELECT c.*, u.full_name AS author_name FROM post_comments c LEFT JOIN users u ON u.id = c.user_id WHERE c.id = ?',
+    [req.params.comment]
+  );
+  res.json({ data: row ? { id: row.id, post_id: row.post_id, content: row.content, status: row.status, created_at: row.created_at, author: { full_name: row.author_name } } : null });
 });
