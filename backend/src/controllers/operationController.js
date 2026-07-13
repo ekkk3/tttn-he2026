@@ -42,7 +42,9 @@ export const inventory = asyncHandler(async (req, res) => {
   );
   const reserved = await reservedByProduct();
   const data = rows.map((r) => ({
-    sku: r.sku,
+    // Khong bao gio tra sku null (san pham co the tao ma chua nhap SKU) -> tranh loi
+    // toLowerCase() khi loc tim kiem o trang ton kho.
+    sku: r.sku || `SP${r.product_id}`,
     product_id: r.product_id,
     product_name: r.product_name,
     supplier_id: r.supplier_id,

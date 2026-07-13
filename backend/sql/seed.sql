@@ -74,3 +74,18 @@ VALUES
   (2, 3, 1, 6, 'SP002', 'nuoc-mam-phu-quoc', 'Nước mắm Phú Quốc', 'Nước mắm truyền thống 40 độ đạm.',
    NULL, 95000, 80, 1)
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
+-- Bài viết cộng đồng (để trang Bài viết / Cộng đồng không trống).
+INSERT INTO `posts` (`id`, `created_by_user_id`, `title`, `excerpt`, `body`, `status`, `published_at`) VALUES
+ (1, 1, 'Măng khô Tây Bắc — tinh túy núi rừng', 'Câu chuyện về nghề hái và sấy măng thủ công của bà con Tây Bắc.',
+  'Măng khô Tây Bắc được hái từ những búp măng non trên rừng, luộc kỹ rồi phơi sấy thủ công nhiều ngày, giữ trọn hương vị núi rừng.', 'PUBLISHED', NOW()),
+ (2, 1, 'Nước mắm Phú Quốc — di sản trăm năm', 'Hành trình từ con cá cơm tươi đến giọt nước mắm nhĩ vàng óng.',
+  'Nước mắm Phú Quốc được ủ chượp trong thùng gỗ suốt 12 tháng, cho độ đạm cao và hương thơm đặc trưng.', 'PUBLISHED', NOW())
+ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `status` = 'PUBLISHED', `published_at` = NOW();
+
+INSERT INTO `post_comments` (`post_id`, `user_id`, `content`, `status`) VALUES
+ (1, 2, 'Bài viết rất hay, mình đã đặt măng khô về ăn thử!', 'VISIBLE'),
+ (2, 2, 'Nước mắm Phú Quốc đúng là số một, ủng hộ shop.', 'VISIBLE');
+
+INSERT INTO `supplier_invitations` (`supplier_name`, `contact_name`, `email`, `note`, `created_by_user_id`) VALUES
+ ('HTX Trà Thái Nguyên', 'Nguyễn Văn Trà', 'tra-thainguyen@example.com', 'Mời hợp tác cung cấp trà đặc sản', 1);

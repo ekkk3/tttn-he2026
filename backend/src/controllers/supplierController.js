@@ -29,11 +29,13 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
     sale_price, stock_quantity = 0 } = req.body;
   if (!name || !category_id) return res.status(422).json({ message: 'Ten va danh muc la bat buoc.' });
   const slug = `${slugify(name)}-${Date.now()}`;
+  // Tu sinh SKU neu NCC khong nhap (tranh sku null -> loi khi loc/hien thi).
+  const finalSku = (sku && sku.trim()) || `SP${Date.now().toString().slice(-6)}`;
   const result = await query(
     `INSERT INTO products (category_id, supplier_id, region_id, sku, slug, name, description,
        short_description, origin, image_url, sale_price, stock_quantity, is_active)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-    [category_id, supplierId, region_id || null, sku || null, slug, name, description || null,
+    [category_id, supplierId, region_id || null, finalSku, slug, name, description || null,
       short_description || null, origin || null, image_url || null, sale_price || 0, stock_quantity]
   );
   const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [result.insertId]);
