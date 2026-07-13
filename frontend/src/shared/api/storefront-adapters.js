@@ -1,3 +1,23 @@
+// Ảnh minh họa tự sinh (SVG data-URI) cho sản phẩm CHƯA có ảnh (image_url rỗng).
+// Tự chứa, không cần mạng, luôn hiển thị -> tránh ảnh vỡ/trống cho mọi sản phẩm
+// (kể cả sản phẩm do Admin/NCC tạo mà chưa gắn ảnh).
+export function placeholderImage(name) {
+    const esc = (s) =>
+        String(s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const label = String(name || "Sản phẩm").trim();
+    const initial = (label.charAt(0) || "S").toUpperCase();
+    const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">` +
+        `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+        `<stop offset="0" stop-color="#eaf2e6"/><stop offset="1" stop-color="#cfe0c8"/></linearGradient></defs>` +
+        `<rect width="600" height="600" fill="url(#g)"/>` +
+        `<circle cx="300" cy="240" r="96" fill="#2e5a34"/>` +
+        `<text x="300" y="278" font-family="Arial,sans-serif" font-size="110" fill="#ffffff" text-anchor="middle">${esc(initial)}</text>` +
+        `<text x="300" y="408" font-family="Arial,sans-serif" font-size="34" font-weight="bold" fill="#2e5a34" text-anchor="middle">${esc(label.slice(0, 22))}</text>` +
+        `<text x="300" y="452" font-family="Arial,sans-serif" font-size="22" fill="#5a6b55" text-anchor="middle">Đặc sản vùng miền</text>` +
+        `</svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
 function fallbackProduct(_index) {
     return {
         image: "",
@@ -170,7 +190,7 @@ export function adaptBackendProduct(product, index = 0) {
     const fallback = fallbackProduct(index);
     const supplierName = product.supplier?.name ?? `Nhà cung cấp #${product.supplier_id}`;
     const categoryName = product.category?.name ?? `Danh mục #${product.category_id}`;
-    const image = product.image_url?.trim() || fallback.image;
+    const image = product.image_url?.trim() || placeholderImage(product.name);
     return {
         id: String(product.id),
         slug: product.slug?.trim() || buildStorefrontSlug(product.id, product.name),
