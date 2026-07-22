@@ -53,8 +53,18 @@ export const show = asyncHandler(async (req, res) => {
   await respondCart(req.user.id, res);
 });
 
+// So luong phai la so nguyen duong — cho phep gia tri am/0/khong phai so se lam sai
+// line_total (co the am) va lot qua kiem tra ton kho o phia checkout.
+function isValidQuantity(quantity) {
+  return Number.isInteger(Number(quantity)) && Number(quantity) > 0;
+}
+
 export const storeItem = asyncHandler(async (req, res) => {
   const { product_id, quantity = 1 } = req.body;
+  if (!isValidQuantity(quantity)) {
+    return res.status(422).json({ message: 'So luong khong hop le.' });
+  }
+  const qty = Number(quantity);
   const cart = await getOrCreateCart(req.user.id);
   const [product] = await query(
     'SELECT sale_price, stock_quantity FROM products WHERE id = ? AND is_deleted = 0 AND is_active = 1',
@@ -63,7 +73,7 @@ export const storeItem = asyncHandler(async (req, res) => {
   if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
 
   const [existing] = await query('SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ?', [cart.id, product_id]);
-  const newQty = (existing ? existing.quantity : 0) + Number(quantity);
+  const newQty = (existing ? existing.quantity : 0) + qty;
   if (product.stock_quantity !== null && newQty > product.stock_quantity) {
     return res.status(422).json({ message: `Chi con ${product.stock_quantity} san pham trong kho.` });
   }
@@ -74,7 +84,7 @@ export const storeItem = asyncHandler(async (req, res) => {
   } else {
     await query(
       'INSERT INTO cart_items (cart_id, product_id, quantity, unit_price, line_total) VALUES (?, ?, ?, ?, ?)',
-      [cart.id, product_id, quantity, product.sale_price, quantity * product.sale_price]
+      [cart.id, product_id, qty, product.sale_price, qty * product.sale_price]
     );
   }
   await invalidateCartCache(req.user.id);
@@ -83,21 +93,36 @@ export const storeItem = asyncHandler(async (req, res) => {
 
 export const updateItem = asyncHandler(async (req, res) => {
   const { quantity } = req.body;
-  const [item] = await query('SELECT * FROM cart_items WHERE id = ?', [req.params.cartItem]);
+  if (!isValidQuantity(quantity)) {
+    return res.status(422).json({ message: 'So luong khong hop le.' });
+  }
+  const qty = Number(quantity);
+  // Bao ve IDOR: cart_items.id la auto-increment de doan, phai kiem tra item nay
+  // thuoc gio hang CUA CHINH user dang dang nhap truoc khi cho sua.
+  const [item] = await query(
+    `SELECT ci.* FROM cart_items ci JOIN carts c ON c.id = ci.cart_id
+     WHERE ci.id = ? AND c.user_id = ?`,
+    [req.params.cartItem, req.user.id]
+  );
   if (!item) return res.status(404).json({ message: 'Khong tim thay san pham trong gio hang.' });
   const [product] = await query('SELECT stock_quantity FROM products WHERE id = ?', [item.product_id]);
-  if (product && product.stock_quantity !== null && Number(quantity) > product.stock_quantity) {
+  if (product && product.stock_quantity !== null && qty > product.stock_quantity) {
     return res.status(422).json({ message: `Chi con ${product.stock_quantity} san pham trong kho.` });
   }
   await query('UPDATE cart_items SET quantity = ?, line_total = unit_price * ? WHERE id = ?', [
-    quantity, quantity, item.id,
+    qty, qty, item.id,
   ]);
   await invalidateCartCache(req.user.id);
   await respondCart(req.user.id, res);
 });
 
 export const destroyItem = asyncHandler(async (req, res) => {
-  await query('DELETE FROM cart_items WHERE id = ?', [req.params.cartItem]);
+  // Bao ve IDOR: chi xoa neu item thuoc gio hang cua chinh user nay.
+  await query(
+    `DELETE ci FROM cart_items ci JOIN carts c ON c.id = ci.cart_id
+     WHERE ci.id = ? AND c.user_id = ?`,
+    [req.params.cartItem, req.user.id]
+  );
   await invalidateCartCache(req.user.id);
   await respondCart(req.user.id, res);
 });

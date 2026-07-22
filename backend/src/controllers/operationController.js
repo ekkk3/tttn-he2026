@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 
 // Danh cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yeu cau nhap hang, 2.2.21 Quan ly kho,
 // 2.2.22 Cap nhat trang thai don, 2.2.23 Xu ly don, 2.2.24 Quan ly gia nhap).
@@ -17,6 +18,16 @@ async function supplierScopeId(req) {
   if (req.user.role !== 'SUPPLIER') return null;
   const [supplier] = await query('SELECT id FROM suppliers WHERE user_id = ? LIMIT 1', [req.user.id]);
   return supplier ? supplier.id : -1; // -1: NCC chua co ban ghi supplier -> khong thay gi
+}
+
+// Don co chua san pham cua supplier (scopeId) hay khong — chan NCC thao tac don khong
+// lien quan gi den minh (updateOrderDeliveryStatus / advanceFulfillmentTask).
+async function orderBelongsToSupplier(orderId, supplierScopeIdValue) {
+  const [row] = await query(
+    'SELECT 1 FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ? AND p.supplier_id = ? LIMIT 1',
+    [orderId, supplierScopeIdValue]
+  );
+  return Boolean(row);
 }
 
 // Tinh so luong dang giu cho (reserved) = tong quantity trong cac don chua ket thuc.
@@ -178,6 +189,16 @@ export const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
   const { delivery_status, note } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
   if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  // Bao ve: NCC chi duoc thao tac don hang co chua san pham CUA MINH.
+  const scopeId = await supplierScopeId(req);
+  if (scopeId !== null && !(await orderBelongsToSupplier(order.id, scopeId))) {
+    return res.status(403).json({ message: 'Ban chi co the thao tac don hang co san pham cua minh.' });
+  }
+  // Chi cho phep chuyen trang thai hop le theo state machine dung chung (tranh gan
+  // gia tri tuy y vao orders.status — cot nay la VARCHAR, khong phai ENUM).
+  if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(delivery_status)) {
+    return res.status(422).json({ message: `Khong the chuyen tu ${order.status} sang ${delivery_status}.` });
+  }
   await query('UPDATE orders SET status = ? WHERE id = ?', [delivery_status, req.params.order]);
   await query(
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
@@ -228,6 +249,10 @@ export const advanceFulfillmentTask = asyncHandler(async (req, res) => {
   const flow = { CONFIRMED: 'PACKED', PACKED: 'SHIPPED' };
   const [order] = await query('SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [req.params.order]);
   if (!order) return res.status(404).json({ message: 'Khong tim thay don.' });
+  const scopeId = await supplierScopeId(req);
+  if (scopeId !== null && !(await orderBelongsToSupplier(order.id, scopeId))) {
+    return res.status(403).json({ message: 'Ban chi co the thao tac don hang co san pham cua minh.' });
+  }
   const next = flow[order.status];
   if (!next) return res.status(422).json({ message: 'Khong the chuyen trang thai tiep theo.' });
   await query('UPDATE orders SET status = ? WHERE id = ?', [next, req.params.order]);
