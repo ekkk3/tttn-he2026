@@ -123,6 +123,14 @@ export const storeSupportTicket = asyncHandler(async (req, res) => {
   res.status(201).json({ data: serializeTicket(row) });
 });
 export const resolveSupportTicket = asyncHandler(async (req, res) => {
+  // Cung quyen xem voi listSupportTickets: staff duoc xu ly moi ticket, khach hang
+  // chi duoc dong ticket cua chinh minh (tranh IDOR qua id de doan).
+  const isStaff = ['ADMIN', 'WAREHOUSE_STAFF'].includes(req.user.role);
+  const [ticket] = await query('SELECT * FROM support_tickets WHERE id = ?', [req.params.ticket]);
+  if (!ticket) return res.status(404).json({ message: 'Khong tim thay yeu cau ho tro.' });
+  if (!isStaff && ticket.user_id !== req.user.id) {
+    return res.status(403).json({ message: 'Ban chi co the xu ly yeu cau ho tro cua minh.' });
+  }
   await query(
     "UPDATE support_tickets SET status = 'RESOLVED', resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ?",
     [req.user.id, req.params.ticket]

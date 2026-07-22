@@ -12,10 +12,18 @@ function authPayload(token, user) {
   return { token, access_token: token, expires_at: tokenExpiresAtIso(token), user };
 }
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const register = asyncHandler(async (req, res) => {
   const { full_name, email, phone, password } = req.body;
   if (!full_name || !email || !phone || !password) {
     return res.status(422).json({ message: 'full_name, email, phone, password la bat buoc.' });
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(422).json({ message: 'Email khong hop le.' });
+  }
+  if (String(password).length < 8) {
+    return res.status(422).json({ message: 'Mat khau phai co it nhat 8 ky tu.' });
   }
   const existing = await query('SELECT id FROM users WHERE email = ? OR phone = ? LIMIT 1', [email, phone]);
   if (existing.length) {
@@ -36,7 +44,9 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const [user] = await query('SELECT * FROM users WHERE email = ? AND is_deleted = 0 LIMIT 1', [email]);
-  if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+  // Tai khoan tao qua Google/Facebook khong co password_hash — tranh goi bcrypt.compare
+  // voi hash rong (co the nem loi thay vi tra 401 gon gang).
+  if (!user || !user.password_hash || !(await bcrypt.compare(password, user.password_hash))) {
     return res.status(401).json({ message: 'Sai email hoac mat khau.' });
   }
   if (!user.is_active) {

@@ -75,20 +75,41 @@ export const listOrders = asyncHandler(async (req, res) => {
             (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) AS item_count
      FROM orders o LEFT JOIN users u ON u.id = o.user_id ORDER BY o.id DESC`
   );
-  const data = [];
-  for (const o of rows) {
-    const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [o.id]);
-    const [shipment] = await query(
-      'SELECT s.tracking_code, c.name AS carrier_name FROM order_shipments s LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1',
-      [o.id]
-    );
-    data.push({
-      ...serializeOrderSummary(o, { itemCount: o.item_count, payment: payment || null }),
+  if (!rows.length) return res.json({ data: [] });
+
+  // Lay het payment/shipment lien quan trong 2 truy van gop (IN (...)) thay vi 2*N truy van
+  // trong vong lap (N+1), roi gop lai bang Map trong bo nho — giu nguyen shape du lieu tra ve.
+  const orderIds = rows.map((o) => o.id);
+  const placeholders = orderIds.map(() => '?').join(',');
+
+  const paymentRows = await query(
+    `SELECT * FROM payments WHERE order_id IN (${placeholders}) ORDER BY id DESC`, orderIds
+  );
+  const latestPaymentByOrder = new Map();
+  for (const p of paymentRows) {
+    if (!latestPaymentByOrder.has(p.order_id)) latestPaymentByOrder.set(p.order_id, p);
+  }
+
+  const shipmentRows = await query(
+    `SELECT s.order_id, s.tracking_code, c.name AS carrier_name
+     FROM order_shipments s LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
+     WHERE s.order_id IN (${placeholders}) ORDER BY s.id DESC`, orderIds
+  );
+  const latestShipmentByOrder = new Map();
+  for (const s of shipmentRows) {
+    if (!latestShipmentByOrder.has(s.order_id)) latestShipmentByOrder.set(s.order_id, s);
+  }
+
+  const data = rows.map((o) => {
+    const payment = latestPaymentByOrder.get(o.id) || null;
+    const shipment = latestShipmentByOrder.get(o.id) || null;
+    return {
+      ...serializeOrderSummary(o, { itemCount: o.item_count, payment }),
       customer: { id: o.user_id, full_name: o.customer_name, email: o.customer_email },
       shipping_code: shipment?.tracking_code ?? null,
       shipping_carrier: shipment?.carrier_name ?? null,
-    });
-  }
+    };
+  });
   res.json({ data });
 });
 

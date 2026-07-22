@@ -80,23 +80,24 @@ export function SupplierProcessingPage() {
                 </Button>),
         },
     ];
+    // Gui dung gia tri status ma backend hieu (PENDING/CONFIRMED/PACKED/SHIPPED/DELIVERED/...),
+    // truoc day gui "ready_to_ship"/"delivered" (khong khop enum) khien orders.status bi ghi
+    // sai gia tri ma khong bao loi (cot status la VARCHAR nen DB khong chan duoc).
     async function handleReadyForWarehouse() {
         if (!activeOrder)
             return;
-        await updateOrderDeliveryStatus(activeOrder.id, "ready_to_ship", "Supplier marked order ready");
-        pushToast({
-            tone: "success",
-            message: `Da chuyen don ${activeOrder.id} sang trang thai san sang giao.`,
-        });
+        const result = await updateOrderDeliveryStatus(activeOrder.id, "PACKED", "Supplier marked order ready");
+        pushToast(result.success
+            ? { tone: "success", message: `Da chuyen don ${activeOrder.id} sang trang thai san sang giao.` }
+            : { tone: "danger", message: result.error || `Khong the cap nhat don ${activeOrder.id}.` });
     }
     async function handleDelivered() {
         if (!activeOrder)
             return;
-        await updateOrderDeliveryStatus(activeOrder.id, "delivered", "Supplier confirmed delivery");
-        pushToast({
-            tone: "success",
-            message: `Da xac nhan hoan tat don ${activeOrder.id}.`,
-        });
+        const result = await updateOrderDeliveryStatus(activeOrder.id, "SHIPPED", "Supplier confirmed shipment");
+        pushToast(result.success
+            ? { tone: "success", message: `Da xac nhan gui hang don ${activeOrder.id}.` }
+            : { tone: "danger", message: result.error || `Khong the cap nhat don ${activeOrder.id}.` });
     }
     return (<div className="space-y-8">
             <AdminPageHeader title="Xử lý đơn nhà cung cấp" description="Kiểm tra đơn cần chuẩn bị, chuyển sang sẵn sàng giao và xác nhận hoàn tất."/>
@@ -118,7 +119,7 @@ export function SupplierProcessingPage() {
                             Chuyen sang san sang giao
                         </Button>
                         <Button variant="secondary" disabled={!activeOrder} onClick={handleDelivered}>
-                            Xac nhan da giao
+                            Xac nhan da gui hang
                         </Button>
                     </div>}>
                 {activeOrder ? (<div className="space-y-5">

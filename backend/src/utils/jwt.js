@@ -1,6 +1,14 @@
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
+// JWT_SECRET rong/mac dinh = token co the bi gia mao. Bat buoc phai dat trong production;
+// o dev cho phep fallback de tien khoi dong nhanh nhung canh bao ro.
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET chua duoc cau hinh trong .env — bat buoc khi chay production.');
+  }
+  console.warn('[jwt] JWT_SECRET chua cau hinh, dang dung secret mac dinh CHI DANH CHO DEV.');
+}
 const SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 

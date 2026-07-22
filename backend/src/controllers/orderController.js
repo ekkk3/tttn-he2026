@@ -75,16 +75,6 @@ export const checkout = asyncHandler(async (req, res) => {
     );
     if (!items.length) throw Object.assign(new Error('Gio hang dang trong.'), { status: 422 });
 
-    // Kiem tra ton kho truoc khi tao don.
-    for (const item of items) {
-      if (item.stock_quantity !== null && item.quantity > item.stock_quantity) {
-        throw Object.assign(
-          new Error(`San pham "${item.product_name}" chi con ${item.stock_quantity} trong kho.`),
-          { status: 422 }
-        );
-      }
-    }
-
     const subtotal = items.reduce((sum, i) => sum + Number(i.line_total), 0);
     const shipping_fee = calculateShippingFee(subtotal, shipping_address);
 
@@ -119,11 +109,20 @@ export const checkout = asyncHandler(async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?)`,
         [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total]
       );
-      // Tru ton kho.
-      await connection.query(
-        'UPDATE products SET stock_quantity = GREATEST(0, stock_quantity - ?) WHERE id = ?',
-        [item.quantity, item.product_id]
+      // Tru ton kho + kiem tra du hang trong CUNG 1 cau UPDATE (dieu kien stock_quantity >= ?),
+      // dua vao row lock cua InnoDB de tranh race condition: neu chi SELECT roi so sanh truoc,
+      // 2 request checkout dong thoi cho cung san pham co the cung "thay" con du hang va cung
+      // duoc tao don, dan den ban vuot ton kho thuc te (oversell).
+      const [stockResult] = await connection.query(
+        'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?',
+        [item.quantity, item.product_id, item.quantity]
       );
+      if (stockResult.affectedRows === 0) {
+        throw Object.assign(
+          new Error(`San pham "${item.product_name}" khong du ton kho (vua het hang hoac co nguoi khac mua truoc).`),
+          { status: 422 }
+        );
+      }
     }
 
     // Tao ban ghi thanh toan. BANK_TRANSFER luu huong dan chuyen khoan vao raw_payload
@@ -149,7 +148,17 @@ export const checkout = asyncHandler(async (req, res) => {
         'INSERT INTO order_vouchers (order_id, voucher_id, discount_amount) VALUES (?, ?, ?)',
         [orderId, appliedVoucher.id, discount_amount]
       );
-      await connection.query('UPDATE vouchers SET used_count = used_count + 1 WHERE id = ?', [appliedVoucher.id]);
+      // Tang used_count co dieu kien lai usage_limit (giong logic tru ton kho o tren):
+      // computeVoucherDiscount() da kiem tra usage_limit tu ban ghi doc truoc do, neu 2 don
+      // dung chung 1 ma cung luc thi ca 2 co the cung "thay" con luot — kiem tra lai ngay
+      // luc UPDATE moi chan duoc vuot usage_limit thuc te.
+      const [voucherResult] = await connection.query(
+        'UPDATE vouchers SET used_count = used_count + 1 WHERE id = ? AND (usage_limit IS NULL OR used_count < usage_limit)',
+        [appliedVoucher.id]
+      );
+      if (voucherResult.affectedRows === 0) {
+        throw Object.assign(new Error('Ma giam gia vua het luot su dung, vui long thu lai.'), { status: 422 });
+      }
     }
 
     await connection.query('DELETE FROM cart_items WHERE cart_id = ?', [cart.id]);
