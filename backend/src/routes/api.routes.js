@@ -17,7 +17,7 @@ import * as chatController from '../controllers/chatController.js';
 import * as reviewController from '../controllers/reviewController.js';
 import * as voucherController from '../controllers/voucherController.js';
 import * as paymentController from '../controllers/paymentController.js';
-import * as admin from '../controllers/admin/admin.controller.js';
+import * as admin from '../controllers/admin/index.js';
 import { uploadSupplierLicense } from '../middleware/upload.js';
 
 const router = Router();

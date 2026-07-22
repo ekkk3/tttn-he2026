@@ -4,6 +4,7 @@ import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
 import { computeVoucherDiscount } from './voucherController.js';
+import { notifyUser } from '../services/notificationService.js';
 
 function generateOrderNo() {
   return `DH${Date.now()}`;
@@ -44,13 +45,6 @@ async function loadOrderDetail(orderId, userId = null) {
   );
   const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
   return serializeOrderDetail(order, { items, statusHistory, payment: payment || null });
-}
-
-async function notifyUser(userId, type, title, message, linkUrl = null) {
-  await query(
-    'INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, ?, ?, ?, ?)',
-    [userId, type, title, message, linkUrl]
-  );
 }
 
 // POST /api/orders/checkout
