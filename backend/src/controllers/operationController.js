@@ -41,20 +41,15 @@ async function reservedByProduct() {
   return new Map(rows.map((r) => [r.product_id, Number(r.reserved)]));
 }
 
-// --- Ton kho (derive tu products) ---
-export const inventory = asyncHandler(async (req, res) => {
-  const scopeId = await supplierScopeId(req);
-  const rows = await query(
-    `SELECT p.id AS product_id, p.sku, p.name AS product_name, p.stock_quantity, p.reorder_level,
-            p.purchase_price, p.aisle, p.supplier_id, s.name AS supplier_name, s.address AS supplier_location
-     FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
-     WHERE p.is_deleted = 0 ${scopeId !== null ? 'AND p.supplier_id = ?' : ''} ORDER BY p.stock_quantity ASC`,
-    scopeId !== null ? [scopeId] : []
-  );
-  const reserved = await reservedByProduct();
-  const data = rows.map((r) => ({
-    // Khong bao gio tra sku null (san pham co the tao ma chua nhap SKU) -> tranh loi
-    // toLowerCase() khi loc tim kiem o trang ton kho.
+const INVENTORY_ROW_SELECT = `
+  SELECT p.id AS product_id, p.sku, p.name AS product_name, p.stock_quantity, p.reorder_level,
+         p.purchase_price, p.aisle, p.supplier_id, s.name AS supplier_name, s.address AS supplier_location
+  FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
+`;
+// Khong bao gio tra sku null (san pham co the tao ma chua nhap SKU) -> tranh loi
+// toLowerCase() khi loc tim kiem o trang ton kho.
+function serializeInventoryRow(r, reservedByProductMap) {
+  return {
     sku: r.sku || `SP${r.product_id}`,
     product_id: r.product_id,
     product_name: r.product_name,
@@ -63,13 +58,48 @@ export const inventory = asyncHandler(async (req, res) => {
     supplier_location: r.supplier_location,
     inventory_location: r.aisle,
     quantity_on_hand: r.stock_quantity,
-    reserved: reserved.get(r.product_id) || 0,
+    reserved: reservedByProductMap.get(r.product_id) || 0,
     reorder_level: r.reorder_level,
     purchase_price: r.purchase_price !== null ? Number(r.purchase_price) : null,
     aisle: r.aisle,
     status: inventoryStatus(r.stock_quantity, r.reorder_level),
-  }));
-  res.json({ data });
+  };
+}
+
+// --- Ton kho (derive tu products) ---
+export const inventory = asyncHandler(async (req, res) => {
+  const scopeId = await supplierScopeId(req);
+  const rows = await query(
+    `${INVENTORY_ROW_SELECT} WHERE p.is_deleted = 0 ${scopeId !== null ? 'AND p.supplier_id = ?' : ''} ORDER BY p.stock_quantity ASC`,
+    scopeId !== null ? [scopeId] : []
+  );
+  const reserved = await reservedByProduct();
+  res.json({ data: rows.map((r) => serializeInventoryRow(r, reserved)) });
+});
+
+// PATCH /api/operations/inventory/:productId/purchase-price — Nhan vien kho/Admin cap nhat
+// gia nhap san pham (UC 2.2.24 Quan ly gia nhap san pham). Truoc day cot purchase_price chi
+// duoc DOC (hien read-only o warehouse-inventory-page.jsx), khong co endpoint nao ghi duoc.
+// NCC chi duoc XEM (route /operations/* cho phep ca SUPPLIER goi GET inventory), khong duoc
+// tu sua gia nhap cua chinh minh vi day la chi phi noi bo phia kho, khong phai gia NCC bao.
+export const updatePurchasePrice = asyncHandler(async (req, res) => {
+  if (req.user.role === 'SUPPLIER') {
+    return res.status(403).json({ message: 'Ban khong co quyen sua gia nhap san pham.' });
+  }
+  const { purchase_price } = req.body;
+  const isBlank = purchase_price === null || purchase_price === undefined || purchase_price === '';
+  if (!isBlank && (Number.isNaN(Number(purchase_price)) || Number(purchase_price) < 0)) {
+    return res.status(422).json({ message: 'Gia nhap khong hop le.' });
+  }
+  const [product] = await query('SELECT id FROM products WHERE id = ? AND is_deleted = 0', [req.params.productId]);
+  if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
+
+  await query('UPDATE products SET purchase_price = ? WHERE id = ?', [
+    isBlank ? null : Number(purchase_price), req.params.productId,
+  ]);
+  const [row] = await query(`${INVENTORY_ROW_SELECT} WHERE p.id = ?`, [req.params.productId]);
+  const reserved = await reservedByProduct();
+  res.json({ data: serializeInventoryRow(row, reserved) });
 });
 
 // --- Yeu cau nhap hang / phieu nhap (delivery_requests) ---

@@ -245,6 +245,26 @@ export const useOperationsDataStore = create()((set, get) => ({
             return { success: false, error: handleError(error) };
         }
     },
+    updatePurchasePrice: async (productId, purchasePrice) => {
+        const currentToken = token();
+        if (!currentToken)
+            return { success: false, error: authError() };
+        try {
+            const response = await apiRequest(`/operations/inventory/${productId}/purchase-price`, {
+                method: "PATCH",
+                token: currentToken,
+                body: { purchase_price: purchasePrice },
+            });
+            const item = adaptInventoryItem(response.data);
+            set((state) => ({
+                inventory: state.inventory.map((row) => (row.productId === item.productId ? item : row)),
+            }));
+            return { success: true, data: item };
+        }
+        catch (error) {
+            return { success: false, error: handleError(error) };
+        }
+    },
     updateOrderDeliveryStatus: async (orderId, deliveryStatus, note) => {
         const currentToken = token();
         if (!currentToken)

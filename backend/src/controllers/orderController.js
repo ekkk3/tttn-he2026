@@ -44,7 +44,28 @@ async function loadOrderDetail(orderId, userId = null) {
     [order.id]
   );
   const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
-  return serializeOrderDetail(order, { items, statusHistory, payment: payment || null });
+  // Van don + don vi van chuyen that (UC "Theo doi trang thai don"): truoc day khong JOIN
+  // nen shipping_carrier/shipping_code luon null phia khach hang du admin da tao van don GHN
+  // that cho don nay. Cung logic voi admin/orders.controller.js#loadAdminOrderDetail.
+  const [shipment] = await query(
+    `SELECT s.* , c.name AS carrier_name FROM order_shipments s
+     LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
+     WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1`,
+    [order.id]
+  );
+  const base = serializeOrderDetail(order, { items, statusHistory, payment: payment || null });
+  return {
+    ...base,
+    shipping_carrier: shipment?.carrier_name ?? null,
+    shipping_code: shipment?.tracking_code ?? null,
+    shipment: shipment ? {
+      status: shipment.status,
+      tracking_code: shipment.tracking_code,
+      tracking_url: shipment.tracking_url,
+      expected_delivery_time: shipment.expected_delivery_time,
+      synced_at: shipment.synced_at,
+    } : null,
+  };
 }
 
 // POST /api/orders/checkout

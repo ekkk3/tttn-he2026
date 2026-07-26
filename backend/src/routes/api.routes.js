@@ -123,6 +123,7 @@ router.patch('/support-tickets/:ticket/resolve', misc.resolveSupportTicket);
 // ---------------- Warehouse staff: /api/operations/* ----------------
 const operations = Router();
 operations.get('/inventory', operationController.inventory);
+operations.patch('/inventory/:productId/purchase-price', operationController.updatePurchasePrice);
 operations.get('/requisitions', operationController.requisitions);
 operations.post('/requisitions', operationController.storeRequisition);
 operations.patch('/requisitions/:id/status', operationController.updateRequisitionStatus);

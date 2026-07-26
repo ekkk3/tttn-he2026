@@ -1,5 +1,6 @@
 export const customerOrderStatusLabels = {
     PENDING: "Chờ xác nhận",
+    AWAITING_PAYMENT_CONFIRMATION: "Chờ xác nhận chuyển khoản",
     CONFIRMED: "Đã xác nhận",
     PACKED: "Đã đóng gói",
     SHIPPED: "Đang giao",

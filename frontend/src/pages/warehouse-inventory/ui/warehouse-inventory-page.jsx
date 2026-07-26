@@ -18,7 +18,10 @@ export function WarehouseInventoryPage() {
     const supplierRecords = useOperationsDataStore((state) => state.suppliers);
     const loadOperations = useOperationsDataStore((state) => state.loadOperations);
     const createRequisition = useOperationsDataStore((state) => state.createRequisition);
+    const updatePurchasePrice = useOperationsDataStore((state) => state.updatePurchasePrice);
     const pushToast = useFeedbackStore((state) => state.pushToast);
+    const [isEditingPrice, setIsEditingPrice] = useState(false);
+    const [priceDraft, setPriceDraft] = useState("");
     useEffect(() => {
         void loadOperations();
     }, [loadOperations]);
@@ -29,6 +32,27 @@ export function WarehouseInventoryPage() {
     ].some((value) => value.toLowerCase().includes(query.toLowerCase())));
     const activeItem = filteredInventory.find((item) => item.sku === selectedWarehouseSku) ?? filteredInventory[0];
     const totalInventoryValue = inventory.reduce((sum, item) => sum + item.onHand * item.purchasePrice, 0);
+    useEffect(() => {
+        setIsEditingPrice(false);
+        setPriceDraft(activeItem?.purchasePrice != null ? String(activeItem.purchasePrice) : "");
+    }, [activeItem]);
+    async function handleSavePurchasePrice() {
+        if (!activeItem)
+            return;
+        const trimmed = priceDraft.trim();
+        const value = trimmed === "" ? null : Number(trimmed);
+        if (value !== null && (Number.isNaN(value) || value < 0)) {
+            pushToast({ tone: "warning", message: "Giá nhập không hợp lệ." });
+            return;
+        }
+        const result = await updatePurchasePrice(activeItem.productId, value);
+        if (!result.success) {
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật giá nhập." });
+            return;
+        }
+        setIsEditingPrice(false);
+        pushToast({ tone: "success", message: `Đã cập nhật giá nhập cho ${activeItem.sku}.` });
+    }
     const columns = [
         {
             key: "sku",
@@ -149,8 +173,26 @@ export function WarehouseInventoryPage() {
                                 <p className="mt-2 font-semibold">{activeItem.reorderPoint}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Gia nhap hien tai</p>
-                                <p className="mt-2 font-semibold">{formatCurrency(activeItem.purchasePrice)}</p>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-on-surface-variant">Gia nhap hien tai</p>
+                                    {!isEditingPrice ? (<button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => setIsEditingPrice(true)}>
+                                            Sửa
+                                        </button>) : null}
+                                </div>
+                                {isEditingPrice ? (<div className="mt-2 space-y-2">
+                                        <input type="number" min="0" step="1000" className="w-full rounded-xl border border-outline-variant/20 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Bỏ trống để xóa giá nhập" value={priceDraft} onChange={(event) => setPriceDraft(event.target.value)}/>
+                                        <div className="flex gap-2">
+                                            <Button size="sm" onClick={() => void handleSavePurchasePrice()}>
+                                                Lưu
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={() => {
+                        setIsEditingPrice(false);
+                        setPriceDraft(activeItem.purchasePrice != null ? String(activeItem.purchasePrice) : "");
+                    }}>
+                                                Hủy
+                                            </Button>
+                                        </div>
+                                    </div>) : (<p className="mt-2 font-semibold">{formatCurrency(activeItem.purchasePrice)}</p>)}
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
                                 <p className="text-on-surface-variant">Nha cung cap</p>
