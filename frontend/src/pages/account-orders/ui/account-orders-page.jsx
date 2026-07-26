@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { routes } from "@/shared/config/routes";
 import { customerOrderStatusLabels, customerPaymentMethodLabels, customerPaymentStatusLabels, fallbackBackendLabel, } from "@/shared/lib/customer-order-labels";
-import { formatCurrency, formatDate } from "@/shared/lib/format";
+import { formatCurrency, formatDate, formatDateTime } from "@/shared/lib/format";
 import { useAccountStore } from "@/shared/lib/store/use-account-store";
 import { useCartStore } from "@/shared/lib/store/use-cart-store";
 import { useCustomerOrdersStore } from "@/shared/lib/store/use-customer-orders-store";
@@ -418,6 +418,71 @@ export function AccountOrdersPage() {
                                 {(activeOrder.status === "PACKED" || activeOrder.status === "SHIPPED") ? (<div className="mt-4 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-on-surface">
                                         Đơn hàng đã được đóng gói hoặc đang giao, bạn không thể tự hủy. Vui lòng liên hệ hỗ trợ nếu cần xử lý.
                                     </div>) : null}
+
+                                <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                                    <div className="rounded-[1.5rem] bg-surface-container-low p-5">
+                                        <p className="text-center text-xs uppercase tracking-[0.18em] text-on-surface-variant">
+                                            Tuyến vận chuyển
+                                        </p>
+                                        <div className="mt-4 flex items-start justify-between gap-2">
+                                            <div className="flex flex-1 flex-col items-center gap-2 text-center">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                    <Icon name="warehouse"/>
+                                                </div>
+                                                <p className="text-xs font-semibold text-on-surface">Kho Heritage Harvest</p>
+                                                <p className="text-[11px] text-on-surface-variant">Nơi xuất hàng</p>
+                                            </div>
+                                            <div className="mt-3 flex flex-1 flex-col items-center gap-1">
+                                                <Icon name={activeOrder.status === "DELIVERED" ? "check_circle" : "local_shipping"} className={activeOrder.status === "DELIVERED" ? "text-primary" : "text-secondary"}/>
+                                                <div className="h-[2px] w-full bg-outline-variant/30"/>
+                                                <p className="text-[11px] text-on-surface-variant">
+                                                    {activeOrder.shippingCarrier ?? "Chưa gán đơn vị vận chuyển"}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-1 flex-col items-center gap-2 text-center">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/10 text-secondary">
+                                                    <Icon name="home_pin"/>
+                                                </div>
+                                                <p className="text-xs font-semibold text-on-surface">
+                                                    {[activeOrder.shippingWardName, activeOrder.shippingDistrictName, activeOrder.shippingProvinceName]
+                        .filter(Boolean)
+                        .join(", ") || "Địa chỉ nhận hàng"}
+                                                </p>
+                                                <p className="text-[11px] text-on-surface-variant">Nơi nhận hàng</p>
+                                            </div>
+                                        </div>
+                                        {activeOrder.shipment ? (<div className="mt-4 space-y-1 border-t border-outline-variant/15 pt-3 text-xs text-on-surface-variant">
+                                                {activeOrder.shipment.trackingUrl ? (<p>
+                                                        <a className="font-medium text-primary hover:underline" href={activeOrder.shipment.trackingUrl} target="_blank" rel="noreferrer">
+                                                            Tra cứu vận đơn trên hệ thống vận chuyển
+                                                        </a>
+                                                    </p>) : null}
+                                                {activeOrder.shipment.expectedDeliveryTime ? (<p>Dự kiến giao: {formatDateTime(activeOrder.shipment.expectedDeliveryTime)}</p>) : null}
+                                            </div>) : null}
+                                    </div>
+
+                                    <div className="rounded-[1.5rem] bg-surface-container-low p-5">
+                                        <p className="text-center text-xs uppercase tracking-[0.18em] text-on-surface-variant">
+                                            Lịch sử vận chuyển
+                                        </p>
+                                        <div className="mt-4 max-h-56 space-y-3 overflow-y-auto">
+                                            {activeOrder.statusHistory.length === 0 ? (<p className="text-center text-sm text-on-surface-variant">
+                                                    Chưa có cập nhật vận chuyển nào.
+                                                </p>) : ([...activeOrder.statusHistory].reverse().map((event) => (<div key={event.id} className="flex items-start gap-3 text-sm">
+                                                    <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary"/>
+                                                    <div>
+                                                        <p className="font-medium text-on-surface">
+                                                            {customerOrderStatusLabels[event.toStatus] ?? fallbackBackendLabel(event.toStatus)}
+                                                        </p>
+                                                        <p className="text-xs text-on-surface-variant">
+                                                            {formatDateTime(event.changedAt)}
+                                                            {event.note ? ` · ${event.note}` : ""}
+                                                        </p>
+                                                    </div>
+                                                </div>)))}
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="mt-6 grid gap-5 xl:grid-cols-3">
                                     <div className="h-full rounded-[1.5rem] bg-surface-container-low p-5">

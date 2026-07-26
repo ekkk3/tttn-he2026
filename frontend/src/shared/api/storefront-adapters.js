@@ -337,6 +337,17 @@ function adaptStatusHistory(history) {
         changedAt: history.changed_at,
     };
 }
+function adaptShipment(shipment) {
+    if (!shipment)
+        return null;
+    return {
+        status: shipment.status,
+        trackingCode: shipment.tracking_code,
+        trackingUrl: shipment.tracking_url,
+        expectedDeliveryTime: shipment.expected_delivery_time,
+        syncedAt: shipment.synced_at,
+    };
+}
 export function adaptBackendOrderDetail(order) {
     const summary = adaptBackendOrderSummary(order);
     return {
@@ -344,6 +355,9 @@ export function adaptBackendOrderDetail(order) {
         recipientName: order.recipient_name,
         recipientPhone: order.recipient_phone,
         shippingAddress: order.shipping_address,
+        shippingProvinceName: order.shipping_province_name ?? null,
+        shippingDistrictName: order.shipping_district_name ?? null,
+        shippingWardName: order.shipping_ward_name ?? null,
         note: order.note ?? "",
         shippingCode: order.shipping_code ?? null,
         shippingCarrier: order.shipping_carrier ?? null,
@@ -352,5 +366,6 @@ export function adaptBackendOrderDetail(order) {
         cancelledAt: order.cancelled_at ?? null,
         items: order.items.map(adaptOrderItem),
         statusHistory: order.status_history.map(adaptStatusHistory),
+        shipment: adaptShipment(order.shipment),
     };
 }

@@ -140,6 +140,11 @@ export function serializeOrderDetail(order, { items = [], statusHistory = [], pa
     recipient_name: order.recipient_name,
     recipient_phone: order.recipient_phone,
     shipping_address: order.shipping_address,
+    // Ten tinh/huyen/xa GHN da luu tu luc checkout — dung de hien "tuyen duong" thay vi
+    // ban do that (khong co toa do GPS trong schema).
+    shipping_province_name: order.shipping_province_name ?? null,
+    shipping_district_name: order.shipping_district_name ?? null,
+    shipping_ward_name: order.shipping_ward_name ?? null,
     note: order.note ?? '',
     shipping_code: order.shipping_code ?? null,
     shipping_carrier: order.shipping_carrier ?? null,
