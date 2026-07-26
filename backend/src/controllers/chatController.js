@@ -53,8 +53,11 @@ export const chat = asyncHandler(async (req, res) => {
     }
 
     if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+      // gemini-1.5-flash da bi Google ngung ho tro (tra ve 404) — dung alias
+      // "gemini-flash-latest" de luon tro toi model flash hien hanh, tranh phai
+      // sua code lai moi khi Google deprecate mot phien ban model cu the.
       const { data } = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
         { contents: [{ parts: [{ text: message }] }] }
       );
       const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin loi, toi chua co cau tra loi.';
