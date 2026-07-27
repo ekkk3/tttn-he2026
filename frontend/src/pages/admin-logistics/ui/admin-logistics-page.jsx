@@ -18,12 +18,12 @@ const ORDER_STATUSES = [
     "CANCELLED",
 ];
 const BULK_ACTION_LABELS = {
-    CONFIRM: "Xac nhan don",
-    SHIP: "Ban giao van chuyen",
-    DELIVER: "Danh dau giao thanh cong",
-    MARK_DELIVERY_FAILED: "Danh dau giao that bai",
-    CANCEL: "Huy don",
-    RESHIP: "Giao lai",
+    CONFIRM: "Xác nhận đơn",
+    SHIP: "Bàn giao vận chuyển",
+    DELIVER: "Đánh dấu giao thành công",
+    MARK_DELIVERY_FAILED: "Đánh dấu giao thất bại",
+    CANCEL: "Hủy đơn",
+    RESHIP: "Giao lại",
 };
 const emptyShipmentForm = {
     shippingCarrierId: "",
@@ -79,6 +79,9 @@ function numberFromForm(value) {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
+// Điền sẵn form tạo vận đơn: kích thước/loại dịch vụ lấy mặc định của carrier đã chọn (nếu
+// có), địa chỉ giao lấy từ chính đơn hàng (đã nhập lúc khách checkout) — admin thường không
+// cần gõ lại tay, chỉ chỉnh nếu cần.
 function shipmentFormFromOrder(order, carrier) {
     return {
         ...emptyShipmentForm,
@@ -99,6 +102,10 @@ function shipmentFormFromOrder(order, carrier) {
         shippingWardName: order.shipping_ward_name ?? "",
     };
 }
+// Thao tác hàng loạt hợp lệ phụ thuộc bộ lọc trạng thái đang xem — vd đang lọc "PENDING"
+// thì chỉ cho Xác nhận/Hủy hàng loạt, không cho "Giao lại" (chỉ áp dụng cho DELIVERY_FAILED).
+// Lọc "all" (mọi trạng thái trộn lẫn) thì cho phép mọi action, vì khó biết action nào hợp lệ
+// cho TỪNG đơn trong lúc chọn — bulkUpdateStatus() phía backend sẽ tự chặn đơn nào không hợp lệ.
 function bulkActionsForFilter(statusFilter) {
     switch (statusFilter) {
         case "PENDING":
@@ -121,7 +128,7 @@ function bulkActionsForFilter(statusFilter) {
 function FieldValue({ label, value }) {
     return (<div className="rounded-2xl bg-surface-container-low p-4 text-sm">
             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">{label}</p>
-            <p className="mt-2 font-medium text-on-surface">{value || "Chua cap nhat"}</p>
+            <p className="mt-2 font-medium text-on-surface">{value || "Chưa cập nhật"}</p>
         </div>);
 }
 function OrderSummaryGrid({ order }) {
@@ -129,57 +136,57 @@ function OrderSummaryGrid({ order }) {
     const transferSubmitted = Boolean(paymentPayload?.customer_transfer_submitted);
     return (<div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
-                <FieldValue label="Khach hang" value={order.customer?.full_name ?? "Khach vang lai"}/>
+                <FieldValue label="Khách hàng" value={order.customer?.full_name ?? "Khách vãng lai"}/>
                 <FieldValue label="Email" value={order.customer?.email}/>
-                <FieldValue label="Nguoi nhan" value={order.recipient_name}/>
-                <FieldValue label="Dien thoai" value={order.recipient_phone}/>
-                <FieldValue label="Dia chi giao" value={order.shipping_address}/>
-                <FieldValue label="Ghi chu" value={order.note}/>
+                <FieldValue label="Người nhận" value={order.recipient_name}/>
+                <FieldValue label="Điện thoại" value={order.recipient_phone}/>
+                <FieldValue label="Địa chỉ giao" value={order.shipping_address}/>
+                <FieldValue label="Ghi chú" value={order.note}/>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
-                <FieldValue label="Tam tinh" value={formatCurrency(Number(order.subtotal))}/>
-                <FieldValue label="Phi giao" value={formatCurrency(Number(order.shipping_fee))}/>
-                <FieldValue label="Tong tien" value={formatCurrency(Number(order.total_amount))}/>
+                <FieldValue label="Tạm tính" value={formatCurrency(Number(order.subtotal))}/>
+                <FieldValue label="Phí giao" value={formatCurrency(Number(order.shipping_fee))}/>
+                <FieldValue label="Tổng tiền" value={formatCurrency(Number(order.total_amount))}/>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-3 rounded-2xl bg-surface-container-low p-4 text-sm">
                     <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                        Van chuyen
+                        Vận chuyển
                     </p>
-                    <p>Don vi: {order.shipping_carrier ?? "Chua cap nhat"}</p>
-                    <p>Ma van don: {order.shipping_code ?? "Chua tao"}</p>
-                    <p>Thoi diem giao: {order.shipped_at ? formatDate(order.shipped_at) : "Chua giao"}</p>
-                    <p>Hoan tat: {order.delivered_at ? formatDate(order.delivered_at) : "Chua giao xong"}</p>
-                    <p>Huy don: {order.cancelled_at ? formatDate(order.cancelled_at) : "Chua huy"}</p>
+                    <p>Đơn vị: {order.shipping_carrier ?? "Chưa cập nhật"}</p>
+                    <p>Mã vận đơn: {order.shipping_code ?? "Chưa tạo"}</p>
+                    <p>Thời điểm giao: {order.shipped_at ? formatDate(order.shipped_at) : "Chưa giao"}</p>
+                    <p>Hoàn tất: {order.delivered_at ? formatDate(order.delivered_at) : "Chưa giao xong"}</p>
+                    <p>Hủy đơn: {order.cancelled_at ? formatDate(order.cancelled_at) : "Chưa hủy"}</p>
                 </div>
                 <div className="space-y-3 rounded-2xl bg-surface-container-low p-4 text-sm">
                     <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                        Thanh toan
+                        Thanh toán
                     </p>
                     <p>
-                        Phuong thuc:{" "}
+                        Phương thức:{" "}
                         {customerPaymentMethodLabels[order.payment_method] ?? fallbackBackendLabel(order.payment_method)}
                     </p>
-                    <p>Cong: {order.payment?.gateway_name ?? "Khong co"}</p>
-                    <p>Ma giao dich: {order.payment?.transaction_code ?? "Khong co"}</p>
-                    <p>Ma tham chieu: {order.payment?.gateway_reference ?? "Khong co"}</p>
-                    <p>Thanh toan luc: {order.payment?.paid_at ? formatDate(order.payment.paid_at) : "Chua thanh toan"}</p>
+                    <p>Cổng: {order.payment?.gateway_name ?? "Không có"}</p>
+                    <p>Mã giao dịch: {order.payment?.transaction_code ?? "Không có"}</p>
+                    <p>Mã tham chiếu: {order.payment?.gateway_reference ?? "Không có"}</p>
+                    <p>Thanh toán lúc: {order.payment?.paid_at ? formatDate(order.payment.paid_at) : "Chưa thanh toán"}</p>
                 </div>
             </div>
 
             {order.payment_method === "BANK_TRANSFER" ? (<div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
-                    <p className="font-medium">Thong tin chuyen khoan</p>
+                    <p className="font-medium">Thông tin chuyển khoản</p>
                     <div className="mt-3 space-y-2 text-on-surface-variant">
-                        <p>Ngan hang: {paymentInstructionValue(paymentPayload, "bank_name") || "MB Bank"}</p>
-                        <p>Chu tai khoan: {paymentInstructionValue(paymentPayload, "account_name") || "HERITAGE HARVEST"}</p>
-                        <p>So tai khoan: {paymentInstructionValue(paymentPayload, "account_number") || "0123456789"}</p>
-                        <p>Noi dung: {paymentInstructionValue(paymentPayload, "transfer_content") || order.order_no}</p>
-                        <p>Khach da bao chuyen khoan: {transferSubmitted ? "Da gui" : "Chua gui"}</p>
+                        <p>Ngân hàng: {paymentInstructionValue(paymentPayload, "bank_name") || "MB Bank"}</p>
+                        <p>Chủ tài khoản: {paymentInstructionValue(paymentPayload, "account_name") || "HERITAGE HARVEST"}</p>
+                        <p>Số tài khoản: {paymentInstructionValue(paymentPayload, "account_number") || "0123456789"}</p>
+                        <p>Nội dung: {paymentInstructionValue(paymentPayload, "transfer_content") || order.order_no}</p>
+                        <p>Khách đã báo chuyển khoản: {transferSubmitted ? "Đã gửi" : "Chưa gửi"}</p>
                         <p>
-                            Thoi diem khach bao:{" "}
-                            {paymentInstructionValue(paymentPayload, "customer_transfer_submitted_at") || "Chua co"}
+                            Thời điểm khách báo:{" "}
+                            {paymentInstructionValue(paymentPayload, "customer_transfer_submitted_at") || "Chưa có"}
                         </p>
                     </div>
                 </div>) : null}
@@ -261,12 +268,17 @@ export function AdminLogisticsPage() {
     const wards = shipmentForm.shippingDistrictId ? wardsByDistrict[shipmentForm.shippingDistrictId] ?? [] : [];
     const availableBulkActions = useMemo(() => bulkActionsForFilter(statusFilter), [statusFilter]);
     const isAllFilteredSelected = filteredOrders.length > 0 && filteredOrders.every((order) => selectedOrderIds.includes(String(order.id)));
+    // Chuỗi useEffect dưới đây phối hợp với nhau theo kiểu "phản ứng dây chuyền" — mỗi effect
+    // chỉ lo 1 việc, kích hoạt khi 1 phần state cụ thể đổi:
+    // 1) Mở drawer chi tiết (detailOpen=true) mà orderDetails[id] chưa có -> tự gọi loadOrder().
     useEffect(() => {
         if (!detailOpen || !activeOrderSummary || activeOrder) {
             return;
         }
         void loadOrder(String(activeOrderSummary.id));
     }, [activeOrder, activeOrderSummary, detailOpen, loadOrder]);
+    // 2) Chi tiết đơn vừa tải xong (hoặc đổi đơn khác) -> reset lựa chọn trạng thái/ghi chú về
+    //    giá trị hợp lệ ĐẦU TIÊN mà state machine cho phép, tránh giữ lựa chọn cũ của đơn trước.
     useEffect(() => {
         if (!activeOrderSummary) {
             return;
@@ -279,6 +291,7 @@ export function AdminLogisticsPage() {
         setNote("");
         setPaymentNote("");
     }, [activeOrder, activeOrderSummary]);
+    // 3) Đơn CHƯA có vận đơn -> điền sẵn form tạo vận đơn từ carrier mặc định (carriers[0]).
     useEffect(() => {
         if (!activeOrder || activeOrder.shipment) {
             return;
@@ -286,6 +299,8 @@ export function AdminLogisticsPage() {
         const carrier = carriers[0] ?? null;
         setShipmentForm(shipmentFormFromOrder(activeOrder, carrier));
     }, [activeOrder, carriers]);
+    // 4)+5) Chọn tỉnh/thành hoặc quận/huyện trong form vận đơn -> tự tải quận/huyện hoặc
+    //    phường/xã tương ứng (dropdown địa chỉ GHN theo tầng, giống pattern ở checkout-page.jsx).
     useEffect(() => {
         if (!shipmentForm.shippingProvinceId)
             return;
@@ -296,9 +311,13 @@ export function AdminLogisticsPage() {
             return;
         void loadWards(Number(shipmentForm.shippingDistrictId));
     }, [loadWards, shipmentForm.shippingDistrictId]);
+    // 6) Danh sách đơn hàng thay đổi (vd sau khi loadOrders() làm mới) -> bỏ khỏi selection
+    //    những id không còn tồn tại trong danh sách nữa, tránh giữ selection "ma".
     useEffect(() => {
         setSelectedOrderIds((current) => current.filter((id) => orders.some((order) => String(order.id) === id)));
     }, [orders]);
+    // 7) Đổi bộ lọc trạng thái -> danh sách bulk action hợp lệ đổi theo -> nếu action đang
+    //    chọn không còn hợp lệ với bộ lọc mới, tự chuyển sang action đầu tiên hợp lệ (hoặc rỗng).
     useEffect(() => {
         setBulkAction((current) => {
             if (!availableBulkActions.length) {
@@ -333,30 +352,33 @@ export function AdminLogisticsPage() {
     }
     async function handleCreateShipment() {
         if (!canUpdateOrderStatus) {
-            pushToast({ tone: "warning", message: "Ban chua co quyen tao van don." });
+            pushToast({ tone: "warning", message: "Bạn chưa có quyền tạo vận đơn." });
             return;
         }
         if (!activeOrder || !activeOrderSummary) {
             return;
         }
         if (activeOrder.status !== "CONFIRMED") {
-            pushToast({ tone: "warning", message: "Chi don da xac nhan moi duoc tao van don." });
+            pushToast({ tone: "warning", message: "Chỉ đơn đã xác nhận mới được tạo vận đơn." });
             return;
         }
         if (!shipmentForm.shippingCarrierId) {
-            pushToast({ tone: "warning", message: "Vui long chon don vi van chuyen." });
+            pushToast({ tone: "warning", message: "Vui lòng chọn đơn vị vận chuyển." });
             return;
         }
+        // 2 nhánh validate khác nhau tùy loại carrier: GHN cần đủ địa chỉ 3 cấp (tỉnh/huyện/xã)
+        // để backend gọi API thật tính phí + tạo vận đơn; carrier thủ công thì không gọi API
+        // nào cả nên bắt buộc admin tự nhập SẴN mã vận đơn (backend không tự sinh được mã thật).
         if (selectedCarrier?.provider === "GHN" &&
             (!shipmentForm.shippingLine1 ||
                 !shipmentForm.shippingProvinceName ||
                 !shipmentForm.shippingDistrictName ||
                 !shipmentForm.shippingWardName)) {
-            pushToast({ tone: "warning", message: "Can bo sung day du dia chi GHN truoc khi tao van don." });
+            pushToast({ tone: "warning", message: "Cần bổ sung đầy đủ địa chỉ GHN trước khi tạo vận đơn." });
             return;
         }
         if (selectedCarrier?.provider !== "GHN" && !shipmentForm.trackingCode.trim()) {
-            pushToast({ tone: "warning", message: "Can nhap ma van don cho carrier thu cong." });
+            pushToast({ tone: "warning", message: "Cần nhập mã vận đơn cho carrier thủ công." });
             return;
         }
         const result = await createShipment(String(activeOrderSummary.id), {
@@ -380,10 +402,10 @@ export function AdminLogisticsPage() {
             note: shipmentForm.note.trim() || undefined,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the tao van don." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể tạo vận đơn." });
             return;
         }
-        pushToast({ tone: "success", message: `Da tao van don cho ${result.data.order_no}.` });
+        pushToast({ tone: "success", message: `Đã tạo vận đơn cho ${result.data.order_no}.` });
         setShipmentForm(shipmentFormFromOrder(result.data, selectedCarrier));
     }
     async function handleSyncShipment() {
@@ -391,81 +413,81 @@ export function AdminLogisticsPage() {
             return;
         const result = await syncShipment(String(activeOrderSummary.id));
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the dong bo GHN." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể đồng bộ GHN." });
             return;
         }
-        pushToast({ tone: "success", message: `Da dong bo van don ${result.data.order_no}.` });
+        pushToast({ tone: "success", message: `Đã đồng bộ vận đơn ${result.data.order_no}.` });
     }
     async function handleCancelShipment() {
         if (!activeOrderSummary)
             return;
         const result = await cancelShipment(String(activeOrderSummary.id));
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the huy van don." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể hủy vận đơn." });
             return;
         }
-        pushToast({ tone: "success", message: `Da huy van don ${result.data.order_no}.` });
+        pushToast({ tone: "success", message: `Đã hủy vận đơn ${result.data.order_no}.` });
     }
     async function handleUpdateStatus() {
         if (!canUpdateOrderStatus) {
-            pushToast({ tone: "warning", message: "Ban chua co quyen cap nhat trang thai don hang." });
+            pushToast({ tone: "warning", message: "Bạn chưa có quyền cập nhật trạng thái đơn hàng." });
             return;
         }
         if (!activeOrderSummary || !activeOrder) {
             return;
         }
         if (!activeOrder.allowed_next_statuses.includes(nextStatus)) {
-            pushToast({ tone: "warning", message: "Trang thai don hang khong hop le cho buoc tiep theo." });
+            pushToast({ tone: "warning", message: "Trạng thái đơn hàng không hợp lệ cho bước tiếp theo." });
             return;
         }
         if (nextStatus === "SHIPPED" && !activeOrder.shipment) {
-            pushToast({ tone: "warning", message: "Can tao van don truoc khi ban giao van chuyen." });
+            pushToast({ tone: "warning", message: "Cần tạo vận đơn trước khi bàn giao vận chuyển." });
             return;
         }
         const result = await updateStatus(String(activeOrderSummary.id), nextStatus, note);
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat trang thai don hang." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật trạng thái đơn hàng." });
             return;
         }
         pushToast({
             tone: "success",
-            message: `Da cap nhat ${result.data.order_no} sang ${labelForStatus(result.data.status)}.`,
+            message: `Đã cập nhật ${result.data.order_no} sang ${labelForStatus(result.data.status)}.`,
         });
         setNote("");
     }
     async function handleUpdatePaymentStatus() {
         if (!canUpdatePaymentStatus) {
-            pushToast({ tone: "warning", message: "Ban chua co quyen cap nhat thanh toan." });
+            pushToast({ tone: "warning", message: "Bạn chưa có quyền cập nhật thanh toán." });
             return;
         }
         if (!activeOrderSummary || !activeOrder) {
             return;
         }
         if (!activeOrder.allowed_payment_statuses?.includes(nextPaymentStatus)) {
-            pushToast({ tone: "warning", message: "Trang thai thanh toan khong hop le cho buoc tiep theo." });
+            pushToast({ tone: "warning", message: "Trạng thái thanh toán không hợp lệ cho bước tiếp theo." });
             return;
         }
         const result = await updatePaymentStatus(String(activeOrderSummary.id), nextPaymentStatus, paymentNote);
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat trang thai thanh toan." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật trạng thái thanh toán." });
             return;
         }
         pushToast({
             tone: "success",
-            message: `Da cap nhat thanh toan ${result.data.order_no} sang ${labelForPaymentStatus(result.data.payment?.payment_status ?? nextPaymentStatus)}.`,
+            message: `Đã cập nhật thanh toán ${result.data.order_no} sang ${labelForPaymentStatus(result.data.payment?.payment_status ?? nextPaymentStatus)}.`,
         });
         setPaymentNote("");
     }
     async function handleDeliveryFailedAction(action) {
         if (!canUpdateOrderStatus) {
-            pushToast({ tone: "warning", message: "Ban chua co quyen cap nhat trang thai don hang." });
+            pushToast({ tone: "warning", message: "Bạn chưa có quyền cập nhật trạng thái đơn hàng." });
             return;
         }
         if (!activeOrderSummary || !activeOrder) {
             return;
         }
         if (action === "dispose" && !note.trim()) {
-            pushToast({ tone: "warning", message: "Vui long nhap ly do khi huy nhung khong nhap lai kho." });
+            pushToast({ tone: "warning", message: "Vui lòng nhập lý do khi hủy nhưng không nhập lại kho." });
             return;
         }
         const result = action === "reshop"
@@ -474,14 +496,14 @@ export function AdminLogisticsPage() {
                 restockInventory: action === "restock",
             });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat xu ly giao hang that bai." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật xử lý giao hàng thất bại." });
             return;
         }
         pushToast({
             tone: "success",
             message: action === "reshop"
-                ? `Da chuyen ${result.data.order_no} sang trang thai ${labelForStatus(result.data.status)}.`
-                : `Da huy ${result.data.order_no} thanh cong.`,
+                ? `Đã chuyển ${result.data.order_no} sang trạng thái ${labelForStatus(result.data.status)}.`
+                : `Đã hủy ${result.data.order_no} thành công.`,
         });
         setNote("");
     }
@@ -499,7 +521,7 @@ export function AdminLogisticsPage() {
     }
     async function handleApplyBulkAction() {
         if (!canBulkUpdateOrders) {
-            pushToast({ tone: "warning", message: "Ban chua co quyen xu ly hang loat don hang." });
+            pushToast({ tone: "warning", message: "Bạn chưa có quyền xử lý hàng loạt đơn hàng." });
             return;
         }
         if (!selectedOrderIds.length || !bulkAction) {
@@ -511,16 +533,22 @@ export function AdminLogisticsPage() {
             note: note || undefined,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the xu ly hang loat don hang." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể xử lý hàng loạt đơn hàng." });
             return;
         }
         setBulkResult(result.data);
         pushToast({
             tone: result.data.failed > 0 ? "warning" : "success",
-            message: `Da xu ly ${result.data.total} don: ${result.data.success} thanh cong, ${result.data.failed} that bai.`,
+            message: `Đã xử lý ${result.data.total} đơn: ${result.data.success} thành công, ${result.data.failed} thất bại.`,
         });
+        // Chỉ bỏ chọn những đơn ĐÃ xử lý thành công — đơn thất bại vẫn giữ nguyên trong
+        // selection để admin sửa rồi thử áp dụng lại ngay, khỏi phải chọn lại từ đầu.
         const successIds = result.data.results.filter((item) => item.success).map((item) => String(item.orderId));
         setSelectedOrderIds((current) => current.filter((id) => !successIds.includes(id)));
+        // Làm mới danh sách đơn (loadOrders()) để bảng cập nhật trạng thái mới; nếu đang mở
+        // drawer xem 1 đơn, gọi thêm loadOrder(). LƯU Ý: loadOrder() ưu tiên trả cache có sẵn
+        // (xem use-admin-orders-store.js#loadOrder) — nếu chi tiết đơn này đã từng tải trước
+        // đó, dòng dưới có thể KHÔNG lấy được bản mới nhất từ server sau bulk update.
         const refreshResult = await loadOrders();
         if (activeOrderId && refreshResult.success) {
             await loadOrder(activeOrderId);
@@ -531,19 +559,19 @@ export function AdminLogisticsPage() {
             ? [
                 {
                     key: "select",
-                    title: (<input type="checkbox" className="h-4 w-4 rounded border-outline-variant/30" checked={isAllFilteredSelected} onChange={(event) => handleToggleSelectAll(event.target.checked)} onClick={(event) => event.stopPropagation()} aria-label="Chon tat ca don hang"/>),
+                    title: (<input type="checkbox" className="h-4 w-4 rounded border-outline-variant/30" checked={isAllFilteredSelected} onChange={(event) => handleToggleSelectAll(event.target.checked)} onClick={(event) => event.stopPropagation()} aria-label="Chọn tất cả đơn hàng"/>),
                     className: "w-14",
                     align: "center",
                     render: (order) => {
                         const orderId = String(order.id);
-                        return (<input type="checkbox" className="h-4 w-4 rounded border-outline-variant/30" checked={selectedOrderIds.includes(orderId)} onChange={(event) => toggleOrderSelection(orderId, event.target.checked)} onClick={(event) => event.stopPropagation()} aria-label={`Chon don ${order.order_no}`}/>);
+                        return (<input type="checkbox" className="h-4 w-4 rounded border-outline-variant/30" checked={selectedOrderIds.includes(orderId)} onChange={(event) => toggleOrderSelection(orderId, event.target.checked)} onClick={(event) => event.stopPropagation()} aria-label={`Chọn đơn ${order.order_no}`}/>);
                     },
                 },
             ]
             : []),
         {
             key: "order",
-            title: "Don hang",
+            title: "Đơn hàng",
             render: (order) => (<div>
                     <p className="font-semibold text-on-surface">{order.order_no}</p>
                     <p className="mt-1 text-xs text-on-surface-variant">{formatDate(order.created_at)}</p>
@@ -551,26 +579,26 @@ export function AdminLogisticsPage() {
         },
         {
             key: "customer",
-            title: "Khach hang",
+            title: "Khách hàng",
             render: (order) => (<div>
-                    <p className="font-medium">{order.customer?.full_name ?? "Khach vang lai"}</p>
-                    <p className="mt-1 text-xs text-on-surface-variant">{order.customer?.email ?? "Chua co email"}</p>
+                    <p className="font-medium">{order.customer?.full_name ?? "Khách vãng lai"}</p>
+                    <p className="mt-1 text-xs text-on-surface-variant">{order.customer?.email ?? "Chưa có email"}</p>
                 </div>),
         },
         {
             key: "total",
-            title: "Tong tien",
+            title: "Tổng tiền",
             align: "right",
             render: (order) => <span className="font-semibold">{formatCurrency(Number(order.total_amount))}</span>,
         },
         {
             key: "status",
-            title: "Trang thai",
+            title: "Trạng thái",
             render: (order) => <Badge tone={orderStatusTone(order.status)}>{labelForStatus(order.status)}</Badge>,
         },
         {
             key: "payment",
-            title: "Thanh toan",
+            title: "Thanh toán",
             render: (order) => {
                 const status = order.payment?.payment_status;
                 return <Badge tone={paymentStatusTone(status)}>{labelForPaymentStatus(status ?? "PENDING")}</Badge>;
@@ -578,10 +606,10 @@ export function AdminLogisticsPage() {
         },
         {
             key: "shipping",
-            title: "Van don",
+            title: "Vận đơn",
             render: (order) => (<div>
-                    <p className="font-medium">{order.shipping_code ?? "Chua tao"}</p>
-                    <p className="mt-1 text-xs text-on-surface-variant">{order.shipping_carrier ?? "Chua co DVVC"}</p>
+                    <p className="font-medium">{order.shipping_code ?? "Chưa tạo"}</p>
+                    <p className="mt-1 text-xs text-on-surface-variant">{order.shipping_carrier ?? "Chưa có DVVC"}</p>
                 </div>),
         },
         {
@@ -611,32 +639,32 @@ export function AdminLogisticsPage() {
             <SurfaceCard className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h3 className="font-headline text-xl font-semibold text-on-surface">Danh sach don hang</h3>
-                        <p className="mt-1 text-sm text-on-surface-variant">{filteredOrders.length} don dang hien thi</p>
+                        <h3 className="font-headline text-xl font-semibold text-on-surface">Danh sách đơn hàng</h3>
+                        <p className="mt-1 text-sm text-on-surface-variant">{filteredOrders.length} đơn đang hiển thị</p>
                     </div>
                 </div>
 
                 {canBulkUpdateOrders && selectedOrderIds.length > 0 ? (<div className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
-                        <div className="text-sm font-semibold text-on-surface">Da chon {selectedOrderIds.length} don</div>
+                        <div className="text-sm font-semibold text-on-surface">Đã chọn {selectedOrderIds.length} đơn</div>
                         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                             <select className="min-w-0 flex-1 rounded-2xl bg-white px-4 py-3 text-sm outline-none" value={bulkAction} onChange={(event) => setBulkAction(event.target.value)}>
-                                {availableBulkActions.length === 0 ? (<option value="">Khong co thao tac phu hop</option>) : (availableBulkActions.map((action) => (<option key={action} value={action}>
+                                {availableBulkActions.length === 0 ? (<option value="">Không có thao tác phù hợp</option>) : (availableBulkActions.map((action) => (<option key={action} value={action}>
                                             {BULK_ACTION_LABELS[action]}
                                         </option>)))}
                             </select>
                             <Button onClick={() => void handleApplyBulkAction()} disabled={isSaving || !bulkAction || availableBulkActions.length === 0}>
-                                {isSaving ? "Dang xu ly..." : "Ap dung"}
+                                {isSaving ? "Đang xử lý..." : "Áp dụng"}
                             </Button>
                             <Button variant="outline" onClick={() => setSelectedOrderIds([])} disabled={isSaving}>
-                                Bo chon
+                                Bỏ chọn
                             </Button>
                         </div>
                     </div>) : null}
 
-                <DataTable rows={filteredOrders} columns={columns} getRowKey={(order) => String(order.id)} isLoading={isLoading && orders.length === 0} loadingMessage="Dang tai danh sach don hang..." emptyMessage="Chua co don hang nao phu hop voi bo loc hien tai." minWidth="980px" pagination={{ pageSize: 8, itemLabel: "don hang" }} rowClassName={(order) => selectedOrderIds.includes(String(order.id)) ? "bg-primary/5 hover:bg-primary/10" : undefined} onRowClick={(order) => openOrder(String(order.id))}/>
+                <DataTable rows={filteredOrders} columns={columns} getRowKey={(order) => String(order.id)} isLoading={isLoading && orders.length === 0} loadingMessage="Đang tải danh sách đơn hàng..." emptyMessage="Chưa có đơn hàng nào phù hợp với bộ lọc hiện tại." minWidth="980px" pagination={{ pageSize: 8, itemLabel: "đơn hàng" }} rowClassName={(order) => selectedOrderIds.includes(String(order.id)) ? "bg-primary/5 hover:bg-primary/10" : undefined} onRowClick={(order) => openOrder(String(order.id))}/>
             </SurfaceCard>
 
-            <AdminDrawer open={detailOpen} mode="view" title={activeOrderSummary?.order_no ?? "Chi tiet don hang"} subtitle={activeOrderSummary ? (<div className="flex flex-wrap gap-2">
+            <AdminDrawer open={detailOpen} mode="view" title={activeOrderSummary?.order_no ?? "Chi tiết đơn hàng"} subtitle={activeOrderSummary ? (<div className="flex flex-wrap gap-2">
                             <Badge tone={orderStatusTone(activeOrderSummary.status)}>
                                 {labelForStatus(activeOrderSummary.status)}
                             </Badge>
@@ -645,61 +673,61 @@ export function AdminLogisticsPage() {
                             </Badge>
                         </div>) : null} onClose={() => setDetailOpen(false)} footer={<div className="flex justify-end">
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>
-                            Dong
+                            Đóng
                         </Button>
                     </div>}>
-                {!activeOrderSummary ? (<p className="text-sm text-on-surface-variant">Chua chon don hang.</p>) : !activeOrder ? (<p className="text-sm text-on-surface-variant">Dang tai chi tiet don hang...</p>) : (<div className="space-y-6">
+                {!activeOrderSummary ? (<p className="text-sm text-on-surface-variant">Chưa chọn đơn hàng.</p>) : !activeOrder ? (<p className="text-sm text-on-surface-variant">Đang tải chi tiết đơn hàng...</p>) : (<div className="space-y-6">
                         <OrderSummaryGrid order={activeOrder}/>
 
                         <div className="space-y-4 rounded-2xl bg-surface-container-low p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                    Van don
+                                    Vận đơn
                                 </p>
                                 {activeOrder.shipment?.provider === "GHN" ? (<Button size="sm" variant="secondary" disabled={isSaving || !canUpdateOrderStatus || Boolean(activeOrder.shipment.cancelled_at)} onClick={() => void handleSyncShipment()}>
-                                        Dong bo GHN
+                                        Đồng bộ GHN
                                     </Button>) : null}
                             </div>
 
                             {activeOrder.shipment ? (<div className="space-y-4">
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        <FieldValue label="Don vi" value={activeOrder.shipment.carrier?.name ?? activeOrder.shipping_carrier}/>
-                                        <FieldValue label="Ma van don" value={activeOrder.shipment.tracking_code}/>
-                                        <FieldValue label="Trang thai carrier" value={activeOrder.shipment.status}/>
-                                        <FieldValue label="Phi thuc te" value={activeOrder.shipment.shipping_fee !== null
+                                        <FieldValue label="Đơn vị" value={activeOrder.shipment.carrier?.name ?? activeOrder.shipping_carrier}/>
+                                        <FieldValue label="Mã vận đơn" value={activeOrder.shipment.tracking_code}/>
+                                        <FieldValue label="Trạng thái carrier" value={activeOrder.shipment.status}/>
+                                        <FieldValue label="Phí thực tế" value={activeOrder.shipment.shipping_fee !== null
                     ? formatCurrency(Number(activeOrder.shipment.shipping_fee))
-                    : "Chua co"}/>
+                    : "Chưa có"}/>
                                         <FieldValue label="COD" value={formatCurrency(Number(activeOrder.shipment.cod_amount ?? 0))}/>
-                                        <FieldValue label="Dong bo luc" value={activeOrder.shipment.synced_at ? formatDate(activeOrder.shipment.synced_at) : "Chua dong bo"}/>
+                                        <FieldValue label="Đồng bộ lúc" value={activeOrder.shipment.synced_at ? formatDate(activeOrder.shipment.synced_at) : "Chưa đồng bộ"}/>
                                     </div>
                                     {activeOrder.shipment.tracking_url ? (<a className="inline-flex text-sm font-medium text-primary hover:underline" href={activeOrder.shipment.tracking_url} target="_blank" rel="noreferrer">
-                                            Mo trang tracking
+                                            Mở trang tracking
                                         </a>) : null}
                                     {["CONFIRMED", "PACKED"].includes(activeOrder.status) ? (<Button variant="ghost" disabled={isSaving || !canUpdateOrderStatus || Boolean(activeOrder.shipment.cancelled_at)} onClick={() => void handleCancelShipment()}>
-                                            Huy van don
+                                            Hủy vận đơn
                                         </Button>) : null}
                                 </div>) : activeOrder.status !== "CONFIRMED" ? (<div className="rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3 text-sm text-on-surface-variant">
-                                    Tao van don sau khi don da duoc xac nhan.
+                                    Tạo vận đơn sau khi đơn đã được xác nhận.
                                 </div>) : (<div className="space-y-4">
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <label className="block space-y-2 text-sm">
-                                            <span className="font-medium">Don vi van chuyen</span>
+                                            <span className="font-medium">Đơn vị vận chuyển</span>
                                             <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.shippingCarrierId} onChange={(event) => handleCarrierChange(event.target.value)}>
-                                                <option value="">Chon carrier</option>
+                                                <option value="">Chọn carrier</option>
                                                 {carriers.map((carrier) => (<option key={carrier.id} value={carrier.id}>
                                                         {carrier.name} ({carrier.provider})
                                                     </option>))}
                                             </select>
                                         </label>
                                         <label className="block space-y-2 text-sm">
-                                            <span className="font-medium">Ghi chu tao van don</span>
+                                            <span className="font-medium">Ghi chú tạo vận đơn</span>
                                             <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.note} onChange={(event) => updateShipmentField("note", event.target.value)}/>
                                         </label>
                                     </div>
 
                                     {selectedCarrier?.provider !== "GHN" ? (<div className="grid gap-4 md:grid-cols-2">
                                             <label className="block space-y-2 text-sm">
-                                                <span className="font-medium">Ma van don thu cong</span>
+                                                <span className="font-medium">Mã vận đơn thủ công</span>
                                                 <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.trackingCode} onChange={(event) => updateShipmentField("trackingCode", event.target.value)}/>
                                             </label>
                                             <label className="block space-y-2 text-sm">
@@ -710,9 +738,9 @@ export function AdminLogisticsPage() {
 
                                     <div className="grid gap-4 md:grid-cols-4">
                                         {[
-                    ["weight", "Can nang (g)"],
-                    ["length", "Dai (cm)"],
-                    ["width", "Rong (cm)"],
+                    ["weight", "Cân nặng (g)"],
+                    ["length", "Dài (cm)"],
+                    ["width", "Rộng (cm)"],
                     ["height", "Cao (cm)"],
                 ].map(([key, label]) => (<label key={key} className="block space-y-2 text-sm">
                                                 <span className="font-medium">{label}</span>
@@ -741,11 +769,11 @@ export function AdminLogisticsPage() {
 
                                     <div className="grid gap-4 md:grid-cols-2">
                                         <label className="block space-y-2 text-sm md:col-span-2">
-                                            <span className="font-medium">Dia chi chi tiet</span>
+                                            <span className="font-medium">Địa chỉ chi tiết</span>
                                             <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.shippingLine1} onChange={(event) => updateShipmentField("shippingLine1", event.target.value)}/>
                                         </label>
                                         <label className="block space-y-2 text-sm">
-                                            <span className="font-medium">Tinh/thanh</span>
+                                            <span className="font-medium">Tỉnh/thành</span>
                                             <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.shippingProvinceId} onChange={(event) => {
                     const province = provinces.find((item) => String(item.ProvinceID) === event.target.value);
                     setShipmentForm((current) => ({
@@ -758,14 +786,14 @@ export function AdminLogisticsPage() {
                         shippingWardName: "",
                     }));
                 }}>
-                                                <option value="">Chon tinh/thanh</option>
+                                                <option value="">Chọn tỉnh/thành</option>
                                                 {provinces.map((province) => (<option key={province.ProvinceID} value={province.ProvinceID}>
                                                         {province.ProvinceName}
                                                     </option>))}
                                             </select>
                                         </label>
                                         <label className="block space-y-2 text-sm">
-                                            <span className="font-medium">Quan/huyen</span>
+                                            <span className="font-medium">Quận/huyện</span>
                                             <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.shippingDistrictId} disabled={!shipmentForm.shippingProvinceId} onChange={(event) => {
                     const district = districts.find((item) => String(item.DistrictID) === event.target.value);
                     setShipmentForm((current) => ({
@@ -776,14 +804,14 @@ export function AdminLogisticsPage() {
                         shippingWardName: "",
                     }));
                 }}>
-                                                <option value="">Chon quan/huyen</option>
+                                                <option value="">Chọn quận/huyện</option>
                                                 {districts.map((district) => (<option key={district.DistrictID} value={district.DistrictID}>
                                                         {district.DistrictName}
                                                     </option>))}
                                             </select>
                                         </label>
                                         <label className="block space-y-2 text-sm">
-                                            <span className="font-medium">Phuong/xa</span>
+                                            <span className="font-medium">Phường/xã</span>
                                             <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={shipmentForm.shippingWardCode} disabled={!shipmentForm.shippingDistrictId} onChange={(event) => {
                     const ward = wards.find((item) => item.WardCode === event.target.value);
                     setShipmentForm((current) => ({
@@ -792,7 +820,7 @@ export function AdminLogisticsPage() {
                         shippingWardName: ward?.WardName ?? "",
                     }));
                 }}>
-                                                <option value="">Chon phuong/xa</option>
+                                                <option value="">Chọn phường/xã</option>
                                                 {wards.map((ward) => (<option key={ward.WardCode} value={ward.WardCode}>
                                                         {ward.WardName}
                                                     </option>))}
@@ -801,14 +829,14 @@ export function AdminLogisticsPage() {
                                     </div>
 
                                     <Button disabled={isSaving || !canUpdateOrderStatus || !shipmentForm.shippingCarrierId} onClick={() => void handleCreateShipment()}>
-                                        {isSaving ? "Dang tao..." : "Tao van don"}
+                                        {isSaving ? "Đang tạo..." : "Tạo vận đơn"}
                                     </Button>
                                 </div>)}
                         </div>
 
                         <div className="space-y-3 rounded-2xl bg-surface-container-low p-4">
                             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                San pham trong don
+                                Sản phẩm trong đơn
                             </p>
                             {activeOrder.items.map((item) => (<div key={item.id} className="flex items-start justify-between gap-4 border-b border-outline-variant/15 pb-3 last:border-0 last:pb-0">
                                     <div>
@@ -825,21 +853,21 @@ export function AdminLogisticsPage() {
 
                         <div className="space-y-4 rounded-2xl bg-surface-container-low p-4">
                             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                Cap nhat trang thai don
+                                Cập nhật trạng thái đơn
                             </p>
                             {activeOrder.status === "DELIVERY_FAILED" ? (<div className="space-y-4">
                                     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                                        Don giao that bai. Can kiem tra chat luong hang hoan truoc khi nhap lai kho.
+                                        Đơn giao thất bại. Cần kiểm tra chất lượng hàng hoàn trước khi nhập lại kho.
                                     </div>
                                     <div className="flex flex-col gap-3 lg:flex-row lg:flex-nowrap">
                                         <Button className="lg:flex-1" onClick={() => void handleDeliveryFailedAction("reshop")} disabled={isSaving || !canUpdateOrderStatus}>
-                                            {isSaving ? "Dang cap nhat..." : "Giao lai"}
+                                            {isSaving ? "Đang cập nhật..." : "Giao lại"}
                                         </Button>
                                         <Button variant="secondary" className="lg:flex-1" onClick={() => void handleDeliveryFailedAction("restock")} disabled={isSaving || !canUpdateOrderStatus}>
-                                            Huy va nhap lai kho
+                                            Hủy và nhập lại kho
                                         </Button>
                                         <button type="button" className="rounded-full border border-error/25 px-5 py-3 text-sm font-semibold text-error disabled:opacity-50 lg:flex-1" disabled={isSaving || !canUpdateOrderStatus} onClick={() => void handleDeliveryFailedAction("dispose")}>
-                                            Huy khong nhap kho
+                                            Hủy không nhập kho
                                         </button>
                                     </div>
                                 </div>) : (<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -851,17 +879,17 @@ export function AdminLogisticsPage() {
                                     <Button onClick={() => void handleUpdateStatus()} disabled={isSaving ||
                     activeOrder.allowed_next_statuses.length === 0 ||
                     !canUpdateOrderStatus}>
-                                        {isSaving ? "Dang cap nhat..." : "Luu trang thai don"}
+                                        {isSaving ? "Đang cập nhật..." : "Lưu trạng thái đơn"}
                                     </Button>
                                 </div>)}
                             <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" disabled={!canUpdateOrderStatus} placeholder={activeOrder.status === "DELIVERY_FAILED"
-                ? "Ghi chu xu ly giao that bai hoac ly do khong nhap lai kho"
-                : "Ghi chu cho lich su trang thai don"} value={note} onChange={(event) => setNote(event.target.value)}/>
+                ? "Ghi chú xử lý giao thất bại hoặc lý do không nhập lại kho"
+                : "Ghi chú cho lịch sử trạng thái đơn"} value={note} onChange={(event) => setNote(event.target.value)}/>
                         </div>
 
                         <div className="space-y-4 rounded-2xl bg-surface-container-low p-4">
                             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                Cap nhat thanh toan
+                                Cập nhật thanh toán
                             </p>
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                                 <select className="min-w-0 flex-1 rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none" value={nextPaymentStatus} disabled={!canUpdatePaymentStatus} onChange={(event) => setNextPaymentStatus(event.target.value)}>
@@ -874,15 +902,15 @@ export function AdminLogisticsPage() {
                                 <Button onClick={() => void handleUpdatePaymentStatus()} disabled={isSaving ||
                 !activeOrder.allowed_payment_statuses?.length ||
                 !canUpdatePaymentStatus}>
-                                    {isSaving ? "Dang cap nhat..." : "Luu thanh toan"}
+                                    {isSaving ? "Đang cập nhật..." : "Lưu thanh toán"}
                                 </Button>
                             </div>
-                            <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" disabled={!canUpdatePaymentStatus} placeholder="Ghi chu cho lich su thanh toan" value={paymentNote} onChange={(event) => setPaymentNote(event.target.value)}/>
+                            <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" disabled={!canUpdatePaymentStatus} placeholder="Ghi chú cho lịch sử thanh toán" value={paymentNote} onChange={(event) => setPaymentNote(event.target.value)}/>
                         </div>
 
                         <div className="space-y-3">
                             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                Lich su trang thai don
+                                Lịch sử trạng thái đơn
                             </p>
                             {activeOrder.status_history.map((history) => (<div key={history.id} className="rounded-2xl bg-surface-container-low p-4 text-sm">
                                     <p className="font-medium">
@@ -896,7 +924,7 @@ export function AdminLogisticsPage() {
 
                         <div className="space-y-3">
                             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
-                                Lich su thanh toan
+                                Lịch sử thanh toán
                             </p>
                             {activeOrder.payment_status_history.map((history) => (<div key={history.id} className="rounded-2xl bg-surface-container-low p-4 text-sm">
                                     <p className="font-medium">
@@ -915,14 +943,14 @@ export function AdminLogisticsPage() {
                     <div className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] bg-white p-6 shadow-2xl">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="text-xl font-semibold text-on-surface">Ket qua xu ly</h3>
+                                <h3 className="text-xl font-semibold text-on-surface">Kết quả xử lý</h3>
                                 <p className="mt-2 text-sm text-on-surface-variant">
-                                    Da xu ly {bulkResult.total} don: {bulkResult.success} thanh cong,{" "}
-                                    {bulkResult.failed} that bai.
+                                    Đã xử lý {bulkResult.total} đơn: {bulkResult.success} thành công,{" "}
+                                    {bulkResult.failed} thất bại.
                                 </p>
                             </div>
                             <button type="button" className="rounded-full bg-surface-container px-4 py-2 text-sm font-medium" onClick={() => setBulkResult(null)}>
-                                Dong
+                                Đóng
                             </button>
                         </div>
 
@@ -931,8 +959,8 @@ export function AdminLogisticsPage() {
                     ? "border-green-200 bg-green-50 text-green-900"
                     : "border-red-200 bg-red-50 text-red-900")}>
                                     <p className="font-semibold">
-                                        {item.orderNo ?? `Don #${item.orderId}`}:{" "}
-                                        {item.success ? "Thanh cong" : "That bai"}
+                                        {item.orderNo ?? `Đơn #${item.orderId}`}:{" "}
+                                        {item.success ? "Thành công" : "Thất bại"}
                                     </p>
                                     <p className="mt-1">{item.message}</p>
                                 </div>))}

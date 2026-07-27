@@ -13,6 +13,10 @@ const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòn
 function token() {
     return useAuthStore.getState().accessToken;
 }
+// Danh sách đơn (`orders`) và chi tiết đơn (`orderDetails`, theo id) là 2 shape KHÁC NHAU
+// (chi tiết có thêm items, status_history...). Sau khi 1 action trả về bản chi tiết mới
+// (vd đổi trạng thái), hàm này "rút gọn" lại thành đúng shape hàng trong danh sách, để cập
+// nhật `orders` luôn mà KHÔNG cần gọi lại loadOrders() riêng.
 function mergeSummary(detail) {
     return {
         id: detail.id,
@@ -45,6 +49,8 @@ function mergeSummary(detail) {
         updated_at: detail.updated_at,
     };
 }
+// Dùng chung cho 3 action vận đơn (createShipment/syncShipment/cancelShipment) — cả 3 đều
+// trả về đúng 1 shape "chi tiết đơn hàng mới nhất" nên gộp logic ghi state vào đây.
 function syncOrderDetail(set, orderId, detail) {
     set((state) => ({
         isSaving: false,
@@ -86,6 +92,9 @@ export const useAdminOrdersStore = create()((set, get) => ({
         }
     },
     loadOrder: async (orderId) => {
+        // Đã tải chi tiết đơn này trước đó (vd mở lại drawer cùng 1 đơn) -> dùng cache, khỏi
+        // gọi API lại. Muốn ép tải mới thì các action khác (updateStatus...) tự ghi đè cache
+        // này khi có kết quả mới, không cần cờ "force" riêng ở đây.
         const cached = get().orderDetails[orderId];
         if (cached) {
             return { success: true, data: cached };
@@ -196,7 +205,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
     createShipment: async (orderId, payload) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de tao van don." };
+            return { success: false, error: "Bạn cần đăng nhập admin để tạo vận đơn." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -214,7 +223,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tao van don.";
+            const message = error instanceof Error ? error.message : "Không thể tạo vận đơn.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -222,7 +231,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
     syncShipment: async (orderId) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de dong bo van don." };
+            return { success: false, error: "Bạn cần đăng nhập admin để đồng bộ vận đơn." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -239,7 +248,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the dong bo GHN.";
+            const message = error instanceof Error ? error.message : "Không thể đồng bộ GHN.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -247,7 +256,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
     cancelShipment: async (orderId) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de huy van don." };
+            return { success: false, error: "Bạn cần đăng nhập admin để hủy vận đơn." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -264,7 +273,7 @@ export const useAdminOrdersStore = create()((set, get) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the huy van don.";
+            const message = error instanceof Error ? error.message : "Không thể hủy vận đơn.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }

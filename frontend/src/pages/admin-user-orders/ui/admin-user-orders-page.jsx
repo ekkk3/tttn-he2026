@@ -11,7 +11,7 @@ import {
     adminPaymentStatusTone,
 } from "@/widgets/admin-user-orders/order-detail-labels";
 const PAGE_SIZE = 5;
-const INVALID_CUSTOMER_MESSAGE = "User id khong hop le.";
+const INVALID_CUSTOMER_MESSAGE = "User id không hợp lệ.";
 export function AdminUserOrdersPage() {
     const { userId } = useParams();
     const customerId = Number(userId);
@@ -61,7 +61,7 @@ export function AdminUserOrdersPage() {
             }
             setCustomerLoading(false);
             if (!result.success) {
-                setCustomerError(result.error ?? "Khong the tai customer.");
+                setCustomerError(result.error ?? "Không thể tải customer.");
             }
         })();
         return () => {
@@ -76,8 +76,8 @@ export function AdminUserOrdersPage() {
     }, [currentPage, customerId, hasValidCustomerId, loadCustomerOrders]);
     if (!hasValidCustomerId || (customerError && !customer)) {
         return (<div className="space-y-6">
-                <AdminPageHeader title="Lich su don hang" description="Khong the mo trang lich su don hang cho customer nay." actions={<ButtonLink to={routes.adminUsers} variant="secondary">
-                            Quay lai users
+                <AdminPageHeader title="Lịch sử đơn hàng" description="Không thể mở trang lịch sử đơn hàng cho customer này." actions={<ButtonLink to={routes.adminUsers} variant="secondary">
+                            Quay lại users
                         </ButtonLink>}/>
                 <SurfaceCard className="space-y-4 text-sm">
                     <p className="text-error">{customerError ?? INVALID_CUSTOMER_MESSAGE}</p>
@@ -85,10 +85,10 @@ export function AdminUserOrdersPage() {
             </div>);
     }
     return (<div className="space-y-8">
-            <AdminPageHeader title="Lich su don hang" description={customer
-            ? `Danh sach don read-only cua ${customer.full_name}.`
-            : "Dang tai customer..."} actions={<ButtonLink to={routes.adminUsers} variant="secondary">
-                        Quay lai users
+            <AdminPageHeader title="Lịch sử đơn hàng" description={customer
+            ? `Danh sách đơn read-only của ${customer.full_name}.`
+            : "Đang tải customer..."} actions={<ButtonLink to={routes.adminUsers} variant="secondary">
+                        Quay lại users
                     </ButtonLink>}/>
 
             <SurfaceCard className="space-y-4">
@@ -98,36 +98,36 @@ export function AdminUserOrdersPage() {
                             Customer
                         </p>
                         <h2 className="mt-2 font-headline text-2xl font-bold text-on-surface">
-                            {customer?.full_name ?? "Dang tai..."}
+                            {customer?.full_name ?? "Đang tải..."}
                         </h2>
                         <p className="mt-1 text-sm text-on-surface-variant">
-                            {customer?.email ?? "Dang tai thong tin customer..."}
+                            {customer?.email ?? "Đang tải thông tin customer..."}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-3">
                         {customer ? (<Badge tone={customer.is_active && !customer.is_deleted ? "success" : "warning"}>
                                 {customer.is_active && !customer.is_deleted ? "ACTIVE" : "INACTIVE"}
                             </Badge>) : null}
-                        {pagination ? <Badge tone="secondary">{pagination.total} don</Badge> : null}
+                        {pagination ? <Badge tone="secondary">{pagination.total} đơn</Badge> : null}
                     </div>
                 </div>
             </SurfaceCard>
 
             {customerLoading ? (<SurfaceCard className="text-sm text-on-surface-variant">
-                    Dang tai thong tin customer...
+                    Đang tải thông tin customer...
                 </SurfaceCard>) : null}
 
             {ordersError ? <SurfaceCard className="text-sm text-error">{ordersError}</SurfaceCard> : null}
 
             {!ordersLoading && !ordersError && orders.length === 0 ? (<SurfaceCard className="space-y-3 text-sm">
-                    <h3 className="font-semibold text-on-surface">Customer nay chua co don hang nao.</h3>
+                    <h3 className="font-semibold text-on-surface">Customer này chưa có đơn hàng nào.</h3>
                     <p className="text-on-surface-variant">
-                        Khi customer phat sinh don moi, lich su don hang se duoc hien thi tai day.
+                        Khi customer phát sinh đơn mới, lịch sử đơn hàng sẽ được hiển thị tại đây.
                     </p>
                 </SurfaceCard>) : null}
 
             {ordersLoading ? (<SurfaceCard className="text-sm text-on-surface-variant">
-                    Dang tai lich su don hang...
+                    Đang tải lịch sử đơn hàng...
                 </SurfaceCard>) : null}
 
             {!ordersLoading && orders.length > 0 ? (<div className="space-y-4">
@@ -137,7 +137,7 @@ export function AdminUserOrdersPage() {
                                     <div>
                                         <p className="font-semibold text-on-surface">{order.order_no}</p>
                                         <p className="text-sm text-on-surface-variant">
-                                            Tao luc {formatDate(order.created_at)}
+                                            Tạo lúc {formatDate(order.created_at)}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -152,13 +152,13 @@ export function AdminUserOrdersPage() {
 
                                 <div className="flex min-w-[12rem] flex-col items-end gap-3">
                                     <div className="text-right">
-                                        <p className="text-sm text-on-surface-variant">Tong tien</p>
+                                        <p className="text-sm text-on-surface-variant">Tổng tiền</p>
                                         <p className="font-semibold text-primary">
                                             {formatCurrency(Number(order.total_amount))}
                                         </p>
                                     </div>
                                     <ButtonLink to={routes.adminUserOrderDetail(String(customerId), String(order.id))} variant="outline" size="sm">
-                                        Xem chi tiet
+                                        Xem chi tiết
                                     </ButtonLink>
                                 </div>
                             </div>
@@ -170,7 +170,7 @@ export function AdminUserOrdersPage() {
                             </p>
                             <div className="flex gap-3">
                                 <Button variant="secondary" size="sm" disabled={ordersLoading || pagination.currentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}>
-                                    Trang truoc
+                                    Trang trước
                                 </Button>
                                 <Button variant="secondary" size="sm" disabled={ordersLoading || pagination.currentPage >= pagination.lastPage} onClick={() => setCurrentPage((page) => Math.min(pagination.lastPage, page + 1))}>
                                     Trang sau

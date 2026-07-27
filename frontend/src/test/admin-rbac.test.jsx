@@ -348,7 +348,7 @@ describe("admin frontend role-only access", () => {
 
         expect(await screen.findByText("managed@example.com")).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: /Xem Customer Managed/i }));
-        await userEvent.click(screen.getByRole("button", { name: /Xem lich su don hang/i }));
+        await userEvent.click(screen.getByRole("button", { name: /Xem lịch sử đơn hàng/i }));
 
         await waitFor(() => {
             expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).endsWith("/api/admin/users/9/orders"))).toBe(true);

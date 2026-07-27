@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { apiRequest, isUnauthorizedApiError } from "@/shared/api/backend-client";
 import { registerProtectedSessionCleanup } from "@/shared/lib/store/protected-session";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
+// 4 field "...ByCustomerId" là các map KEYED THEO customerId (không phải mảng dùng chung)
+// — vì trang admin có thể mở lịch sử đơn của NHIỀU khách khác nhau (drawer/panel riêng cho
+// từng khách), mỗi khách cần trạng thái loading/error/pagination/dữ liệu riêng biệt, tránh
+// dữ liệu của khách này đè lên khách kia khi xem gần như đồng thời.
 const initialState = {
     customers: [],
     customerOrdersByCustomerId: {},
@@ -12,7 +16,7 @@ const initialState = {
     isSaving: false,
     error: null,
 };
-const SESSION_EXPIRED_MESSAGE = "Phien dang nhap da het han. Vui long dang nhap lai.";
+const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 function token() {
     return useAuthStore.getState().accessToken;
 }
@@ -36,7 +40,7 @@ export const useAdminUserStore = create()((set, get) => ({
         if (!accessToken) {
             return {
                 success: false,
-                error: "Ban can dang nhap admin de tai danh sach users.",
+                error: "Bạn cần đăng nhập admin để tải danh sách users.",
             };
         }
         set({ isLoading: true, error: null });
@@ -50,7 +54,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai danh sach users.";
+            const message = error instanceof Error ? error.message : "Không thể tải danh sách users.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
@@ -64,7 +68,7 @@ export const useAdminUserStore = create()((set, get) => ({
         if (!accessToken) {
             return {
                 success: false,
-                error: "Ban can dang nhap admin de xem user nay.",
+                error: "Bạn cần đăng nhập admin để xem user này.",
             };
         }
         set({ isLoading: true, error: null });
@@ -85,7 +89,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 set({ isLoading: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai user.";
+            const message = error instanceof Error ? error.message : "Không thể tải user.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
@@ -95,7 +99,7 @@ export const useAdminUserStore = create()((set, get) => ({
         if (!accessToken) {
             return {
                 success: false,
-                error: "Ban can dang nhap admin de xem lich su don hang.",
+                error: "Bạn cần đăng nhập admin để xem lịch sử đơn hàng.",
             };
         }
         set((state) => ({
@@ -145,7 +149,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 }));
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai lich su don hang.";
+            const message = error instanceof Error ? error.message : "Không thể tải lịch sử đơn hàng.";
             set((state) => ({
                 customerOrdersLoadingByCustomerId: {
                     ...state.customerOrdersLoadingByCustomerId,
@@ -162,7 +166,7 @@ export const useAdminUserStore = create()((set, get) => ({
     createCustomer: async (payload) => {
         const accessToken = token();
         if (!accessToken)
-            return { success: false, error: "Ban can dang nhap admin de tao user." };
+            return { success: false, error: "Bạn cần đăng nhập admin để tạo user." };
         set({ isSaving: true, error: null });
         try {
             const response = await apiRequest("/admin/users", {
@@ -183,7 +187,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tao user.";
+            const message = error instanceof Error ? error.message : "Không thể tạo user.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -191,7 +195,10 @@ export const useAdminUserStore = create()((set, get) => ({
     updateCustomer: async (customerId, payload) => {
         const accessToken = token();
         if (!accessToken)
-            return { success: false, error: "Ban can dang nhap admin de cap nhat user." };
+            return { success: false, error: "Bạn cần đăng nhập admin để cập nhật user." };
+        // Tách password ra khỏi payload trước khi gửi update thường — đổi mật khẩu user khác
+        // đi qua 1 luồng riêng (không nằm trong store này), tránh vô tình gửi password rỗng
+        // ghi đè mật khẩu hiện tại nếu form không có field đó.
         const { password: _password, ...body } = payload;
         set({ isSaving: true, error: null });
         try {
@@ -213,7 +220,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the cap nhat user.";
+            const message = error instanceof Error ? error.message : "Không thể cập nhật user.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -221,7 +228,7 @@ export const useAdminUserStore = create()((set, get) => ({
     blockCustomer: async (customerId) => {
         const accessToken = token();
         if (!accessToken)
-            return { success: false, error: "Ban can dang nhap admin de khoa user." };
+            return { success: false, error: "Bạn cần đăng nhập admin để khóa user." };
         set({ isSaving: true, error: null });
         try {
             const response = await apiRequest(`/admin/users/${customerId}`, {
@@ -241,7 +248,7 @@ export const useAdminUserStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the khoa user.";
+            const message = error instanceof Error ? error.message : "Không thể khóa user.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }

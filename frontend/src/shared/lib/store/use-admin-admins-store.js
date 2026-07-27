@@ -3,7 +3,7 @@ import { apiRequest, isUnauthorizedApiError } from "@/shared/api/backend-client"
 import { registerProtectedSessionCleanup } from "@/shared/lib/store/protected-session";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
 
-const SESSION_EXPIRED_MESSAGE = "Phien dang nhap da het han. Vui long dang nhap lai.";
+const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 
 const initialState = {
     admins: [],
@@ -16,6 +16,9 @@ function token() {
     return useAuthStore.getState().accessToken;
 }
 
+// Cập nhật lạc quan (optimistic): thay/thêm admin vào ĐẦU danh sách ngay khi API trả về,
+// để UI phản hồi tức thì — dù ngay sau đó saveAdmin()/updateAdminStatus() vẫn gọi thêm
+// loadAdmins() để đồng bộ lại thứ tự/dữ liệu chính xác từ server.
 function upsertAdmin(admins, nextAdmin) {
     const remaining = admins.filter((admin) => admin.id !== nextAdmin.id);
     return [nextAdmin, ...remaining];
@@ -26,7 +29,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
     loadAdmins: async () => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de tai danh sach admin." };
+            return { success: false, error: "Bạn cần đăng nhập admin để tải danh sách admin." };
         }
 
         set({ isLoading: true, error: null });
@@ -50,7 +53,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
 
-            const message = error instanceof Error ? error.message : "Khong the tai danh sach admin.";
+            const message = error instanceof Error ? error.message : "Không thể tải danh sách admin.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
@@ -58,7 +61,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
     saveAdmin: async (payload) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de luu tai khoan admin." };
+            return { success: false, error: "Bạn cần đăng nhập admin để lưu tài khoản admin." };
         }
 
         set({ isSaving: true, error: null });
@@ -72,6 +75,8 @@ export const useAdminAdminsStore = create()((set, get) => ({
                 is_deleted: false,
             };
 
+            // Tạo mới (!payload.id) luôn cần password; sửa admin có sẵn thì chỉ gửi password
+            // khi người dùng thực sự nhập gì đó — bỏ trống nghĩa là giữ nguyên mật khẩu cũ.
             if (!payload.id || payload.password.trim()) {
                 body.password = payload.password;
             }
@@ -98,7 +103,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
 
-            const message = error instanceof Error ? error.message : "Khong the luu tai khoan admin.";
+            const message = error instanceof Error ? error.message : "Không thể lưu tài khoản admin.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -106,7 +111,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
     updateAdminStatus: async (adminId, isActive) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de cap nhat trang thai." };
+            return { success: false, error: "Bạn cần đăng nhập admin để cập nhật trạng thái." };
         }
 
         set({ isSaving: true, error: null });
@@ -137,7 +142,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
 
-            const message = error instanceof Error ? error.message : "Khong the cap nhat trang thai admin.";
+            const message = error instanceof Error ? error.message : "Không thể cập nhật trạng thái admin.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -145,7 +150,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
     updateAdminPassword: async (adminId, password) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de doi mat khau." };
+            return { success: false, error: "Bạn cần đăng nhập admin để đổi mật khẩu." };
         }
 
         set({ isSaving: true, error: null });
@@ -166,7 +171,7 @@ export const useAdminAdminsStore = create()((set, get) => ({
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
 
-            const message = error instanceof Error ? error.message : "Khong the doi mat khau admin.";
+            const message = error instanceof Error ? error.message : "Không thể đổi mật khẩu admin.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }

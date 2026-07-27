@@ -56,6 +56,10 @@ import { WarehouseSupplierOrdersPage } from "@/pages/warehouse-supplier-orders/u
 import { getFirstAccessibleAdminModule } from "@/shared/config/admin-modules";
 import { routes as appRoutes } from "@/shared/config/routes";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
+// Vào "/admin" (dashboard mặc định) nhưng nếu sau này phân quyền chi tiết hơn khiến admin
+// không thấy dashboard, tự điều hướng sang module ĐẦU TIÊN họ có quyền truy cập thay vì
+// hiện trang trắng. Hiện tại canAccessAdminModule() luôn cho phép mọi admin (xem admin-modules.js)
+// nên trên thực tế luôn rơi vào nhánh "hiện AdminDashboardPage" ở dưới.
 function AdminIndexRoute() {
     const user = useAuthStore((state) => state.session?.user ?? null);
     const firstModule = getFirstAccessibleAdminModule(user);
@@ -67,6 +71,10 @@ function AdminIndexRoute() {
     }
     return <AdminDashboardPage />;
 }
+// "/supplier" và "/warehouse" (không path con) là URL rút gọn hay được gõ tay/đánh dấu —
+// điều hướng tới trang phù hợp theo role: admin xem qua giao diện quản trị (/admin/supplier/*),
+// còn chính NCC/nhân viên kho xem qua cổng portal riêng (/supplier/*, /warehouse/*) — cùng
+// dữ liệu, khác layout bọc ngoài (AdminLayout vs PortalLayout).
 function SupplierRootRedirect() {
     const role = useAuthStore((state) => state.session?.user.role);
     return (<Navigate replace to={role === "admin" ? appRoutes.adminSupplierOrders : appRoutes.supplierOrders}/>);
@@ -75,9 +83,18 @@ function WarehouseRootRedirect() {
     const role = useAuthStore((state) => state.session?.user.role);
     return (<Navigate replace to={role === "admin" ? appRoutes.adminWarehouseInventory : appRoutes.warehouseInventory}/>);
 }
+// Placeholder: hiện chỉ render children, không thêm kiểm tra gì — chỗ dự phòng nếu sau
+// này cần chặn thêm (vd chỉ admin có quyền cụ thể mới xem được đơn hàng của 1 khách).
 function AdminUserOrdersGuard({ children }) {
     return <>{children}</>;
 }
+// Cấu trúc route chia thành 4 nhóm, mỗi nhóm bọc trong 1 <Route> cha dùng chung 1 Layout +
+// (nếu cần) 1 RouteGuard theo role — mọi route con thừa hưởng layout/bảo vệ của cha:
+// 1) StorefrontLayout: public, ai cũng vào được (trang chủ, catalog, checkout...).
+// 2) AccountLayout + RouteGuard(customer): trang tài khoản khách hàng.
+// 3) AdminLayout + RouteGuard(admin): toàn bộ khu quản trị, mỗi route con còn thêm 1 lớp
+//    AdminModuleGuard riêng theo moduleId (2 lớp bảo vệ: role cấp route + module cấp trang).
+// 4) PortalLayout + RouteGuard(supplier, warehouse): cổng dành cho NCC/nhân viên kho.
 export function AppRoutes() {
     return (<Routes>
             <Route element={<StorefrontLayout />}>

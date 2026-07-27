@@ -58,6 +58,14 @@ function buildForm(profile) {
         note: defaultAddress?.note ?? "",
     };
 }
+// Bỏ dấu tiếng Việt để so khớp KHÔNG PHÂN BIỆT dấu — dùng cho 2 việc riêng biệt bên dưới:
+// (1) calculateShippingFee() ước tính phí ship hiển thị ngay cho khách trước khi đặt hàng
+//     (backend/controllers/orderController.js có bản SAO Y HỆT hàm này — phí thật luôn được
+//     tính LẠI phía server lúc checkout, đây chỉ là ước tính để UI không "trống" trong lúc
+//     khách nhập địa chỉ);
+// (2) isSameLocationName() so khớp TÊN tỉnh/huyện/xã đã lưu trong sổ địa chỉ với tên trả về
+//     từ API vietnam-location-store — 2 nguồn dữ liệu khác nhau nên không chắc dấu câu/khoảng
+//     trắng giống hệt nhau.
 function normalizeVietnamese(value) {
     return value
         .toLowerCase()
@@ -108,6 +116,10 @@ function calculateShippingFee(subtotal, shippingAddress) {
     }
     return 45000;
 }
+// Băm chuỗi thành 1 số nguyên (thuật toán băm đa thức đơn giản, không phải mã hóa thật) —
+// chỉ dùng để MockQrCode bên dưới sinh ra 1 hoa văn "trông giống QR" ổn định theo từng đơn
+// hàng, KHÔNG phải mã QR thật có thể quét thanh toán (đây là demo, không tích hợp cổng chuyển
+// khoản có QR thật).
 function hashText(input) {
     let hash = 0;
     for (let index = 0; index < input.length; index += 1) {
@@ -115,6 +127,9 @@ function hashText(input) {
     }
     return hash;
 }
+// QR GIẢ LẬP: vẽ lưới ô vuông đen/trắng dựa trên hash của `value`, cộng thêm 3 khối "định vị"
+// góc (giống QR thật) để trông thuyết phục — KHÔNG mã hóa `value` theo chuẩn QR thật, không
+// quét được bằng app ngân hàng. Dùng vì dự án demo, chưa tích hợp API tạo QR VietQR/Napas thật.
 function MockQrCode({ value }) {
     const size = 29;
     const cells = useMemo(() => {
@@ -230,6 +245,11 @@ export function CheckoutPage() {
             return;
         void loadWards(Number(form.shippingDistrictId));
     }, [form.shippingDistrictId, loadWards]);
+    // 3 effect giống nhau (tỉnh/huyện/xã): sổ địa chỉ lưu địa chỉ mặc định dưới dạng TÊN
+    // (vd "ghnProvinceName": "Hà Nội") nhưng dropdown ở form này cần MÃ code từ
+    // vietnam-location-store để hoạt động — do 2 hệ id khác nguồn (GHN vs API địa danh công
+    // khai), effect này tự dò tìm mã tương ứng bằng cách so khớp TÊN (không phân biệt dấu)
+    // sau khi danh sách tỉnh/thành tải xong, để dropdown tự chọn sẵn đúng tỉnh đã lưu.
     useEffect(() => {
         if (!form.shippingProvinceName || provinces.length === 0) {
             return;
@@ -281,6 +301,10 @@ export function CheckoutPage() {
             shippingWardName: matchedWard.name,
         }));
     }, [form.shippingWardCode, form.shippingWardName, wards]);
+    // guestItems (khách chưa đăng nhập) chỉ lưu {productId, quantity} trong localStorage —
+    // KHÔNG có tên/giá/ảnh sản phẩm đi kèm — nên phải tự "ráp" thêm thông tin hiển thị bằng
+    // cách tra cứu productId trong catalog đã tải (productDetails/products), giả lập đúng
+    // shape 1 cart item thật (giống cart.items khi đã đăng nhập) để phần JSX render dùng chung 1 kiểu.
     const guestCartItems = guestItems.map((item) => {
         const product = productDetails[item.productId] ?? products.find((entry) => entry.id === item.productId);
         return {
@@ -428,14 +452,17 @@ export function CheckoutPage() {
             city: form.shippingProvinceName,
         });
         await loadCart();
-        // VNPay/MoMo: backend tra ve URL cong thanh toan -> chuyen trinh duyet sang cong.
-        // Sau khi thanh toan, cong se redirect ve /checkout/{vnpay|momo}-return de hien ket qua.
+        // 3 kết quả có thể xảy ra sau khi tạo đơn thành công, tùy phương thức thanh toán:
+        // 1) VNPay/MoMo: backend trả về URL cổng thanh toán -> chuyển trình duyệt sang cổng.
+        //    Sau khi thanh toán, cổng sẽ redirect về /checkout/{vnpay|momo}-return để hiện kết quả.
         if (result.paymentRedirectUrl) {
             window.location.href = result.paymentRedirectUrl;
             return;
         }
+        // 2) Chọn VNPay/MoMo nhưng backend KHÔNG trả về URL -> nghĩa là biến môi trường cổng
+        //    thanh toán (VNPAY_TMN_CODE/MOMO_PARTNER_CODE...) chưa cấu hình ở server (sandbox
+        //    chưa sẵn sàng) — đơn vẫn được tạo (chờ thanh toán), chỉ báo khách chọn cách khác.
         if ((paymentMethod === "VNPAY" || paymentMethod === "MOMO") && !result.paymentRedirectUrl) {
-            // Chua cau hinh cong thanh toan (sandbox) -> tao don o trang thai cho, bao khach.
             pushToast({
                 tone: "warning",
                 message: "Cổng thanh toán online chưa được cấu hình. Đơn đã được tạo, vui lòng chọn cách thanh toán khác.",
@@ -443,11 +470,14 @@ export function CheckoutPage() {
             void navigate(routes.accountOrderDetail(result.data.id));
             return;
         }
+        // 3) BANK_TRANSFER: không có cổng nào để redirect — hiện modal hướng dẫn chuyển khoản
+        //    (số tài khoản, nội dung, QR giả lập) ngay tại trang này thay vì điều hướng đi.
         if (paymentMethod === "BANK_TRANSFER") {
             setCreatedBankTransferOrder(result.data);
             setBankTransferMessage("");
             return;
         }
+        // COD: không cần bước xác nhận thanh toán nào thêm -> báo thành công luôn.
         void navigate(routes.orderSuccess(result.data.id));
     }
     async function handleConfirmTransferSubmitted() {
@@ -564,14 +594,14 @@ export function CheckoutPage() {
                             <div className="mt-6 space-y-4">
                                 <div className="space-y-2">
                                     <label className="text-xs uppercase tracking-widest text-on-surface-variant">
-                                        Dia chi chi tiet
+                                        Địa chỉ chi tiết
                                     </label>
                                     <input className="w-full rounded-xl border-b-2 border-transparent bg-surface-container-highest px-4 py-3 outline-none transition-all focus:border-primary focus:ring-0" value={form.shippingLine1} onChange={(event) => updateField("shippingLine1", event.target.value)}/>
                                 </div>
                                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                                     <label className="space-y-2">
                                         <span className="block text-xs uppercase tracking-widest text-on-surface-variant">
-                                            Tinh/thanh
+                                            Tỉnh/thành
                                         </span>
                                         <select className="w-full rounded-xl border-b-2 border-transparent bg-surface-container-highest px-4 py-3 outline-none transition-all focus:border-primary focus:ring-0" value={form.shippingProvinceId} onChange={(event) => {
             const province = provinces.find((item) => String(item.code) === event.target.value);
@@ -586,7 +616,7 @@ export function CheckoutPage() {
             }));
         }}>
                                             <option value="">
-                                                {isLoadingProvinces ? "Dang tai tinh/thanh..." : "Chon tinh/thanh"}
+                                                {isLoadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn tỉnh/thành"}
                                             </option>
                                             {provinces.map((province) => (<option key={province.code} value={province.code}>
                                                     {province.name}
@@ -595,7 +625,7 @@ export function CheckoutPage() {
                                     </label>
                                     <label className="space-y-2">
                                         <span className="block text-xs uppercase tracking-widest text-on-surface-variant">
-                                            Quan/huyen
+                                            Quận/huyện
                                         </span>
                                         <select className="w-full rounded-xl border-b-2 border-transparent bg-surface-container-highest px-4 py-3 outline-none transition-all focus:border-primary focus:ring-0" value={form.shippingDistrictId} disabled={!form.shippingProvinceId} onChange={(event) => {
             const district = districts.find((item) => String(item.code) === event.target.value);
@@ -608,7 +638,7 @@ export function CheckoutPage() {
             }));
         }}>
                                             <option value="">
-                                                {isLoadingDistricts ? "Dang tai quan/huyen..." : "Chon quan/huyen"}
+                                                {isLoadingDistricts ? "Đang tải quận/huyện..." : "Chọn quận/huyện"}
                                             </option>
                                             {districts.map((district) => (<option key={district.code} value={district.code}>
                                                     {district.name}
@@ -617,7 +647,7 @@ export function CheckoutPage() {
                                     </label>
                                     <label className="space-y-2">
                                         <span className="block text-xs uppercase tracking-widest text-on-surface-variant">
-                                            Phuong/xa
+                                            Phường/xã
                                         </span>
                                         <select className="w-full rounded-xl border-b-2 border-transparent bg-surface-container-highest px-4 py-3 outline-none transition-all focus:border-primary focus:ring-0" value={form.shippingWardCode} disabled={!form.shippingDistrictId} onChange={(event) => {
             const ward = wards.find((item) => String(item.code) === event.target.value);
@@ -628,7 +658,7 @@ export function CheckoutPage() {
             }));
         }}>
                                             <option value="">
-                                                {isLoadingWards ? "Dang tai phuong/xa..." : "Chon phuong/xa"}
+                                                {isLoadingWards ? "Đang tải phường/xã..." : "Chọn phường/xã"}
                                             </option>
                                             {wards.map((ward) => (<option key={ward.code} value={ward.code}>
                                                     {ward.name}
@@ -637,7 +667,7 @@ export function CheckoutPage() {
                                     </label>
                                 </div>
                                 <div className="rounded-2xl bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
-                                    {fullShippingAddress || "Dia chi day du se hien thi sau khi chon khu vuc."}
+                                    {fullShippingAddress || "Địa chỉ đầy đủ sẽ hiển thị sau khi chọn khu vực."}
                                 </div>
                                 {locationError ? <p className="mt-3 text-sm text-error">{locationError}</p> : null}
                             </div>

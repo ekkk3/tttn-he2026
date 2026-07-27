@@ -12,6 +12,9 @@ const initialState = {
     status: "idle",
     error: null,
 };
+// Trang vận hành chỉ dùng được với tài khoản đăng nhập THẬT qua backend (WAREHOUSE_STAFF/
+// ADMIN/SUPPLIER) — không có khái niệm "khách" ở đây như cart/wishlist, nên chỉ cần check
+// authSource, không cần check role cụ thể (backend tự chặn theo role ở middleware).
 function token() {
     const state = useAuthStore.getState();
     if (state.authSource !== "backend") {
@@ -20,13 +23,13 @@ function token() {
     return state.accessToken;
 }
 function authError() {
-    return "Can dang nhap bang tai khoan tu database de xem du lieu van hanh.";
+    return "Cần đăng nhập bằng tài khoản từ database để xem dữ liệu vận hành.";
 }
 function handleError(error) {
     if (isUnauthorizedApiError(error)) {
         useAuthStore.getState().clearSession();
     }
-    return error instanceof Error ? error.message : "Khong the tai du lieu van hanh.";
+    return error instanceof Error ? error.message : "Không thể tải dữ liệu vận hành.";
 }
 function adaptInventoryItem(item) {
     return {
@@ -131,6 +134,10 @@ function adaptTicket(item) {
         createdAt: item.created_at ?? new Date().toISOString(),
     };
 }
+// KHÔNG có API riêng trả "danh sách NCC dạng đối tác" cho trang vận hành — nên tự dựng lại
+// từ chính dữ liệu tồn kho: mỗi sản phẩm trong `inventory` đã kèm supplier_id/supplier_name,
+// dùng Map để loại trùng (mỗi NCC chỉ giữ 1 bản ghi) rồi bù các field UI cần nhưng backend
+// không có (partnerTier, monthlyRevenue...) bằng giá trị mặc định/rỗng.
 function buildSuppliers(inventory) {
     return [
         ...new Map(inventory
@@ -145,13 +152,15 @@ function buildSuppliers(inventory) {
                 categories: [],
                 partnerTier: "Verified",
                 monthlyRevenue: 0,
-                responseTime: "2-3 ngay",
+                responseTime: "2-3 ngày",
                 status: "active",
                 image: "",
             },
         ])).values(),
     ];
 }
+// Tra cứu nhanh tên/sku sản phẩm theo id (dùng ở UI hiện tên sản phẩm trong bảng phiếu
+// nhập/đơn) mà không phải lặp mảng inventory mỗi lần — cũng dựng từ dữ liệu inventory sẵn có.
 function buildProductsById(inventory) {
     return inventory.reduce((accumulator, item) => {
         accumulator[String(item.product_id)] = {

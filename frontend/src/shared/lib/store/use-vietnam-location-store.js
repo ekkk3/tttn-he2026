@@ -1,5 +1,9 @@
 import axios from "axios";
 import { create } from "zustand";
+// LƯU Ý: store này gọi 1 API CÔNG KHAI CỦA BÊN THỨ BA (provinces.open-api.vn), KHÔNG phải
+// backend của dự án — cung cấp danh sách tỉnh/thành/quận huyện/phường xã đầy đủ của Việt
+// Nam để tham khảo/đối chiếu tên. Đây là nguồn khác với use-ghn-location-store.js (gọi
+// qua backend, dữ liệu lấy từ GHN — dùng để tính phí/tạo vận đơn thật).
 const VIETNAM_LOCATION_API_BASE = "https://provinces.open-api.vn/api/v1";
 const initialState = {
     provinces: [],
@@ -22,6 +26,9 @@ function locationErrorMessage(error, fallback) {
     }
     return fallback;
 }
+// adapter:"fetch" + env:{Request:null} là 1 workaround để axios dùng fetch() của trình
+// duyệt thay vì XMLHttpRequest mặc định — cần thiết khi gọi domain ngoài từ 1 số môi
+// trường preview/sandbox chặn XHR trực tiếp tới host lạ.
 async function locationRequest(path) {
     const response = await axios.get(`${VIETNAM_LOCATION_API_BASE}${path}`, {
         adapter: "fetch",
@@ -53,7 +60,7 @@ export const useVietnamLocationStore = create()((set, get) => ({
             return { success: true, data: provinces };
         }
         catch (error) {
-            const message = locationErrorMessage(error, "Khong the tai danh sach tinh/thanh.");
+            const message = locationErrorMessage(error, "Không thể tải danh sách tỉnh/thành.");
             set({ isLoadingProvinces: false, error: message });
             return { success: false, error: message };
         }
@@ -86,7 +93,7 @@ export const useVietnamLocationStore = create()((set, get) => ({
             return { success: true, data: districts };
         }
         catch (error) {
-            const message = locationErrorMessage(error, "Khong the tai danh sach quan/huyen.");
+            const message = locationErrorMessage(error, "Không thể tải danh sách quận/huyện.");
             set({ isLoadingDistricts: false, error: message });
             return { success: false, error: message };
         }
@@ -112,7 +119,7 @@ export const useVietnamLocationStore = create()((set, get) => ({
             return { success: true, data: wards };
         }
         catch (error) {
-            const message = locationErrorMessage(error, "Khong the tai danh sach phuong/xa.");
+            const message = locationErrorMessage(error, "Không thể tải danh sách phường/xã.");
             set({ isLoadingWards: false, error: message });
             return { success: false, error: message };
         }

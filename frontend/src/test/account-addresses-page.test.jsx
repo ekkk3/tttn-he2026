@@ -147,18 +147,18 @@ describe("AccountAddressesPage", () => {
         const user = userEvent.setup();
         render(<AccountAddressesPage />);
         expect(await screen.findByRole("option", { name: "Ha Noi" })).toBeInTheDocument();
-        await user.type(screen.getByLabelText("Nhan goi nho"), "Nha");
-        await user.type(screen.getByLabelText("Nguoi nhan"), "Nguyen Van A");
-        await user.type(screen.getByLabelText("So dien thoai"), "0909123456");
-        await user.type(screen.getByLabelText("Dia chi chi tiet"), "123 Nguyen Trai");
-        await user.selectOptions(screen.getByLabelText("Tinh/thanh"), "1");
-        await user.selectOptions(screen.getByLabelText("Quan/huyen"), "11");
+        await user.type(screen.getByLabelText("Nhãn gợi nhớ"), "Nha");
+        await user.type(screen.getByLabelText("Người nhận"), "Nguyen Van A");
+        await user.type(screen.getByLabelText("Số điện thoại"), "0909123456");
+        await user.type(screen.getByLabelText("Địa chỉ chi tiết"), "123 Nguyen Trai");
+        await user.selectOptions(screen.getByLabelText("Tỉnh/thành"), "1");
+        await user.selectOptions(screen.getByLabelText("Quận/huyện"), "11");
         await waitFor(() => {
             expect(screen.getByRole("option", { name: "Phuc Xa" })).toBeInTheDocument();
         });
-        await user.selectOptions(screen.getByLabelText("Phuong/xa"), "11111");
-        await user.type(screen.getByLabelText("Ghi chu"), "Giao gio hanh chinh");
-        await user.click(screen.getByRole("button", { name: "Them dia chi" }));
+        await user.selectOptions(screen.getByLabelText("Phường/xã"), "11111");
+        await user.type(screen.getByLabelText("Ghi chú"), "Giao gio hanh chinh");
+        await user.click(screen.getByRole("button", { name: "Thêm địa chỉ" }));
         await waitFor(() => {
             expect(fetchMock.mock.calls.some(([input, init]) => getRequestPath(input).endsWith("/api/account/addresses") &&
                 init?.method === "POST")).toBe(true);

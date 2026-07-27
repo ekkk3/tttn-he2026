@@ -49,7 +49,7 @@ export function AdminSettingsPage() {
 
             {isLoading ? (<SurfaceCard className="text-on-surface-variant">Đang tải cấu hình...</SurfaceCard>) : null}
             {!canViewSettings ? (<SurfaceCard className="text-on-surface-variant">
-                    Ban chua co quyen xem cau hinh hien tai.
+                    Bạn chưa có quyền xem cấu hình hiện tại.
                 </SurfaceCard>) : null}
             {error ? <SurfaceCard className="text-on-surface-variant">{error}</SurfaceCard> : null}
 

@@ -11,6 +11,9 @@ import { usePostStore } from "@/shared/lib/store/use-post-store";
 import { useShopStore } from "@/shared/lib/store/use-shop-store";
 import { useStorefrontCatalogStore } from "@/shared/lib/store/use-storefront-catalog-store";
 import { useUiStore } from "@/shared/lib/store/use-ui-store";
+// Gọi khi cần đưa toàn bộ app về trạng thái ban đầu (vd nút "Reset dữ liệu demo" trong
+// môi trường phát triển) — lần lượt reset() từng store về initialState, tương đương
+// F5 lại trang NHƯNG không cần tải lại toàn bộ ứng dụng.
 export function resetDemoState() {
     useAuthStore.getState().reset();
     useAccountStore.getState().reset();

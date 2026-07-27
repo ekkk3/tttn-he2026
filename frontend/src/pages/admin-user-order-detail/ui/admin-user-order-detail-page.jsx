@@ -5,7 +5,7 @@ import { useAdminOrdersStore } from "@/shared/lib/store/use-admin-orders-store";
 import { useAdminUserStore } from "@/shared/lib/store/use-admin-user-store";
 import { AdminPageHeader, ButtonLink, SurfaceCard } from "@/shared/ui";
 import { ReadOnlyOrderDetailPanel } from "@/widgets/admin-user-orders/read-only-order-detail-panel";
-const INVALID_ROUTE_MESSAGE = "Duong dan chi tiet don hang khong hop le.";
+const INVALID_ROUTE_MESSAGE = "Đường dẫn chi tiết đơn hàng không hợp lệ.";
 export function AdminUserOrderDetailPage() {
     const { userId, orderId } = useParams();
     const customerId = Number(userId);
@@ -44,7 +44,7 @@ export function AdminUserOrderDetailPage() {
             }
             setCustomerLoading(false);
             if (!result.success) {
-                setCustomerError(result.error ?? "Khong the tai customer.");
+                setCustomerError(result.error ?? "Không thể tải customer.");
             }
         })();
         return () => {
@@ -67,7 +67,7 @@ export function AdminUserOrderDetailPage() {
             }
             setOrderLoading(false);
             if (!result.success) {
-                setOrderError(result.error ?? "Khong the tai chi tiet don hang.");
+                setOrderError(result.error ?? "Không thể tải chi tiết đơn hàng.");
             }
         })();
         return () => {
@@ -81,51 +81,51 @@ export function AdminUserOrderDetailPage() {
         (!order?.customer?.id || String(order.customer.id) !== String(customerId));
     if (!hasValidCustomerId || !hasValidOrderId) {
         return (<div className="space-y-6">
-                <AdminPageHeader title="Chi tiet don hang" description="Khong the mo trang chi tiet don hang nay." actions={<ButtonLink to={backToOrders} variant="secondary">
-                            Quay lai lich su don hang
+                <AdminPageHeader title="Chi tiết đơn hàng" description="Không thể mở trang chi tiết đơn hàng này." actions={<ButtonLink to={backToOrders} variant="secondary">
+                            Quay lại lịch sử đơn hàng
                         </ButtonLink>}/>
                 <SurfaceCard className="text-sm text-error">{INVALID_ROUTE_MESSAGE}</SurfaceCard>
             </div>);
     }
     if (customerError && !customer) {
         return (<div className="space-y-6">
-                <AdminPageHeader title="Chi tiet don hang" description="Khong the tai thong tin customer de hien thi chi tiet don." actions={<ButtonLink to={backToOrders} variant="secondary">
-                            Quay lai lich su don hang
+                <AdminPageHeader title="Chi tiết đơn hàng" description="Không thể tải thông tin customer để hiển thị chi tiết đơn." actions={<ButtonLink to={backToOrders} variant="secondary">
+                            Quay lại lịch sử đơn hàng
                         </ButtonLink>}/>
                 <SurfaceCard className="text-sm text-error">{customerError}</SurfaceCard>
             </div>);
     }
     if (orderError && !order) {
         return (<div className="space-y-6">
-                <AdminPageHeader title="Chi tiet don hang" description="Khong the tai du lieu don hang." actions={<ButtonLink to={backToOrders} variant="secondary">
-                            Quay lai lich su don hang
+                <AdminPageHeader title="Chi tiết đơn hàng" description="Không thể tải dữ liệu đơn hàng." actions={<ButtonLink to={backToOrders} variant="secondary">
+                            Quay lại lịch sử đơn hàng
                         </ButtonLink>}/>
                 <SurfaceCard className="text-sm text-error">{orderError}</SurfaceCard>
             </div>);
     }
     if (isCustomerMismatch) {
         return (<div className="space-y-6">
-                <AdminPageHeader title="Chi tiet don hang" description="Don hang nay khong thuoc customer tren duong dan hien tai." actions={<ButtonLink to={backToOrders} variant="secondary">
-                            Quay lai lich su don hang
+                <AdminPageHeader title="Chi tiết đơn hàng" description="Đơn hàng này không thuộc customer trên đường dẫn hiện tại." actions={<ButtonLink to={backToOrders} variant="secondary">
+                            Quay lại lịch sử đơn hàng
                         </ButtonLink>}/>
                 <SurfaceCard className="space-y-3 text-sm">
-                    <p className="text-error">Khong the hien thi sai customer cho don hang nay.</p>
+                    <p className="text-error">Không thể hiển thị sai customer cho đơn hàng này.</p>
                 </SurfaceCard>
             </div>);
     }
     return (<div className="space-y-8">
-            <AdminPageHeader title={order?.order_no ?? "Chi tiet don hang"} description={customer
-            ? `Chi tiet read-only cua don hang thuoc ${customer.full_name}.`
-            : "Dang tai customer..."} actions={<ButtonLink to={backToOrders} variant="secondary">
-                        Quay lai lich su don hang
+            <AdminPageHeader title={order?.order_no ?? "Chi tiết đơn hàng"} description={customer
+            ? `Chi tiết read-only của đơn hàng thuộc ${customer.full_name}.`
+            : "Đang tải customer..."} actions={<ButtonLink to={backToOrders} variant="secondary">
+                        Quay lại lịch sử đơn hàng
                     </ButtonLink>}/>
 
             {customerLoading ? (<SurfaceCard className="text-sm text-on-surface-variant">
-                    Dang tai thong tin customer...
+                    Đang tải thông tin customer...
                 </SurfaceCard>) : null}
 
             {orderLoading && !order ? (<SurfaceCard className="text-sm text-on-surface-variant">
-                    Dang tai chi tiet don hang...
+                    Đang tải chi tiết đơn hàng...
                 </SurfaceCard>) : null}
 
             {customer ? (<SurfaceCard className="space-y-2 text-sm">

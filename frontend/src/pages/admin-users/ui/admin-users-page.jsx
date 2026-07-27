@@ -52,7 +52,7 @@ function FieldValue({ label, value }) {
             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
                 {label}
             </p>
-            <p className="mt-2 font-medium text-on-surface">{value || "Chua cap nhat"}</p>
+            <p className="mt-2 font-medium text-on-surface">{value || "Chưa cập nhật"}</p>
         </div>);
 }
 export function AdminUsersPage() {
@@ -106,6 +106,8 @@ export function AdminUsersPage() {
                 .includes(keyword);
         });
     }, [customers, query, statusFilter]);
+    // "new" là giá trị GIẢ dùng riêng cho lúc đang tạo user mới (chưa có id thật từ server) —
+    // activeCustomer chỉ tra cứu trong danh sách thật khi id khác "new" và khác rỗng.
     const activeCustomer = activeCustomerId && activeCustomerId !== "new"
         ? customers.find((customer) => String(customer.id) === activeCustomerId)
         : undefined;
@@ -173,6 +175,9 @@ export function AdminUsersPage() {
     function closeDrawer() {
         setDrawerMode(null);
     }
+    // Lịch sử đơn của 1 khách hàng là 1 TRANG RIÊNG (route /admin/users/:id/orders — xem
+    // admin-user-orders-page.jsx), không hiện inline trong drawer này — vì danh sách đơn có
+    // thể dài + có trang chi tiết đơn riêng, nhúng hết vào drawer sẽ quá tải.
     function handleOpenOrderHistory() {
         if (!activeCustomer) {
             return;
@@ -180,6 +185,9 @@ export function AdminUsersPage() {
         closeDrawer();
         void navigate(routes.adminUserOrders(String(activeCustomer.id)));
     }
+    // includePassword=false khi SỬA user có sẵn (form password luôn để trống lúc edit, xem
+    // effect load form phía trên) — tránh vô tình gửi password rỗng lên ghi đè mật khẩu cũ.
+    // Chỉ tạo mới (includePassword=true) mới bắt buộc gửi kèm.
     function buildPayload(includePassword) {
         const rewardPoints = Number(customerForm.rewardPoints);
         const nextTierPoints = Number(customerForm.nextTierPoints);
@@ -350,26 +358,26 @@ export function AdminUsersPage() {
             </SurfaceCard>
 
             <AdminDrawer open={drawerMode !== null} mode={drawerMode ?? "view"} title={drawerTitle} subtitle={drawerMode === "create"
-            ? "Nhap thong tin de tao tai khoan customer moi."
+            ? "Nhập thông tin để tạo tài khoản customer mới."
             : activeCustomer
                 ? `${activeCustomer.email} / ${activeCustomer.phone}`
                 : undefined} onClose={closeDrawer} footer={<div className="flex flex-wrap justify-end gap-3">
                         <Button variant="outline" onClick={closeDrawer}>
-                            Dong
+                            Đóng
                         </Button>
                         {drawerMode === "create" ? (<Button disabled={isSaving || !canCreateUser} onClick={() => void handleCreateCustomer()}>
-                                Tao user
+                                Tạo user
                             </Button>) : null}
                         {drawerMode === "view" && activeCustomer ? (<>
                                 <Button variant="secondary" disabled={!canUpdateUser} onClick={() => setDrawerMode("edit")}>
-                                    Sua
+                                    Sửa
                                 </Button>
                                 <Button variant="ghost" disabled={isSaving || !canDeleteUser || !activeCustomer.is_active} onClick={() => void handleBlockCustomer()}>
-                                    Khoa user
+                                    Khóa user
                                 </Button>
                             </>) : null}
                         {drawerMode === "edit" ? (<Button disabled={!activeCustomer || isSaving || !canUpdateUser} onClick={() => void handleUpdateCustomer()}>
-                                Luu chinh sua
+                                Lưu chỉnh sửa
                             </Button>) : null}
                     </div>}>
                 {drawerMode === "view" && activeCustomer ? (<div className="space-y-5">
@@ -391,42 +399,42 @@ export function AdminUsersPage() {
                             <FieldValue label="Favorite region" value={activeCustomer.favorite_region}/>
                             <FieldValue label="Address" value={activeCustomer.address}/>
                             <FieldValue label="Orders" value={activeCustomer.orders_count}/>
-                            <FieldValue label="Reward" value={`${activeCustomer.reward_tier} / ${activeCustomer.reward_points} diem`}/>
+                            <FieldValue label="Reward" value={`${activeCustomer.reward_tier} / ${activeCustomer.reward_points} điểm`}/>
                         </div>
 
                         {canViewOrderHistory ? (<div className="rounded-[1.5rem] border border-outline-variant/15 bg-surface-container-low p-4">
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
-                                        <p className="text-sm font-medium text-on-surface">Lich su don hang</p>
+                                        <p className="text-sm font-medium text-on-surface">Lịch sử đơn hàng</p>
                                         <p className="text-sm text-on-surface-variant">
-                                            Mo trang danh sach don va chi tiet read-only cua customer nay.
+                                            Mở trang danh sách đơn và chi tiết read-only của customer này.
                                         </p>
                                     </div>
                                     <Button variant="secondary" onClick={handleOpenOrderHistory}>
-                                        Xem lich su don hang
+                                        Xem lịch sử đơn hàng
                                     </Button>
                                 </div>
                                 {activeCustomer.orders_count === 0 ? (<p className="mt-3 text-sm text-on-surface-variant">
-                                        Customer nay chua co don hang nao. Trang lich su se hien thi empty state.
+                                        Customer này chưa có đơn hàng nào. Trang lịch sử sẽ hiển thị empty state.
                                     </p>) : null}
                             </div>) : null}
                     </div>) : null}
 
                 {(drawerMode === "create" || drawerMode === "edit") ? (<div className="space-y-5">
                         <div className="grid gap-4 md:grid-cols-2">
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ho ten" value={customerForm.fullName} onChange={(event) => setCustomerForm((current) => ({ ...current, fullName: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="So dien thoai" value={customerForm.phone} onChange={(event) => setCustomerForm((current) => ({ ...current, phone: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Họ tên" value={customerForm.fullName} onChange={(event) => setCustomerForm((current) => ({ ...current, fullName: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Số điện thoại" value={customerForm.phone} onChange={(event) => setCustomerForm((current) => ({ ...current, phone: event.target.value }))}/>
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Email" type="email" value={customerForm.email} onChange={(event) => setCustomerForm((current) => ({ ...current, email: event.target.value }))}/>
-                            {drawerMode === "create" ? (<input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Mat khau moi khi tao user" type="password" value={customerForm.password} onChange={(event) => setCustomerForm((current) => ({ ...current, password: event.target.value }))}/>) : null}
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Thanh pho" value={customerForm.city} onChange={(event) => setCustomerForm((current) => ({ ...current, city: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Vung yeu thich" value={customerForm.favoriteRegion} onChange={(event) => setCustomerForm((current) => ({ ...current, favoriteRegion: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Dia chi" value={customerForm.address} onChange={(event) => setCustomerForm((current) => ({ ...current, address: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Hang thuong" value={customerForm.rewardTier} onChange={(event) => setCustomerForm((current) => ({ ...current, rewardTier: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" min={0} placeholder="Diem" type="number" value={customerForm.rewardPoints} onChange={(event) => setCustomerForm((current) => ({ ...current, rewardPoints: event.target.value }))}/>
-                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" min={0} placeholder="Diem len hang tiep" type="number" value={customerForm.nextTierPoints} onChange={(event) => setCustomerForm((current) => ({ ...current, nextTierPoints: event.target.value }))}/>
+                            {drawerMode === "create" ? (<input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Mật khẩu mới khi tạo user" type="password" value={customerForm.password} onChange={(event) => setCustomerForm((current) => ({ ...current, password: event.target.value }))}/>) : null}
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Thành phố" value={customerForm.city} onChange={(event) => setCustomerForm((current) => ({ ...current, city: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Vùng yêu thích" value={customerForm.favoriteRegion} onChange={(event) => setCustomerForm((current) => ({ ...current, favoriteRegion: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Địa chỉ" value={customerForm.address} onChange={(event) => setCustomerForm((current) => ({ ...current, address: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Hạng thưởng" value={customerForm.rewardTier} onChange={(event) => setCustomerForm((current) => ({ ...current, rewardTier: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" min={0} placeholder="Điểm" type="number" value={customerForm.rewardPoints} onChange={(event) => setCustomerForm((current) => ({ ...current, rewardPoints: event.target.value }))}/>
+                            <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" min={0} placeholder="Điểm lên hạng tiếp" type="number" value={customerForm.nextTierPoints} onChange={(event) => setCustomerForm((current) => ({ ...current, nextTierPoints: event.target.value }))}/>
                             <label className="flex items-center gap-3 rounded-2xl bg-surface-container-highest px-4 py-3 text-sm text-on-surface-variant md:col-span-2">
                                 <input type="checkbox" checked={customerForm.isActive} onChange={(event) => setCustomerForm((current) => ({ ...current, isActive: event.target.checked }))}/>
-                                User duoc phep dang nhap
+                                User được phép đăng nhập
                             </label>
                         </div>
 

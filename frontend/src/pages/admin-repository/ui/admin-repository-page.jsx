@@ -30,6 +30,9 @@ const emptySupplierForm = {
     address: "",
     isActive: true,
 };
+// "Xóa" trong trang này thực chất là is_active=false (ẩn khỏi storefront) — is_deleted chỉ
+// dùng cho trường hợp xóa hẳn ở tầng khác; 1 bản ghi được coi là "đang hoạt động" khi CẢ
+// HAI đều không rơi vào trạng thái ẩn/xóa.
 function isAvailable(isActive, isDeleted) {
     return isActive !== false && isDeleted !== true;
 }
@@ -37,16 +40,20 @@ function activeTone(isActive, isDeleted) {
     return isAvailable(isActive, isDeleted) ? "success" : "warning";
 }
 function activeLabel(isActive, isDeleted) {
-    return isAvailable(isActive, isDeleted) ? "Dang hoat dong" : "Tam dung";
+    return isAvailable(isActive, isDeleted) ? "Đang hoạt động" : "Tạm dừng";
 }
 function FieldValue({ label, value }) {
     return (<div className="rounded-2xl bg-surface-container-low p-4 text-sm">
             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">
                 {label}
             </p>
-            <p className="mt-2 font-medium text-on-surface">{value || "Chua cap nhat"}</p>
+            <p className="mt-2 font-medium text-on-surface">{value || "Chưa cập nhật"}</p>
         </div>);
 }
+// Trang này quản lý CHUNG 3 "thực thể" (sản phẩm/danh mục/nhà cung cấp) trong 1 component,
+// chuyển qua lại bằng tab — `lockedTab` cho phép nhúng trang này vào route CHỈ hiện 1 tab cố
+// định (router.jsx dùng lockedTab="products"/"categories"/"suppliers" cho 3 route riêng biệt
+// /admin/products, /admin/categories, /admin/suppliers, dù cùng chạy 1 component này).
 export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}) {
     const [tab, setTab] = useState(lockedTab ?? initialTab);
     const [query, setQuery] = useState("");
@@ -84,6 +91,8 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     const canDeleteSupplier = hasAdminPermission(user, "admin.suppliers.delete");
     const canManageCategories = canCreateCategory || canUpdateCategory || canDeleteCategory;
     const canManageSuppliers = canCreateSupplier || canUpdateSupplier || canDeleteSupplier;
+    // Chỉ hiện tab nào user có ÍT NHẤT 1 quyền liên quan (xem/tạo/sửa/xóa) — nếu đang ở
+    // route lockedTab (vd /admin/categories) thì thu hẹp danh sách chỉ còn đúng tab đó.
     const visibleTabs = useMemo(() => {
         const tabs = [
             {
@@ -119,6 +128,9 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             includeInactiveSuppliers: canManageSuppliers,
         });
     }, [canManageCategories, canManageSuppliers, canViewProducts, loadData]);
+    // Nếu route ép cố định 1 tab (lockedTab) thì luôn dùng đúng tab đó; ngược lại nếu tab
+    // đang chọn không còn nằm trong visibleTabs (vd quyền vừa thay đổi) thì tự chuyển sang
+    // tab hợp lệ đầu tiên, tránh hiển thị 1 tab user không còn quyền thao tác.
     useEffect(() => {
         if (lockedTab) {
             setTab(lockedTab);
@@ -175,6 +187,9 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     const activeSupplier = drawer?.entity === "suppliers" && drawer.id
         ? suppliers.find((supplier) => String(supplier.id) === drawer.id)
         : undefined;
+    // 3 effect giống nhau (product/category/supplier): khi mở drawer ở mode "view"/"edit" cho
+    // 1 bản ghi cụ thể, đổ dữ liệu bản ghi đó vào form tương ứng. Bỏ qua khi mode "create" vì
+    // lúc đó form phải giữ nguyên giá trị rỗng (emptyXxxForm) đã set lúc bấm "Tạo mới".
     useEffect(() => {
         if (!activeProduct || drawer?.mode === "create")
             return;
@@ -255,6 +270,7 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     function closeDrawer() {
         setDrawer(null);
     }
+    // Build payload từ FORM (dùng cho tạo mới/lưu chỉnh sửa — người dùng có thể đã đổi giá trị).
     function productPayloadFromForm() {
         const salePrice = Number(productForm.salePrice);
         const stockQuantity = Number(productForm.stockQuantity);
@@ -271,6 +287,9 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         };
     }
+    // Build payload từ chính BẢN GHI gốc (không phải form) — dùng riêng cho nút "Khôi phục"
+    // ở bảng danh sách: chỉ cần đổi mỗi is_active=true, giữ nguyên mọi field khác y hệt bản
+    // ghi hiện có, không cần (và không nên) đi qua state form đang có thể đang trống/khác bản ghi.
     function productPayloadFromRecord(product, isActive) {
         return {
             category_id: product.category_id,
@@ -287,53 +306,53 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     }
     async function handleCreateProduct() {
         if (!productForm.name.trim() || !productForm.sku.trim() || !productForm.categoryId) {
-            pushToast({ tone: "warning", message: "Can nhap ten, SKU va danh muc cho san pham." });
+            pushToast({ tone: "warning", message: "Cần nhập tên, SKU và danh mục cho sản phẩm." });
             return;
         }
         const result = await createProduct(productPayloadFromForm());
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the tao san pham." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể tạo sản phẩm." });
             return;
         }
         setDrawer({ entity: "products", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da tao san pham ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã tạo sản phẩm ${result.data.name}.` });
     }
     async function handleUpdateProduct() {
         if (!activeProduct)
             return;
         const result = await updateProduct(activeProduct.id, productPayloadFromForm());
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat san pham." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật sản phẩm." });
             return;
         }
         setDrawer({ entity: "products", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da cap nhat san pham ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã cập nhật sản phẩm ${result.data.name}.` });
     }
     async function handleDeactivateProduct(product = activeProduct) {
         if (!product)
             return;
         const result = await deleteProduct(product.id);
         if (!result.success) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the an san pham." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể ẩn sản phẩm." });
             return;
         }
         setDrawer({ entity: "products", mode: "view", id: String(product.id) });
-        pushToast({ tone: "success", message: `Da an san pham ${product.name}.` });
+        pushToast({ tone: "success", message: `Đã ẩn sản phẩm ${product.name}.` });
     }
     async function handleRestoreProduct(product = activeProduct) {
         if (!product)
             return;
         const result = await updateProduct(product.id, productPayloadFromRecord(product, true));
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the khoi phuc san pham." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể khôi phục sản phẩm." });
             return;
         }
         setDrawer({ entity: "products", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da khoi phuc san pham ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã khôi phục sản phẩm ${result.data.name}.` });
     }
     async function handleCreateCategory() {
         if (!categoryForm.name.trim()) {
-            pushToast({ tone: "warning", message: "Can nhap ten danh muc." });
+            pushToast({ tone: "warning", message: "Cần nhập tên danh mục." });
             return;
         }
         const result = await createCategory({
@@ -343,11 +362,11 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the tao danh muc." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể tạo danh mục." });
             return;
         }
         setDrawer({ entity: "categories", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da tao danh muc ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã tạo danh mục ${result.data.name}.` });
     }
     async function handleUpdateCategory() {
         if (!activeCategory)
@@ -359,22 +378,22 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat danh muc." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật danh mục." });
             return;
         }
         setDrawer({ entity: "categories", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da cap nhat danh muc ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã cập nhật danh mục ${result.data.name}.` });
     }
     async function handleDeactivateCategory(category = activeCategory) {
         if (!category)
             return;
         const result = await deleteCategory(category.id);
         if (!result.success) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the an danh muc." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể ẩn danh mục." });
             return;
         }
         setDrawer({ entity: "categories", mode: "view", id: String(category.id) });
-        pushToast({ tone: "success", message: `Da an danh muc ${category.name}.` });
+        pushToast({ tone: "success", message: `Đã ẩn danh mục ${category.name}.` });
     }
     async function handleRestoreCategory(category = activeCategory) {
         if (!category)
@@ -386,15 +405,15 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the khoi phuc danh muc." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể khôi phục danh mục." });
             return;
         }
         setDrawer({ entity: "categories", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da khoi phuc danh muc ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã khôi phục danh mục ${result.data.name}.` });
     }
     async function handleCreateSupplier() {
         if (!supplierForm.supplierCode.trim() || !supplierForm.name.trim() || !supplierForm.phone.trim()) {
-            pushToast({ tone: "warning", message: "Can nhap ma, ten va so dien thoai nha cung cap." });
+            pushToast({ tone: "warning", message: "Cần nhập mã, tên và số điện thoại nhà cung cấp." });
             return;
         }
         const result = await createSupplier({
@@ -408,11 +427,11 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the tao nha cung cap." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể tạo nhà cung cấp." });
             return;
         }
         setDrawer({ entity: "suppliers", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da tao nha cung cap ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã tạo nhà cung cấp ${result.data.name}.` });
     }
     async function handleUpdateSupplier() {
         if (!activeSupplier)
@@ -428,22 +447,22 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat nha cung cap." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật nhà cung cấp." });
             return;
         }
         setDrawer({ entity: "suppliers", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da cap nhat nha cung cap ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã cập nhật nhà cung cấp ${result.data.name}.` });
     }
     async function handleDeactivateSupplier(supplier = activeSupplier) {
         if (!supplier)
             return;
         const result = await deleteSupplier(supplier.id);
         if (!result.success) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the an nha cung cap." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể ẩn nhà cung cấp." });
             return;
         }
         setDrawer({ entity: "suppliers", mode: "view", id: String(supplier.id) });
-        pushToast({ tone: "success", message: `Da an nha cung cap ${supplier.name}.` });
+        pushToast({ tone: "success", message: `Đã ẩn nhà cung cấp ${supplier.name}.` });
     }
     async function handleRestoreSupplier(supplier = activeSupplier) {
         if (!supplier)
@@ -459,11 +478,11 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             is_deleted: false,
         });
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the khoi phuc nha cung cap." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể khôi phục nhà cung cấp." });
             return;
         }
         setDrawer({ entity: "suppliers", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da khoi phuc nha cung cap ${result.data.name}.` });
+        pushToast({ tone: "success", message: `Đã khôi phục nhà cung cấp ${result.data.name}.` });
     }
     const productColumns = [
         {
@@ -507,7 +526,7 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             key: "supplier",
             title: "Nhà cung cấp",
             width: "16%",
-            render: (product) => product.supplier?.name ?? "Chua gan",
+            render: (product) => product.supplier?.name ?? "Chưa gán",
         },
         {
             key: "status",
@@ -624,24 +643,27 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             description: "Quản lý hồ sơ nhà cung cấp, liên hệ và trạng thái hợp tác.",
         },
     }[activeTab ?? "products"];
+    // Tiêu đề drawer = tổ hợp (entity × mode): 3 loại thực thể x 3 chế độ (create/edit/view)
+    // -> 9 tiêu đề khác nhau, tính bằng chuỗi ternary lồng nhau thay vì bảng tra cứu vì mỗi
+    // nhánh entity chỉ dùng 1 lần.
     const drawerTitle = drawer?.entity === "products"
         ? drawer.mode === "create"
-            ? "Tao san pham"
+            ? "Tạo sản phẩm"
             : drawer.mode === "edit"
-                ? "Chinh sua san pham"
-                : "Chi tiet san pham"
+                ? "Chỉnh sửa sản phẩm"
+                : "Chi tiết sản phẩm"
         : drawer?.entity === "categories"
             ? drawer.mode === "create"
-                ? "Tao danh muc"
+                ? "Tạo danh mục"
                 : drawer.mode === "edit"
-                    ? "Chinh sua danh muc"
-                    : "Chi tiet danh muc"
+                    ? "Chỉnh sửa danh mục"
+                    : "Chi tiết danh mục"
             : drawer?.entity === "suppliers"
                 ? drawer.mode === "create"
-                    ? "Tao nha cung cap"
+                    ? "Tạo nhà cung cấp"
                     : drawer.mode === "edit"
-                        ? "Chinh sua nha cung cap"
-                        : "Chi tiet nha cung cap"
+                        ? "Chỉnh sửa nhà cung cấp"
+                        : "Chi tiết nhà cung cấp"
                 : "";
     return (<div className="space-y-8">
             <AdminPageHeader title={pageMeta.title} description={pageMeta.description} actions={activeTab ? (<Button disabled={(activeTab === "products" && !canCreateProduct) ||
@@ -677,10 +699,10 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
                         </p>) : (<DataTable rows={filteredProducts} columns={productColumns} getRowKey={(product) => String(product.id)} isLoading={isLoading} emptyMessage="Không có sản phẩm phù hợp bộ lọc hiện tại." minWidth="1120px" pagination={{ pageSize: 6, itemLabel: "sản phẩm" }} rowClassName={(product) => drawer?.entity === "products" && drawer.id === String(product.id)
                 ? "border-l-4 border-primary bg-primary/5"
                 : undefined} onRowClick={(product) => openRecordDrawer("products", product.id, "view")}/>)) : null}
-                {activeTab === "categories" ? (<DataTable rows={filteredCategories} columns={categoryColumns} getRowKey={(category) => String(category.id)} isLoading={isLoading} emptyMessage="Không có danh mục phù hợp bộ lọc hiện tại." minWidth="760px" pagination={{ pageSize: 6, itemLabel: "danh muc" }} rowClassName={(category) => drawer?.entity === "categories" && drawer.id === String(category.id)
+                {activeTab === "categories" ? (<DataTable rows={filteredCategories} columns={categoryColumns} getRowKey={(category) => String(category.id)} isLoading={isLoading} emptyMessage="Không có danh mục phù hợp bộ lọc hiện tại." minWidth="760px" pagination={{ pageSize: 6, itemLabel: "danh mục" }} rowClassName={(category) => drawer?.entity === "categories" && drawer.id === String(category.id)
                 ? "border-l-4 border-primary bg-primary/5"
                 : undefined} onRowClick={(category) => openRecordDrawer("categories", category.id, "view")}/>) : null}
-                {activeTab === "suppliers" ? (<DataTable rows={filteredSuppliers} columns={supplierColumns} getRowKey={(supplier) => String(supplier.id)} isLoading={isLoading} emptyMessage="Không có nhà cung cấp phù hợp bộ lọc hiện tại." minWidth="920px" pagination={{ pageSize: 6, itemLabel: "nha cung cap" }} rowClassName={(supplier) => drawer?.entity === "suppliers" && drawer.id === String(supplier.id)
+                {activeTab === "suppliers" ? (<DataTable rows={filteredSuppliers} columns={supplierColumns} getRowKey={(supplier) => String(supplier.id)} isLoading={isLoading} emptyMessage="Không có nhà cung cấp phù hợp bộ lọc hiện tại." minWidth="920px" pagination={{ pageSize: 6, itemLabel: "nhà cung cấp" }} rowClassName={(supplier) => drawer?.entity === "suppliers" && drawer.id === String(supplier.id)
                 ? "border-l-4 border-primary bg-primary/5"
                 : undefined} onRowClick={(supplier) => openRecordDrawer("suppliers", supplier.id, "view")}/>) : null}
             </SurfaceCard>
@@ -691,54 +713,54 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
                 ? activeSupplier?.supplier_code
                 : undefined} onClose={closeDrawer} footer={<div className="flex flex-wrap justify-end gap-3">
                         <Button variant="outline" onClick={closeDrawer}>
-                            Dong
+                            Đóng
                         </Button>
                         {drawer?.mode === "create" && drawer.entity === "products" ? (<Button disabled={isSaving || !canCreateProduct} onClick={() => void handleCreateProduct()}>
-                                Tao san pham
+                                Tạo sản phẩm
                             </Button>) : null}
                         {drawer?.mode === "edit" && drawer.entity === "products" ? (<Button disabled={isSaving || !activeProduct || !canUpdateProduct} onClick={() => void handleUpdateProduct()}>
-                                Luu chinh sua
+                                Lưu chỉnh sửa
                             </Button>) : null}
                         {drawer?.mode === "view" && drawer.entity === "products" && activeProduct ? (<>
                                 <Button variant="secondary" disabled={!canUpdateProduct} onClick={() => setDrawer({ ...drawer, mode: "edit" })}>
-                                    Sua
+                                    Sửa
                                 </Button>
                                 {isAvailable(activeProduct.is_active, activeProduct.is_deleted) ? (<Button variant="ghost" disabled={isSaving || !canDeleteProduct} onClick={() => void handleDeactivateProduct()}>
-                                        An san pham
+                                        Ẩn sản phẩm
                                     </Button>) : (<Button variant="secondary" disabled={isSaving || !canUpdateProduct} onClick={() => void handleRestoreProduct()}>
-                                        Khoi phuc
+                                        Khôi phục
                                     </Button>)}
                             </>) : null}
                         {drawer?.mode === "create" && drawer.entity === "categories" ? (<Button disabled={isSaving || !canCreateCategory} onClick={() => void handleCreateCategory()}>
-                                Tao danh muc
+                                Tạo danh mục
                             </Button>) : null}
                         {drawer?.mode === "edit" && drawer.entity === "categories" ? (<Button disabled={isSaving || !activeCategory || !canUpdateCategory} onClick={() => void handleUpdateCategory()}>
-                                Luu chinh sua
+                                Lưu chỉnh sửa
                             </Button>) : null}
                         {drawer?.mode === "view" && drawer.entity === "categories" && activeCategory ? (<>
                                 <Button variant="secondary" disabled={!canUpdateCategory} onClick={() => setDrawer({ ...drawer, mode: "edit" })}>
-                                    Sua
+                                    Sửa
                                 </Button>
                                 {!isAvailable(activeCategory.is_active, activeCategory.is_deleted) ? (<Button variant="secondary" disabled={isSaving || !canUpdateCategory} onClick={() => void handleRestoreCategory()}>
-                                        Khoi phuc
+                                        Khôi phục
                                     </Button>) : (<Button variant="ghost" disabled={isSaving || !canDeleteCategory} onClick={() => void handleDeactivateCategory()}>
-                                        An danh muc
+                                        Ẩn danh mục
                                     </Button>)}
                             </>) : null}
                         {drawer?.mode === "create" && drawer.entity === "suppliers" ? (<Button disabled={isSaving || !canCreateSupplier} onClick={() => void handleCreateSupplier()}>
-                                Tao nha cung cap
+                                Tạo nhà cung cấp
                             </Button>) : null}
                         {drawer?.mode === "edit" && drawer.entity === "suppliers" ? (<Button disabled={isSaving || !activeSupplier || !canUpdateSupplier} onClick={() => void handleUpdateSupplier()}>
-                                Luu chinh sua
+                                Lưu chỉnh sửa
                             </Button>) : null}
                         {drawer?.mode === "view" && drawer.entity === "suppliers" && activeSupplier ? (<>
                                 <Button variant="secondary" disabled={!canUpdateSupplier} onClick={() => setDrawer({ ...drawer, mode: "edit" })}>
-                                    Sua
+                                    Sửa
                                 </Button>
                                 {!isAvailable(activeSupplier.is_active, activeSupplier.is_deleted) ? (<Button variant="secondary" disabled={isSaving || !canUpdateSupplier} onClick={() => void handleRestoreSupplier()}>
-                                        Khoi phuc
+                                        Khôi phục
                                     </Button>) : (<Button variant="ghost" disabled={isSaving || !canDeleteSupplier} onClick={() => void handleDeactivateSupplier()}>
-                                        An nha cung cap
+                                        Ẩn nhà cung cấp
                                     </Button>)}
                             </>) : null}
                     </div>}>
@@ -754,31 +776,31 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <FieldValue label="Category" value={activeProduct.category?.name ?? `#${activeProduct.category_id}`}/>
-                            <FieldValue label="Supplier" value={activeProduct.supplier?.name ?? "Chua gan"}/>
+                            <FieldValue label="Supplier" value={activeProduct.supplier?.name ?? "Chưa gán"}/>
                             <FieldValue label="Price" value={formatCurrency(Number(activeProduct.sale_price))}/>
                             <FieldValue label="Stock" value={`${activeProduct.stock_quantity} units`}/>
                         </div>
-                        <FieldValue label="Mo ta" value={activeProduct.description}/>
+                        <FieldValue label="Mô tả" value={activeProduct.description}/>
                     </div>) : null}
 
                 {drawer?.entity === "products" && (drawer.mode === "create" || drawer.mode === "edit") ? (<div className="grid gap-4 md:grid-cols-2">
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ten san pham" value={productForm.name} onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tên sản phẩm" value={productForm.name} onChange={(event) => setProductForm((current) => ({ ...current, name: event.target.value }))}/>
                         <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="SKU" value={productForm.sku} onChange={(event) => setProductForm((current) => ({ ...current, sku: event.target.value }))}/>
                         <select className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={productForm.categoryId} onChange={(event) => setProductForm((current) => ({ ...current, categoryId: event.target.value }))}>
-                            <option value="">Chon danh muc</option>
+                            <option value="">Chọn danh mục</option>
                             {categories.map((category) => (<option key={category.id} value={category.id}>{category.name}</option>))}
                         </select>
                         <select className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none" value={productForm.supplierId} onChange={(event) => setProductForm((current) => ({ ...current, supplierId: event.target.value }))}>
-                            <option value="">Khong gan nha cung cap</option>
+                            <option value="">Không gán nhà cung cấp</option>
                             {suppliers.map((supplier) => (<option key={supplier.id} value={supplier.id}>{supplier.name}</option>))}
                         </select>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Gia ban" type="number" min={0} value={productForm.salePrice} onChange={(event) => setProductForm((current) => ({ ...current, salePrice: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="So luong ton" type="number" min={0} value={productForm.stockQuantity} onChange={(event) => setProductForm((current) => ({ ...current, stockQuantity: event.target.value }))}/>
-                        <textarea className="min-h-28 resize-none rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Mo ta san pham" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="URL hinh anh san pham" value={productForm.imageUrl} onChange={(event) => setProductForm((current) => ({ ...current, imageUrl: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Giá bán" type="number" min={0} value={productForm.salePrice} onChange={(event) => setProductForm((current) => ({ ...current, salePrice: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Số lượng tồn" type="number" min={0} value={productForm.stockQuantity} onChange={(event) => setProductForm((current) => ({ ...current, stockQuantity: event.target.value }))}/>
+                        <textarea className="min-h-28 resize-none rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Mô tả sản phẩm" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="URL hình ảnh sản phẩm" value={productForm.imageUrl} onChange={(event) => setProductForm((current) => ({ ...current, imageUrl: event.target.value }))}/>
                         <label className="flex items-center gap-3 rounded-2xl bg-surface-container-highest px-4 py-3 text-sm text-on-surface-variant md:col-span-2">
                             <input type="checkbox" checked={productForm.isActive} onChange={(event) => setProductForm((current) => ({ ...current, isActive: event.target.checked }))}/>
-                            San pham dang hoat dong tren storefront
+                            Sản phẩm đang hoạt động trên storefront
                         </label>
                     </div>) : null}
 
@@ -789,15 +811,15 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
                                 {activeLabel(activeCategory.is_active, activeCategory.is_deleted)}
                             </Badge>
                         </div>
-                        <FieldValue label="Mo ta" value={activeCategory.description}/>
+                        <FieldValue label="Mô tả" value={activeCategory.description}/>
                     </div>) : null}
 
                 {drawer?.entity === "categories" && (drawer.mode === "create" || drawer.mode === "edit") ? (<div className="space-y-4">
-                        <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ten danh muc" value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}/>
-                        <textarea className="min-h-28 w-full resize-none rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Mo ta danh muc" value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}/>
+                        <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tên danh mục" value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}/>
+                        <textarea className="min-h-28 w-full resize-none rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Mô tả danh mục" value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}/>
                         <label className="flex items-center gap-3 rounded-2xl bg-surface-container-highest px-4 py-3 text-sm text-on-surface-variant">
                             <input type="checkbox" checked={categoryForm.isActive} onChange={(event) => setCategoryForm((current) => ({ ...current, isActive: event.target.checked }))}/>
-                            Danh muc dang hoat dong
+                            Danh mục đang hoạt động
                         </label>
                     </div>) : null}
 
@@ -812,23 +834,23 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
                             </Badge>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
-                            <FieldValue label="Nguoi lien he" value={activeSupplier.contact_name}/>
+                            <FieldValue label="Người liên hệ" value={activeSupplier.contact_name}/>
                             <FieldValue label="Phone" value={activeSupplier.phone}/>
                             <FieldValue label="Email" value={activeSupplier.email}/>
-                            <FieldValue label="Dia chi" value={activeSupplier.address}/>
+                            <FieldValue label="Địa chỉ" value={activeSupplier.address}/>
                         </div>
                     </div>) : null}
 
                 {drawer?.entity === "suppliers" && (drawer.mode === "create" || drawer.mode === "edit") ? (<div className="grid gap-4 md:grid-cols-2">
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ma nha cung cap" value={supplierForm.supplierCode} onChange={(event) => setSupplierForm((current) => ({ ...current, supplierCode: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ten nha cung cap" value={supplierForm.name} onChange={(event) => setSupplierForm((current) => ({ ...current, name: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Nguoi lien he" value={supplierForm.contactName} onChange={(event) => setSupplierForm((current) => ({ ...current, contactName: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="So dien thoai" value={supplierForm.phone} onChange={(event) => setSupplierForm((current) => ({ ...current, phone: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Mã nhà cung cấp" value={supplierForm.supplierCode} onChange={(event) => setSupplierForm((current) => ({ ...current, supplierCode: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tên nhà cung cấp" value={supplierForm.name} onChange={(event) => setSupplierForm((current) => ({ ...current, name: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Người liên hệ" value={supplierForm.contactName} onChange={(event) => setSupplierForm((current) => ({ ...current, contactName: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Số điện thoại" value={supplierForm.phone} onChange={(event) => setSupplierForm((current) => ({ ...current, phone: event.target.value }))}/>
                         <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Email" value={supplierForm.email} onChange={(event) => setSupplierForm((current) => ({ ...current, email: event.target.value }))}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Dia chi" value={supplierForm.address} onChange={(event) => setSupplierForm((current) => ({ ...current, address: event.target.value }))}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" placeholder="Địa chỉ" value={supplierForm.address} onChange={(event) => setSupplierForm((current) => ({ ...current, address: event.target.value }))}/>
                         <label className="flex items-center gap-3 rounded-2xl bg-surface-container-highest px-4 py-3 text-sm text-on-surface-variant md:col-span-2">
                             <input type="checkbox" checked={supplierForm.isActive} onChange={(event) => setSupplierForm((current) => ({ ...current, isActive: event.target.checked }))}/>
-                            Nha cung cap dang hoat dong
+                            Nhà cung cấp đang hoạt động
                         </label>
                     </div>) : null}
             </AdminDrawer>

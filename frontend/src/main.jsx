@@ -14,6 +14,8 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
         <BrowserRouter>
+            {/* AppBootstrap không render UI (return null) — chỉ chạy side-effect khởi động
+                (khôi phục phiên, tải dữ liệu ban đầu) trước khi route nào cũng có thể cần đến. */}
             <AppBootstrap />
             <AppRoutes />
         </BrowserRouter>

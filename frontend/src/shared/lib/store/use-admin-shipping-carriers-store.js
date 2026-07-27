@@ -8,10 +8,12 @@ const initialState = {
     isSaving: false,
     error: null,
 };
-const SESSION_EXPIRED_MESSAGE = "Phien dang nhap da het han. Vui long dang nhap lai.";
+const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 function token() {
     return useAuthStore.getState().accessToken;
 }
+// activeOnly: true để lọc bớt (vd dropdown chọn carrier lúc tạo vận đơn chỉ nên hiện carrier
+// đang hoạt động); mặc định (false/không truyền) trả về cả carrier đã tắt cho trang quản lý.
 function listPath(options) {
     const params = new URLSearchParams();
     params.set("per_page", "100");
@@ -25,7 +27,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
     loadCarriers: async (options) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de tai don vi van chuyen." };
+            return { success: false, error: "Bạn cần đăng nhập admin để tải đơn vị vận chuyển." };
         }
         set({ isLoading: true, error: null });
         try {
@@ -45,7 +47,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
                 set({ isLoading: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai don vi van chuyen.";
+            const message = error instanceof Error ? error.message : "Không thể tải đơn vị vận chuyển.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
@@ -53,7 +55,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
     createCarrier: async (payload) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de tao don vi van chuyen." };
+            return { success: false, error: "Bạn cần đăng nhập admin để tạo đơn vị vận chuyển." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -75,7 +77,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tao don vi van chuyen.";
+            const message = error instanceof Error ? error.message : "Không thể tạo đơn vị vận chuyển.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -83,7 +85,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
     updateCarrier: async (carrierId, payload) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de cap nhat don vi van chuyen." };
+            return { success: false, error: "Bạn cần đăng nhập admin để cập nhật đơn vị vận chuyển." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -105,7 +107,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the cap nhat don vi van chuyen.";
+            const message = error instanceof Error ? error.message : "Không thể cập nhật đơn vị vận chuyển.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }
@@ -113,7 +115,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
     deleteCarrier: async (carrierId) => {
         const accessToken = token();
         if (!accessToken) {
-            return { success: false, error: "Ban can dang nhap admin de an don vi van chuyen." };
+            return { success: false, error: "Bạn cần đăng nhập admin để ẩn đơn vị vận chuyển." };
         }
         set({ isSaving: true, error: null });
         try {
@@ -134,7 +136,7 @@ export const useAdminShippingCarriersStore = create()((set) => ({
                 set({ isSaving: false, error: SESSION_EXPIRED_MESSAGE });
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the an don vi van chuyen.";
+            const message = error instanceof Error ? error.message : "Không thể ẩn đơn vị vận chuyển.";
             set({ isSaving: false, error: message });
             return { success: false, error: message };
         }

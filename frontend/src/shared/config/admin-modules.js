@@ -1,5 +1,8 @@
 import { routes } from "@/shared/config/routes";
 
+// Danh sách mục điều hướng của sidebar admin (widgets/admin-sidebar) — mỗi item gắn với 1
+// route thật (routes.js) + `section` để sidebar tự nhóm hiển thị (overview/commerce/system/
+// supplier/warehouse). Thêm 1 trang admin mới thường chỉ cần thêm 1 object vào đây.
 export const adminModules = [
     {
         id: "dashboard",
@@ -171,6 +174,12 @@ export const adminModules = [
     },
 ];
 
+// LƯU Ý: cả 2 hàm dưới đây hiện là STUB đơn giản, chưa phân quyền chi tiết theo module:
+// - isSuperAdmin luôn trả false (chưa có khái niệm "super admin" phân biệt với admin thường).
+// - canAccessAdminModule bỏ qua tham số `module` (void module), chỉ kiểm tra role — nghĩa
+//   là MỌI admin đăng nhập đều thấy được MỌI module trong adminModules, không có phân quyền
+//   theo admin_role_id (dù backend đã có cột này — xem admins.controller.js). Cùng kiểu
+//   "chỗ để mở rộng sau" như hasAdminPermission() trong shared/lib/auth.js.
 export function isSuperAdmin(user) {
     void user;
     return false;

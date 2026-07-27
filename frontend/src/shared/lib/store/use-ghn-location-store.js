@@ -1,5 +1,9 @@
 import { create } from "zustand";
 import { apiRequest } from "@/shared/api/backend-client";
+// Cùng shape với use-vietnam-location-store.js (provinces/districts/wards + cache theo
+// code) nhưng nguồn dữ liệu là backend CỦA DỰ ÁN (proxy sang GHN thật) — dùng ở nơi cần
+// mã tỉnh/huyện/xã CHUẨN GHN để tính phí/tạo vận đơn (checkout, admin tạo vận đơn), khác
+// với store kia chỉ để tham khảo tên địa danh nói chung.
 const initialState = {
     provinces: [],
     districtsByProvince: {},
@@ -27,7 +31,7 @@ export const useGhnLocationStore = create()((set, get) => ({
             return { success: true, data: response.data };
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : "Khong the tai tinh/thanh GHN.";
+            const message = error instanceof Error ? error.message : "Không thể tải tỉnh/thành GHN.";
             set({ isLoadingProvinces: false, error: message });
             return { success: false, error: message };
         }
@@ -52,7 +56,7 @@ export const useGhnLocationStore = create()((set, get) => ({
             return { success: true, data: response.data };
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : "Khong the tai quan/huyen GHN.";
+            const message = error instanceof Error ? error.message : "Không thể tải quận/huyện GHN.";
             set({ isLoadingDistricts: false, error: message });
             return { success: false, error: message };
         }
@@ -77,7 +81,7 @@ export const useGhnLocationStore = create()((set, get) => ({
             return { success: true, data: response.data };
         }
         catch (error) {
-            const message = error instanceof Error ? error.message : "Khong the tai phuong/xa GHN.";
+            const message = error instanceof Error ? error.message : "Không thể tải phường/xã GHN.";
             set({ isLoadingWards: false, error: message });
             return { success: false, error: message };
         }

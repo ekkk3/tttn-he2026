@@ -167,31 +167,31 @@ export function AccountAddressesPage() {
             !form.ghnProvinceId ||
             !form.ghnDistrictId ||
             !form.ghnWardCode) {
-            setMessage("Vui long dien day du dia chi.");
+            setMessage("Vui lòng điền đầy đủ địa chỉ.");
             return;
         }
         const result = editingAddress
             ? await updateAddress(editingAddress.id, submitPayload())
             : await addAddress(submitPayload());
         if (!result.success) {
-            setMessage(result.error ?? "Khong the luu dia chi.");
+            setMessage(result.error ?? "Không thể lưu địa chỉ.");
             return;
         }
-        setMessage(editingAddress ? "Da cap nhat dia chi." : "Da them dia chi moi.");
+        setMessage(editingAddress ? "Đã cập nhật địa chỉ." : "Đã thêm địa chỉ mới.");
         setForm(emptyForm);
         setEditingId("");
         pushToast({
             tone: "success",
-            message: "So dia chi da duoc luu.",
+            message: "Sổ địa chỉ đã được lưu.",
         });
     }
     return (<div className="mx-auto max-w-6xl px-6 pb-16 pt-24">
             <div className="grid gap-8 xl:grid-cols-[1.1fr_0.9fr]">
                 <SurfaceCard className="space-y-5">
                     <div>
-                        <h1 className="font-headline text-2xl font-bold">So dia chi nhan hang</h1>
+                        <h1 className="font-headline text-2xl font-bold">Sổ địa chỉ nhận hàng</h1>
                         <p className="mt-2 text-on-surface-variant">
-                            Quan ly dia chi nhan hang de dat hang nhanh hon.
+                            Quản lý địa chỉ nhận hàng để đặt hàng nhanh hơn.
                         </p>
                     </div>
 
@@ -206,7 +206,7 @@ export function AccountAddressesPage() {
                                         {address.note ? (<p className="mt-2 text-sm text-on-surface-variant">{address.note}</p>) : null}
                                     </div>
                                     {address.isDefault ? (<span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-primary">
-                                            Mac dinh
+                                            Mặc định
                                         </span>) : null}
                                 </div>
                                 <div className="mt-4 flex flex-wrap gap-3">
@@ -227,29 +227,29 @@ export function AccountAddressesPage() {
                     note: address.note ?? "",
                 });
             }}>
-                                        Chinh sua
+                                        Chỉnh sửa
                                     </Button>
                                     <Button variant="outline" size="sm" disabled={isSaving} onClick={async () => {
                 const result = await setDefaultAddress(address.id);
                 pushToast({
                     tone: result.success ? "success" : "warning",
                     message: result.success
-                        ? "Da cap nhat dia chi mac dinh."
-                        : (result.error ?? "Khong the dat dia chi mac dinh."),
+                        ? "Đã cập nhật địa chỉ mặc định."
+                        : (result.error ?? "Không thể đặt địa chỉ mặc định."),
                 });
             }}>
-                                        Dat lam mac dinh
+                                        Đặt làm mặc định
                                     </Button>
                                     <Button variant="ghost" size="sm" disabled={isSaving} onClick={async () => {
                 const result = await removeAddress(address.id);
                 pushToast({
                     tone: result.success ? "success" : "warning",
                     message: result.success
-                        ? "Da xoa dia chi."
-                        : (result.error ?? "Khong the xoa dia chi."),
+                        ? "Đã xóa địa chỉ."
+                        : (result.error ?? "Không thể xóa địa chỉ."),
                 });
             }}>
-                                        Xoa
+                                        Xóa
                                     </Button>
                                 </div>
                             </div>))}
@@ -258,14 +258,14 @@ export function AccountAddressesPage() {
 
                 <SurfaceCard tone="low" className="space-y-4">
                     <h2 className="font-headline text-2xl font-bold">
-                        {editingAddress ? "Chinh sua dia chi" : "Them dia chi moi"}
+                        {editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
                     </h2>
 
                     {[
-            ["label", "Nhan goi nho"],
-            ["recipient", "Nguoi nhan"],
-            ["phone", "So dien thoai"],
-            ["line1", "Dia chi chi tiet"],
+            ["label", "Nhãn gợi nhớ"],
+            ["recipient", "Người nhận"],
+            ["phone", "Số điện thoại"],
+            ["line1", "Địa chỉ chi tiết"],
         ].map(([key, label]) => (<label key={key} className="block space-y-2 text-sm">
                             <span className="font-medium">{label}</span>
                             <input className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" value={form[key]} onChange={(event) => setForm((current) => ({
@@ -275,7 +275,7 @@ export function AccountAddressesPage() {
                         </label>))}
 
                     <label className="block space-y-2 text-sm">
-                        <span className="font-medium">Tinh/thanh</span>
+                        <span className="font-medium">Tỉnh/thành</span>
                         <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" value={form.ghnProvinceId} onChange={(event) => {
             const province = provinces.find((item) => String(item.code) === event.target.value);
             setForm((current) => ({
@@ -290,7 +290,7 @@ export function AccountAddressesPage() {
             }));
         }}>
                             <option value="">
-                                {isLoadingProvinces ? "Dang tai tinh/thanh..." : "Chon tinh/thanh"}
+                                {isLoadingProvinces ? "Đang tải tỉnh/thành..." : "Chọn tỉnh/thành"}
                             </option>
                             {provinces.map((province) => (<option key={province.code} value={province.code}>
                                     {province.name}
@@ -299,7 +299,7 @@ export function AccountAddressesPage() {
                     </label>
 
                     <label className="block space-y-2 text-sm">
-                        <span className="font-medium">Quan/huyen</span>
+                        <span className="font-medium">Quận/huyện</span>
                         <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" value={form.ghnDistrictId} disabled={!form.ghnProvinceId} onChange={(event) => {
             const district = districts.find((item) => String(item.code) === event.target.value);
             setForm((current) => ({
@@ -311,7 +311,7 @@ export function AccountAddressesPage() {
             }));
         }}>
                             <option value="">
-                                {isLoadingDistricts ? "Dang tai quan/huyen..." : "Chon quan/huyen"}
+                                {isLoadingDistricts ? "Đang tải quận/huyện..." : "Chọn quận/huyện"}
                             </option>
                             {districts.map((district) => (<option key={district.code} value={district.code}>
                                     {district.name}
@@ -320,7 +320,7 @@ export function AccountAddressesPage() {
                     </label>
 
                     <label className="block space-y-2 text-sm">
-                        <span className="font-medium">Phuong/xa</span>
+                        <span className="font-medium">Phường/xã</span>
                         <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" value={form.ghnWardCode} disabled={!form.ghnDistrictId} onChange={(event) => {
             const ward = wards.find((item) => String(item.code) === event.target.value);
             setForm((current) => ({
@@ -330,7 +330,7 @@ export function AccountAddressesPage() {
             }));
         }}>
                             <option value="">
-                                {isLoadingWards ? "Dang tai phuong/xa..." : "Chon phuong/xa"}
+                                {isLoadingWards ? "Đang tải phường/xã..." : "Chọn phường/xã"}
                             </option>
                             {wards.map((ward) => (<option key={ward.code} value={ward.code}>
                                     {ward.name}
@@ -339,7 +339,7 @@ export function AccountAddressesPage() {
                     </label>
 
                     <label className="block space-y-2 text-sm">
-                        <span className="font-medium">Ghi chu</span>
+                        <span className="font-medium">Ghi chú</span>
                         <textarea className="min-h-28 w-full rounded-2xl bg-surface-container-highest px-4 py-3 outline-none focus:ring-2 focus:ring-primary/15" value={form.note} onChange={(event) => setForm((current) => ({
             ...current,
             note: event.target.value,
@@ -349,13 +349,13 @@ export function AccountAddressesPage() {
                     {locationError ? <p className="text-sm text-error">{locationError}</p> : null}
                     <div className="flex flex-wrap gap-3">
                         <Button onClick={() => void handleSubmit()} disabled={isSaving}>
-                            {isSaving ? "Dang luu..." : editingAddress ? "Luu dia chi" : "Them dia chi"}
+                            {isSaving ? "Đang lưu..." : editingAddress ? "Lưu địa chỉ" : "Thêm địa chỉ"}
                         </Button>
                         {editingAddress ? (<Button variant="secondary" onClick={() => {
                 setEditingId("");
                 setForm(emptyForm);
             }}>
-                                Huy chinh sua
+                                Hủy chỉnh sửa
                             </Button>) : null}
                     </div>
                 </SurfaceCard>

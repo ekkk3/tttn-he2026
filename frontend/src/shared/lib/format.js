@@ -1,3 +1,5 @@
+// Định dạng theo locale "vi-VN" — dùng Intl có sẵn của trình duyệt/Node thay vì tự ghép
+// chuỗi số, để đúng chuẩn phân cách hàng nghìn/ký hiệu tiền tệ/tên tháng tiếng Việt.
 export function formatCurrency(value) {
     return new Intl.NumberFormat("vi-VN", {
         style: "currency",
@@ -13,6 +15,9 @@ export function formatCompactCurrency(value) {
         maximumFractionDigits: 1,
     }).format(value);
 }
+// Mọi hàm format ngày ở đây đều thủ sẵn "--" cho input rỗng/không parse được, để UI không
+// bao giờ hiện "Invalid Date" khi dữ liệu backend trả về null (vd đơn chưa giao thì
+// delivered_at là null).
 export function formatDate(date) {
     if (!date || Number.isNaN(Date.parse(date))) {
         return "--";

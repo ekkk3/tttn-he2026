@@ -1,3 +1,5 @@
+// Gắn query string cho trang catalog (bộ lọc/sắp xếp) — chỉ thêm param nào THỰC SỰ có giá
+// trị, để URL sạch sẽ khi không lọc gì (vd "/products" thay vì "/products?search=&sort=").
 function withQuery(path, options = {}) {
     const params = new URLSearchParams();
     if (options.search)
@@ -85,6 +87,8 @@ export const routes = {
     warehouseSupplierOrders: "/warehouse/supplier-orders",
     warehouseHelp: "/warehouse/help",
 };
+// Bảng tra cứu "prefix đường dẫn -> role được phép" dùng bởi canAccessRoute() (shared/lib/auth.js)
+// và route-guard.jsx: path không khớp prefix nào ở đây coi như public, ai cũng xem được.
 export const roleProtectedPrefixes = [
     {
         prefix: "/account",

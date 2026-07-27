@@ -19,7 +19,7 @@ export function RegionsPage() {
 
             <section className="mt-12 grid gap-6 xl:grid-cols-2">
                 {regions.length === 0 ? (<SurfaceCard className="xl:col-span-2">
-                        {isLoading ? "Dang tai vung mien..." : (error ?? "Chua co vung mien nao de hien thi.")}
+                        {isLoading ? "Đang tải vùng miền..." : (error ?? "Chưa có vùng miền nào để hiển thị.")}
                     </SurfaceCard>) : null}
                 {regions.map((region, index) => {
             const regionProducts = products.filter((product) => product.regionId === region.id);

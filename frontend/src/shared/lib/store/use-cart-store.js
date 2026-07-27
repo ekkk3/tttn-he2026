@@ -4,6 +4,12 @@ import { apiRequest, isUnauthorizedApiError } from "@/shared/api/backend-client"
 import { adaptBackendCart } from "@/shared/api/storefront-adapters";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
 import { registerProtectedSessionCleanup } from "@/shared/lib/store/protected-session";
+// Store giỏ hàng có 2 CHẾ ĐỘ song song, chọn qua isBackendCustomerSession():
+// - Khách chưa đăng nhập (guest): `guestItems` lưu trong localStorage (persist bên dưới),
+//   không gọi API nào — thêm/sửa/xóa chỉ thao tác trên mảng này.
+// - Khách hàng đã đăng nhập (backend): mọi thao tác gọi API /cart/* thật, kết quả đồng bộ
+//   vào `cart`/`items`. Khi khách ĐĂNG NHẬP xong, syncGuestCart() sẽ đẩy guestItems lên
+//   server rồi xóa guestItems (gộp giỏ hàng lúc chưa đăng nhập vào giỏ hàng thật).
 function upsertItem(items, productId, quantity) {
     const existing = items.find((item) => item.productId === productId);
     if (!existing) {
@@ -23,6 +29,8 @@ const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòn
 function authState() {
     return useAuthStore.getState();
 }
+// Chỉ khách hàng (customer) đăng nhập qua backend thật mới dùng giỏ hàng server — admin/
+// supplier/warehouse đăng nhập vẫn coi như "guest" ở góc độ giỏ hàng (họ không mua sắm).
 function isBackendCustomerSession() {
     const state = authState();
     return state.authSource === "backend" && state.session?.user.role === "customer";
@@ -34,6 +42,8 @@ function numericProductId(productId) {
 function normalizeGuestItems(items) {
     return items.filter((item) => item.quantity > 0);
 }
+// Dùng chung sau MỌI lệnh gọi API cart thành công (load/add/update/remove) — backend luôn
+// trả về TOÀN BỘ giỏ hàng mới nhất, nên chỉ cần 1 hàm ghi đè state từ response là đủ.
 function syncBackendCart(set, cart) {
     set({
         cart,
@@ -276,6 +286,10 @@ export const useCartStore = create()(persist((set, get) => ({
             };
         }
     },
+    // Gọi ngay sau khi khách vừa đăng nhập thành công (xem use-auth-store.js): đẩy từng
+    // item trong giỏ "guest" (localStorage) lên server bằng CHÍNH API addItem — backend tự
+    // cộng dồn nếu sản phẩm đã có sẵn trong giỏ hàng thật của tài khoản đó — rồi xóa sạch
+    // guestItems và tải lại giỏ hàng chính thức từ server.
     syncGuestCart: async () => {
         if (!isBackendCustomerSession()) {
             return { success: true };
@@ -301,6 +315,8 @@ export const useCartStore = create()(persist((set, get) => ({
             error: null,
         });
         try {
+            // Gửi TUẦN TỰ (for...of + await), không Promise.all song song — tránh nhiều
+            // request cùng lúc ghi đè/va chạm nhau trên cùng 1 giỏ hàng phía server.
             for (const item of validGuestItems) {
                 await apiRequest("/cart/items", {
                     method: "POST",
@@ -358,11 +374,15 @@ export const useCartStore = create()(persist((set, get) => ({
 }), {
     name: "heritage-cart-store",
     storage: createJSONStorage(() => localStorage),
+    // Chỉ persist guestItems — `cart` (dữ liệu server) KHÔNG lưu localStorage vì luôn có
+    // thể tải lại mới từ API; giữ nó "cũ" qua localStorage dễ lệch với tồn kho/giá thực tế.
     partialize: (state) => ({
         guestItems: state.guestItems,
         items: state.guestItems,
     }),
 }));
+// Đăng ký dọn dẹp giỏ hàng SERVER khi đăng xuất/hết phiên (xem protected-session.js) —
+// guestItems vẫn giữ nguyên vì đó là dữ liệu cục bộ trình duyệt, không thuộc về tài khoản.
 registerProtectedSessionCleanup(() => {
     useCartStore.getState().resetServerState();
 });

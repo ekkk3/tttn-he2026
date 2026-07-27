@@ -367,7 +367,7 @@ export function ProductCatalogPage() {
                                 Trang {pagination.currentPage} / {pagination.lastPage}
                             </p>
                             <div className="flex flex-wrap items-center justify-center gap-2">
-                                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/40 text-on-surface-variant transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40" disabled={pagination.currentPage <= 1} onClick={() => goToPage(pagination.currentPage - 1)} aria-label="Trang truoc">
+                                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/40 text-on-surface-variant transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-40" disabled={pagination.currentPage <= 1} onClick={() => goToPage(pagination.currentPage - 1)} aria-label="Trang trước">
                                     <Icon name="chevron_left"/>
                                 </button>
                                 {paginationPages.map((page) => (<button key={page} className={`h-10 min-w-10 rounded-full px-3 text-sm font-semibold transition-colors ${page === pagination.currentPage

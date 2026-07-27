@@ -1,3 +1,11 @@
+// ==================================================================
+// TOÀN BỘ file này là lớp "adapter": chuyển đổi response backend (snake_case, PHP/Laravel-
+// style: full_name, sale_price, order_no...) sang view model frontend (camelCase: fullName,
+// salePrice, orderNo...). Mọi store (shared/lib/store/*) sau khi gọi apiRequest() đều đi qua
+// đúng 1 hàm adaptBackend* tương ứng ở đây trước khi lưu vào state — component không bao giờ
+// đọc trực tiếp field snake_case từ response.
+// ==================================================================
+
 // Ảnh minh họa tự sinh (SVG data-URI) cho sản phẩm CHƯA có ảnh (image_url rỗng).
 // Tự chứa, không cần mạng, luôn hiển thị -> tránh ảnh vỡ/trống cho mọi sản phẩm
 // (kể cả sản phẩm do Admin/NCC tạo mà chưa gắn ảnh).
@@ -18,6 +26,8 @@ export function placeholderImage(name) {
         `</svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
+// Giá trị mặc định khi backend chưa có dữ liệu thật (vd sản phẩm mới tạo chưa có review
+// nào) — để card sản phẩm luôn hiện được sao đánh giá thay vì trống/0 sao trông như lỗi.
 function fallbackProduct(_index) {
     return {
         image: "",
@@ -48,6 +58,10 @@ function stockStatusForProduct(product) {
         return "low-stock";
     return "in-stock";
 }
+// Backend lưu role dạng CHỮ HOA (CUSTOMER/ADMIN/SUPPLIER/WAREHOUSE_STAFF — xem
+// backend/src/config/db.js schema), nhưng toàn bộ frontend (routes.js, use-auth-store.js,
+// route-guard.jsx...) làm việc với role dạng CHỮ THƯỜNG (customer/admin/supplier/warehouse).
+// Đây là NƠI DUY NHẤT chuyển đổi giữa 2 quy ước đó — role lạ/không nhận diện được trả về null.
 export function normalizeUserRole(role) {
     const normalized = role.trim().toUpperCase();
     if (normalized === "CUSTOMER")
@@ -186,6 +200,10 @@ export function adaptBackendSupplierOption(supplier) {
         description: supplier.address ?? supplier.contact_name ?? supplier.email ?? "Nhà cung cấp đối tác",
     };
 }
+// Adapter LỚN NHẤT và duy nhất không chỉ đổi tên field: còn TỰ TỔNG HỢP thêm nhiều field
+// chỉ phục vụ UI mà backend không lưu (subtitle, badge, heritageCommitments, sourcing card,
+// shippingNotice...) từ vài trường gốc (category/supplier/stock_quantity/sku) — để trang
+// chi tiết sản phẩm có đủ nội dung hiển thị phong phú mà không cần thêm cột DB nào.
 export function adaptBackendProduct(product, index = 0) {
     const fallback = fallbackProduct(index);
     const supplierName = product.supplier?.name ?? `Nhà cung cấp #${product.supplier_id}`;

@@ -15,6 +15,8 @@ const initialSettings = {
     updatedAt: null,
 };
 const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+// Backend trả snake_case (store_name, low_stock_threshold...) — chuyển sang camelCase
+// để khớp quy ước đặt tên phía frontend trước khi đưa vào state.
 function adaptSettings(settings) {
     return {
         storeName: settings.store_name,

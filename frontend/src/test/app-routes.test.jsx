@@ -360,13 +360,13 @@ describe("customer commerce routes", () => {
         setBackendAdminSession();
         const user = userEvent.setup();
         renderApp(routes.adminCommunity);
-        expect(await screen.findByText(/Danh sach bai viet/i)).toBeInTheDocument();
-        await user.click(screen.getByRole("button", { name: /Bai moi/i }));
-        await user.type(screen.getByPlaceholderText(/Tieu de/i), "Bai viet admin moi");
-        await user.type(screen.getByPlaceholderText(/Noi dung bai viet/i), "Noi dung tu admin.");
+        expect(await screen.findByText(/Danh sách bài viết/i)).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /Bài mới/i }));
+        await user.type(screen.getByPlaceholderText(/Tiêu đề/i), "Bài viết admin mới");
+        await user.type(screen.getByPlaceholderText(/Nội dung bài viết/i), "Nội dung từ admin.");
         await user.selectOptions(screen.getByDisplayValue("DRAFT"), "PUBLISHED");
-        await user.click(screen.getByRole("button", { name: /Tao moi/i }));
-        expect((await screen.findAllByText(/Bai viet admin moi/i)).length).toBeGreaterThan(0);
+        await user.click(screen.getByRole("button", { name: /Tạo mới/i }));
+        expect((await screen.findAllByText(/Bài viết admin mới/i)).length).toBeGreaterThan(0);
         const createCall = fetchMock.mock.calls.find(([input, init]) => {
             return getRequestPath(input).endsWith("/api/admin/posts") && init?.method === "POST";
         });
@@ -641,7 +641,7 @@ describe("customer commerce routes", () => {
         vi.stubGlobal("fetch", fetchMock);
         setBackendAdminSession(["admin.users.view", "admin.orders.view"]);
         renderApp(routes.adminUserOrders("10"));
-        expect(await screen.findByText(/Customer nay chua co don hang nao/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Customer này chưa có đơn hàng nào/i)).toBeInTheDocument();
     });
     it("blocks mismatched admin customer order detail data from rendering", async () => {
         const fetchMock = vi.fn((input) => {
@@ -727,7 +727,7 @@ describe("customer commerce routes", () => {
         await waitFor(() => {
             expect(fetchMock.mock.calls.some(([input]) => getRequestPath(input).endsWith("/api/admin/orders/101"))).toBe(true);
         });
-        expect(screen.getByRole("link", { name: /Quay lai lich su don hang/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /Quay lại lịch sử đơn hàng/i })).toBeInTheDocument();
         expect(screen.queryByText("Khach Lich Su")).not.toBeInTheDocument();
         expect(screen.queryByText("Another Customer")).not.toBeInTheDocument();
     });

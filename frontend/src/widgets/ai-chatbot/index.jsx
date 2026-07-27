@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { apiRequest } from "@/shared/api/backend-client";
 import { Icon } from "@/shared/ui";
 
-// Widget AI Chatbot tu van dac san (UC 2.2.6a). Goi POST /api/chat -> { reply }.
-// Backend dung OpenAI/Gemini theo AI_PROVIDER; neu chua cau hinh API key se tra 503
-// voi thong bao ro rang, widget hien thong bao do thay vi vo tinh im lang.
+// Widget AI Chatbot tư vấn đặc sản (UC 2.2.6a). Gọi POST /api/chat -> { reply }.
+// Backend dùng OpenAI/Gemini theo AI_PROVIDER; nếu chưa cấu hình API key sẽ trả 503
+// với thông báo rõ ràng, widget hiện thông báo đó thay vì vô tình im lặng.
 const WELCOME = {
     role: "assistant",
     content: "Xin chào! Mình là trợ lý đặc sản vùng miền. Bạn muốn tìm đặc sản nào?",
@@ -17,6 +17,9 @@ export function AiChatbot() {
     const [isSending, setIsSending] = useState(false);
     const listRef = useRef(null);
 
+    // requestAnimationFrame: đợi trình duyệt VẼ XONG tin nhắn vừa thêm vào DOM rồi mới cuộn
+    // xuống cuối — gọi scrollTop ngay lập tức (trước khi React commit DOM) sẽ dùng chiều cao
+    // CŨ (chưa tính tin nhắn mới), cuộn thiếu 1 nhịp.
     function scrollToBottom() {
         requestAnimationFrame(() => {
             if (listRef.current) {
@@ -42,6 +45,9 @@ export function AiChatbot() {
             });
             setMessages((current) => [...current, { role: "assistant", content: response.reply }]);
         } catch (error) {
+            // Lỗi (mất mạng, hoặc backend trả 503 khi chưa cấu hình AI_PROVIDER) hiện NGAY
+            // trong khung chat dưới dạng 1 tin nhắn "assistant" có tiền tố cảnh báo — không
+            // dùng toast/alert riêng, để cuộc trò chuyện không bị gián đoạn luồng hiển thị.
             const message = error instanceof Error ? error.message : "Xin lỗi, hiện chưa thể trả lời.";
             setMessages((current) => [
                 ...current,

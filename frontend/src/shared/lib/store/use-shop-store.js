@@ -24,6 +24,10 @@ function numericProductId(productId) {
     const parsed = Number(productId);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
+// API wishlist trả kèm CHI TIẾT ĐẦY ĐỦ của từng sản phẩm trong danh sách (không chỉ id) —
+// tiện thể ghi luôn dữ liệu đó vào store CATALOG (khác store này) để nếu người dùng có ghé
+// trang chi tiết sản phẩm đó ngay sau, dữ liệu đã có sẵn khỏi phải gọi API riêng lần nữa.
+// Đây là 1 side-effect CHỦ Ý ghi chéo sang store khác, không phải bug.
 function syncCatalogFromWishlist(response) {
     const nextProducts = response.data.products.map((product, index) => adaptBackendProduct(product, index));
     useStorefrontCatalogStore.setState((state) => {
@@ -63,6 +67,9 @@ export const useShopStore = create()(persist((set, get) => ({
             let response = await apiRequest("/account/wishlist", {
                 token,
             });
+            // Gộp wishlist: nếu trước lúc đăng nhập user đã thêm sản phẩm vào wishlist "local"
+            // (persist ở localStorage, guest), những id KHÔNG có trên server thì đẩy lên bổ
+            // sung ngay — giống cơ chế syncGuestCart() ở use-cart-store.js.
             const localWishlist = get().wishlistIds;
             const serverIds = response.data.product_ids.map(String);
             const localOnlyIds = localWishlist.filter((productId) => !serverIds.includes(productId));

@@ -3,6 +3,9 @@ import { Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "@/shared/ui";
 import { PortalSidebar } from "@/widgets/portal-sidebar";
+// Cùng pattern off-canvas sidebar với AdminLayout, nhưng dùng chung 1 layout cho CẢ 2 cổng
+// (NCC và kho vận) — phân biệt bằng chính đường dẫn hiện tại (`variant`) để đổi tiêu đề +
+// nội dung sidebar (PortalSidebar) cho đúng ngữ cảnh, thay vì viết 2 layout gần như giống hệt nhau.
 export function PortalLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();

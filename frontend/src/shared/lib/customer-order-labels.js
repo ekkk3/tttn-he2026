@@ -20,6 +20,9 @@ export const customerPaymentMethodLabels = {
     CREDIT_CARD: "Thẻ ngân hàng",
     BANK_TRANSFER: "Chuyển khoản ngân hàng",
 };
+// Dùng khi 1 giá trị status từ backend KHÔNG có trong 3 bảng nhãn phía trên (vd backend
+// thêm status mới mà frontend chưa kịp cập nhật) — tự chuyển "SOME_STATUS" thành "Some status"
+// để vẫn hiển thị được thứ gì đó dễ đọc thay vì crash hoặc hiện nguyên chuỗi hoa in.
 export function fallbackBackendLabel(value) {
     return value
         .toLowerCase()

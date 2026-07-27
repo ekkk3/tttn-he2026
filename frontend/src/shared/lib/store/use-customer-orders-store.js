@@ -11,7 +11,7 @@ const initialState = {
     isSubmitting: false,
     error: null,
 };
-const SESSION_EXPIRED_MESSAGE = "Phien dang nhap da het han. Vui long dang nhap lai.";
+const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 function sessionToken() {
     return useAuthStore.getState().accessToken;
 }
@@ -24,6 +24,9 @@ function paginationFromOrdersResponse(response) {
         total: response.total ?? nestedPagination?.total ?? response.data.length,
     };
 }
+// Cùng lý do với use-admin-orders-store.js: checkout()/cancelOrder()/... trả về đối tượng
+// "chi tiết đơn hàng" đầy đủ, nhưng mảng `orders` (trang lịch sử đơn) chỉ cần shape tóm
+// tắt — rút gọn lại ở đây để cập nhật `orders` mà không cần gọi loadOrders() lại từ đầu.
 function mergeSummary(detail) {
     return {
         id: detail.id,
@@ -51,7 +54,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
             });
             return {
                 success: false,
-                error: "Ban can dang nhap lai de xem don hang.",
+                error: "Bạn cần đăng nhập lại để xem đơn hàng.",
             };
         }
         set({
@@ -76,12 +79,13 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai lich su don hang.";
+            const message = error instanceof Error ? error.message : "Không thể tải lịch sử đơn hàng.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
     },
     loadOrder: async (orderId) => {
+        // Đã có sẵn trong cache (vd khách bấm lại vào đơn vừa xem) -> trả ngay, khỏi gọi API.
         const cached = get().orderDetails[orderId];
         if (cached) {
             return { success: true, data: cached };
@@ -90,7 +94,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
         if (!token) {
             return {
                 success: false,
-                error: "Ban can dang nhap lai de xem chi tiet don hang.",
+                error: "Bạn cần đăng nhập lại để xem chi tiết đơn hàng.",
             };
         }
         set({ isLoading: true, error: null });
@@ -113,7 +117,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the tai chi tiet don hang.";
+            const message = error instanceof Error ? error.message : "Không thể tải chi tiết đơn hàng.";
             set({ isLoading: false, error: message });
             return { success: false, error: message };
         }
@@ -123,7 +127,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
         if (!token) {
             return {
                 success: false,
-                error: "Ban can dang nhap lai de tiep tuc dat hang.",
+                error: "Bạn cần đăng nhập lại để tiếp tục đặt hàng.",
             };
         }
         set({ isSubmitting: true, error: null });
@@ -143,7 +147,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                     [order.id]: order,
                 },
             }));
-            // payment_redirect_url: URL cong thanh toan VNPay/MoMo (neu chon), de checkout redirect.
+            // payment_redirect_url: URL cổng thanh toán VNPay/MoMo (nếu chọn), để checkout redirect.
             return { success: true, data: order, paymentRedirectUrl: response.data?.payment_redirect_url ?? null };
         }
         catch (error) {
@@ -152,7 +156,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the hoan tat dat hang.";
+            const message = error instanceof Error ? error.message : "Không thể hoàn tất đặt hàng.";
             set({ isSubmitting: false, error: message });
             return { success: false, error: message };
         }
@@ -203,7 +207,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
         if (!token) {
             return {
                 success: false,
-                error: "Ban can dang nhap lai de xac nhan da chuyen khoan.",
+                error: "Bạn cần đăng nhập lại để xác nhận đã chuyển khoản.",
             };
         }
         set({ isSubmitting: true, error: null });
@@ -233,7 +237,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the gui xac nhan chuyen khoan.";
+            const message = error instanceof Error ? error.message : "Không thể gửi xác nhận chuyển khoản.";
             set({ isSubmitting: false, error: message });
             return { success: false, error: message };
         }
@@ -243,7 +247,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
         if (!token) {
             return {
                 success: false,
-                error: "Ban can dang nhap lai de xac nhan da nhan hang.",
+                error: "Bạn cần đăng nhập lại để xác nhận đã nhận hàng.",
             };
         }
         set({ isSubmitting: true, error: null });
@@ -270,7 +274,7 @@ export const useCustomerOrdersStore = create()((set, get) => ({
                 useAuthStore.getState().clearSession();
                 return { success: false, error: SESSION_EXPIRED_MESSAGE };
             }
-            const message = error instanceof Error ? error.message : "Khong the xac nhan da nhan hang.";
+            const message = error instanceof Error ? error.message : "Không thể xác nhận đã nhận hàng.";
             set({ isSubmitting: false, error: message });
             return { success: false, error: message };
         }

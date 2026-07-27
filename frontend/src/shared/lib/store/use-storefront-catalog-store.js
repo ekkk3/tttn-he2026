@@ -15,6 +15,9 @@ const initialState = {
     status: "idle",
     error: null,
 };
+// loadCatalog() nhận 2 kiểu tham số cho tiện gọi: 1 boolean đơn giản (force refetch hay
+// không, dùng giá trị mặc định cho phần còn lại), hoặc 1 object đầy đủ filter/trang/sort
+// khi trang catalog thật sự cần lọc/phân trang.
 function resolveLoadOptions(options) {
     if (typeof options === "boolean") {
         return {
@@ -57,6 +60,8 @@ function productQueryFromOptions(options) {
         params.set("sort", options.sort);
     return params.toString();
 }
+// Đọc field phân trang trực tiếp trên response (current_page/last_page/...), nhưng vẫn
+// fallback về response.pagination.* nếu có (tương thích ngược với 1 shape response cũ hơn).
 function paginationFromProductsResponse(response) {
     const legacyPagination = response.pagination;
     return {
@@ -71,6 +76,8 @@ export const useStorefrontCatalogStore = create()((set, get) => ({
     loadCatalog: async (options) => {
         const resolvedOptions = resolveLoadOptions(options);
         const productQuery = productQueryFromOptions(resolvedOptions);
+        // Tránh gọi lại API nếu CÙNG bộ filter/trang vừa được tải (hoặc đang tải) — trừ khi
+        // ép buộc (force:true). Giúp chuyển qua lại giữa các trang mà không load lại vô ích.
         if (!resolvedOptions.force) {
             const status = get().status;
             if ((status === "loading" || status === "ready") && get().productsQuery === productQuery) {
@@ -92,6 +99,9 @@ export const useStorefrontCatalogStore = create()((set, get) => ({
             const regions = regionsResponse.data.map(adaptBackendRegion);
             const suppliers = suppliersResponse.data.map(adaptBackendSupplierOption);
             const products = productsResponse.data.map((product, index) => adaptBackendProduct(product, index));
+            // Sau khi có danh sách sản phẩm CÒN THẬT trên server, dọn luôn tham chiếu "mồ côi"
+            // ở các store khác (wishlist, giỏ hàng khách chưa đăng nhập) trỏ tới sản phẩm đã
+            // bị xóa/ẩn — tránh hiện sản phẩm không còn tồn tại trong wishlist/giỏ hàng.
             const validProductIds = products.map((product) => product.id);
             useShopStore.getState().pruneProductReferences(validProductIds);
             useCartStore.getState().pruneGuestItems(validProductIds);

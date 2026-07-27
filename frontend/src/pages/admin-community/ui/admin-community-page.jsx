@@ -23,7 +23,7 @@ const emptyPostForm = {
 };
 function formatAdminDate(value) {
     if (!value)
-        return "Chua co";
+        return "Chưa có";
     return new Intl.DateTimeFormat("vi-VN", {
         day: "2-digit",
         month: "2-digit",
@@ -53,9 +53,12 @@ function activeEntityTone(entity) {
 function FieldValue({ label, value }) {
     return (<div className="rounded-2xl bg-surface-container-low p-4 text-sm">
             <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">{label}</p>
-            <p className="mt-2 font-medium text-on-surface">{value || "Chua cap nhat"}</p>
+            <p className="mt-2 font-medium text-on-surface">{value || "Chưa cập nhật"}</p>
         </div>);
 }
+// Khác với buildPostPayload() (đọc từ FORM state, dùng cho create/update thủ công), hàm này
+// đọc từ chính OBJECT POST đã có sẵn — dùng riêng cho "Chuyển về Draft" ngay trên bảng danh
+// sách (không mở form sửa), chỉ đổi mỗi status còn mọi field khác giữ nguyên y hệt.
 function postPayloadFromPost(post, status = post.status) {
     return {
         title: post.title,
@@ -96,11 +99,17 @@ export function AdminCommunityPage() {
     const canDeletePost = hasAdminPermission(user, "admin.community.posts.delete");
     const canModerateComments = hasAdminPermission(user, "admin.community.comments.moderate");
     const canLoadCommunity = canViewCommunity;
+    // Trang này gọi apiRequest() TRỰC TIẾP (không qua 1 Zustand store riêng như các trang admin
+    // khác) vì dữ liệu cộng đồng (suppliers/customers/invitations) chỉ dùng ở đúng 1 nơi, không
+    // cần chia sẻ giữa nhiều component — tạo hẳn 1 store cho việc này là thừa.
     useEffect(() => {
         if (!accessToken || !canLoadCommunity) {
             setIsLoadingCommunity(false);
             return;
         }
+        // Cờ `cancelled`: nếu effect này bị hủy (component unmount, hoặc accessToken đổi trước
+        // khi request cũ kịp trả lời) thì bỏ qua kết quả trả về muộn — tránh setState trên 1
+        // effect run đã "lỗi thời", có thể ghi đè dữ liệu mới hơn bằng dữ liệu cũ hơn.
         let cancelled = false;
         async function loadCommunity() {
             setIsLoadingCommunity(true);
@@ -119,7 +128,7 @@ export function AdminCommunityPage() {
             catch (nextError) {
                 if (cancelled)
                     return;
-                setCommunityError(nextError instanceof Error ? nextError.message : "Khong the tai du lieu cong dong.");
+                setCommunityError(nextError instanceof Error ? nextError.message : "Không thể tải dữ liệu cộng đồng.");
                 setIsLoadingCommunity(false);
             }
         }
@@ -246,11 +255,11 @@ export function AdminCommunityPage() {
         if (inviteForm.supplierName.trim().length === 0 ||
             inviteForm.contactName.trim().length === 0 ||
             inviteForm.email.trim().length === 0) {
-            pushToast({ tone: "warning", message: "Vui long nhap day du ten don vi, nguoi lien he va email." });
+            pushToast({ tone: "warning", message: "Vui lòng nhập đầy đủ tên đơn vị, người liên hệ và email." });
             return;
         }
         if (!accessToken) {
-            pushToast({ tone: "warning", message: "Ban can dang nhap admin de gui loi moi." });
+            pushToast({ tone: "warning", message: "Bạn cần đăng nhập admin để gửi lời mời." });
             return;
         }
         setIsInvitationSaving(true);
@@ -275,49 +284,49 @@ export function AdminCommunityPage() {
             setIsInvitationSaving(false);
             pushToast({
                 tone: "success",
-                message: `Da tao loi moi ${response.data.id} cho ${response.data.supplier_name}.`,
+                message: `Đã tạo lời mời ${response.data.id} cho ${response.data.supplier_name}.`,
             });
         }
         catch (nextError) {
             setIsInvitationSaving(false);
             pushToast({
                 tone: "warning",
-                message: nextError instanceof Error ? nextError.message : "Khong the gui loi moi.",
+                message: nextError instanceof Error ? nextError.message : "Không thể gửi lời mời.",
             });
         }
     }
     async function handleCreatePost() {
         if (!postForm.title.trim() || !postForm.body.trim()) {
-            pushToast({ tone: "warning", message: "Can nhap tieu de va noi dung bai viet." });
+            pushToast({ tone: "warning", message: "Cần nhập tiêu đề và nội dung bài viết." });
             return;
         }
         const result = await createPost(buildPostPayload());
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the tao bai viet." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể tạo bài viết." });
             return;
         }
         setDrawer({ entity: "post", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da tao bai viet ${result.data.title}.` });
+        pushToast({ tone: "success", message: `Đã tạo bài viết ${result.data.title}.` });
     }
     async function handleUpdatePost() {
         if (!activePost)
             return;
         const result = await updatePost(activePost.id, buildPostPayload());
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the cap nhat bai viet." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật bài viết." });
             return;
         }
         setDrawer({ entity: "post", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da cap nhat bai viet ${result.data.title}.` });
+        pushToast({ tone: "success", message: `Đã cập nhật bài viết ${result.data.title}.` });
     }
     async function handleMovePostToDraft(post) {
         const result = await updatePost(post.id, postPayloadFromPost(post, "DRAFT"));
         if (!result.success || !result.data) {
-            pushToast({ tone: "warning", message: result.error ?? "Khong the an bai viet." });
+            pushToast({ tone: "warning", message: result.error ?? "Không thể ẩn bài viết." });
             return;
         }
         setDrawer({ entity: "post", mode: "view", id: String(result.data.id) });
-        pushToast({ tone: "success", message: `Da chuyen ${result.data.title} ve DRAFT.` });
+        pushToast({ tone: "success", message: `Đã chuyển ${result.data.title} về DRAFT.` });
     }
     async function handleToggleComment(commentId, status) {
         const result = await updateCommentVisibility(commentId, status);
@@ -359,7 +368,7 @@ export function AdminCommunityPage() {
             width: "14%",
             nowrap: true,
             render: (post) => (<span>
-                    {post.likes_count} thich / {post.comments_count} binh luan
+                    {post.likes_count} thích / {post.comments_count} bình luận
                 </span>),
         },
         {
@@ -512,7 +521,7 @@ export function AdminCommunityPage() {
         },
         {
             key: "created",
-            title: "Ngay tao",
+            title: "Ngày tạo",
             width: "14%",
             nowrap: true,
             render: (invitation) => formatAdminDate(invitation.created_at),
@@ -522,7 +531,7 @@ export function AdminCommunityPage() {
     function renderPostTable() {
         if (!canViewPosts && !canCreatePost) {
             return (<SurfaceCard className="text-sm text-on-surface-variant">
-                    Ban chua co quyen xem danh sach bai viet.
+                    Bạn chưa có quyền xem danh sách bài viết.
                 </SurfaceCard>);
         }
         if (canViewPosts && adminStatus === "error") {
@@ -531,16 +540,16 @@ export function AdminCommunityPage() {
         return (<SurfaceCard className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h3 className="font-headline text-xl font-semibold text-on-surface">Danh sach bai viet</h3>
-                        <p className="mt-1 text-sm text-on-surface-variant">{currentRows} bai viet dang hien thi</p>
+                        <h3 className="font-headline text-xl font-semibold text-on-surface">Danh sách bài viết</h3>
+                        <p className="mt-1 text-sm text-on-surface-variant">{currentRows} bài viết đang hiển thị</p>
                     </div>
                     <Button size="sm" variant="secondary" disabled={!canCreatePost} onClick={openCreatePostDrawer} iconLeft={<Icon name="add" className="text-lg"/>}>
-                        Bai moi
+                        Bài mới
                     </Button>
                 </div>
 
                 {!canViewPosts ? (<div className="rounded-2xl bg-surface-container-low p-4 text-sm text-on-surface-variant">
-                        Ban chua co quyen xem danh sach, nhung van co the tao bai viet moi.
+                        Bạn chưa có quyền xem danh sách, nhưng vẫn có thể tạo bài viết mới.
                     </div>) : (<DataTable rows={filteredPosts} columns={postColumns} getRowKey={(post) => String(post.id)} isLoading={adminStatus === "loading"} loadingMessage="Đang tải bài viết..." emptyMessage="Chưa có bài viết phù hợp." minWidth="980px" pagination={{ pageSize: 5, itemLabel: "bài viết" }} onRowClick={(post) => openPostDrawer(post, "view")}/>)}
             </SurfaceCard>);
     }
@@ -571,11 +580,11 @@ export function AdminCommunityPage() {
         if (mode === "create" || mode === "edit") {
             return (<div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tieu de" value={postForm.title} onChange={(event) => updatePostField("title", event.target.value)}/>
-                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="URL anh bia" value={postForm.coverImageUrl} onChange={(event) => updatePostField("coverImageUrl", event.target.value)}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tiêu đề" value={postForm.title} onChange={(event) => updatePostField("title", event.target.value)}/>
+                        <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="URL ảnh bìa" value={postForm.coverImageUrl} onChange={(event) => updatePostField("coverImageUrl", event.target.value)}/>
                     </div>
-                    <textarea className="min-h-20 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Mo ta ngan" value={postForm.excerpt} onChange={(event) => updatePostField("excerpt", event.target.value)}/>
-                    <textarea className="min-h-56 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Noi dung bai viet" value={postForm.body} onChange={(event) => updatePostField("body", event.target.value)}/>
+                    <textarea className="min-h-20 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Mô tả ngắn" value={postForm.excerpt} onChange={(event) => updatePostField("excerpt", event.target.value)}/>
+                    <textarea className="min-h-56 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Nội dung bài viết" value={postForm.body} onChange={(event) => updatePostField("body", event.target.value)}/>
                     <select className="w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" value={postForm.status} onChange={(event) => updatePostField("status", event.target.value)}>
                         <option value="DRAFT">DRAFT</option>
                         <option value="PUBLISHED">PUBLISHED</option>
@@ -583,22 +592,22 @@ export function AdminCommunityPage() {
                 </div>);
         }
         if (!activePost) {
-            return <p className="text-sm text-on-surface-variant">Khong tim thay bai viet.</p>;
+            return <p className="text-sm text-on-surface-variant">Không tìm thấy bài viết.</p>;
         }
         return (<div className="space-y-6">
                 {activePost.cover_image_url ? (<img src={activePost.cover_image_url} alt="" className="aspect-[16/9] w-full rounded-2xl object-cover"/>) : null}
                 <div className="grid gap-4 md:grid-cols-2">
-                    <FieldValue label="Tieu de" value={activePost.title}/>
-                    <FieldValue label="Tac gia" value={activePost.author?.full_name ?? "Admin"}/>
-                    <FieldValue label="Ngay xuat ban" value={formatAdminDate(activePost.published_at)}/>
-                    <FieldValue label="Tuong tac" value={`${activePost.likes_count} thich / ${activePost.comments_count} binh luan`}/>
+                    <FieldValue label="Tiêu đề" value={activePost.title}/>
+                    <FieldValue label="Tác giả" value={activePost.author?.full_name ?? "Admin"}/>
+                    <FieldValue label="Ngày xuất bản" value={formatAdminDate(activePost.published_at)}/>
+                    <FieldValue label="Tương tác" value={`${activePost.likes_count} thích / ${activePost.comments_count} bình luận`}/>
                 </div>
                 <div className="rounded-2xl bg-surface-container-low p-4 text-sm leading-6">
-                    <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">Mo ta</p>
-                    <p className="mt-2 text-on-surface">{activePost.excerpt || "Chua cap nhat"}</p>
+                    <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">Mô tả</p>
+                    <p className="mt-2 text-on-surface">{activePost.excerpt || "Chưa cập nhật"}</p>
                 </div>
                 <div className="rounded-2xl bg-surface-container-low p-4 text-sm leading-6">
-                    <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">Noi dung</p>
+                    <p className="text-xs font-label uppercase tracking-[0.14em] text-on-surface-variant">Nội dung</p>
                     <p className="mt-2 whitespace-pre-line text-on-surface">{activePost.body}</p>
                 </div>
 
@@ -621,7 +630,7 @@ export function AdminCommunityPage() {
                                 <p className="mt-3 leading-6 text-on-surface-variant">{comment.content}</p>
                                 <div className="mt-3 flex justify-end gap-2">
                                     <Button size="sm" variant="secondary" disabled={!canModerateComments || isPostSaving} onClick={() => void handleToggleComment(comment.id, comment.status === "VISIBLE" ? "HIDDEN" : "VISIBLE")}>
-                                        {comment.status === "VISIBLE" ? "An" : "Hien lai"}
+                                        {comment.status === "VISIBLE" ? "Ẩn" : "Hiện lại"}
                                     </Button>
                                 </div>
                             </div>)))}
@@ -631,14 +640,18 @@ export function AdminCommunityPage() {
     function renderInviteDrawerContent() {
         return (<div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ten don vi" value={inviteForm.supplierName} onChange={(event) => updateInviteField("supplierName", event.target.value)}/>
-                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Nguoi lien he" value={inviteForm.contactName} onChange={(event) => updateInviteField("contactName", event.target.value)}/>
+                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Tên đơn vị" value={inviteForm.supplierName} onChange={(event) => updateInviteField("supplierName", event.target.value)}/>
+                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Người liên hệ" value={inviteForm.contactName} onChange={(event) => updateInviteField("contactName", event.target.value)}/>
                     <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Email" value={inviteForm.email} onChange={(event) => updateInviteField("email", event.target.value)}/>
-                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Danh muc, phan tach bang dau phay" value={inviteForm.categories} onChange={(event) => updateInviteField("categories", event.target.value)}/>
+                    <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Danh mục, phân tách bằng dấu phẩy" value={inviteForm.categories} onChange={(event) => updateInviteField("categories", event.target.value)}/>
                 </div>
-                <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ghi chu loi moi" value={inviteForm.note} onChange={(event) => updateInviteField("note", event.target.value)}/>
+                <textarea className="min-h-24 w-full rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Ghi chú lời mời" value={inviteForm.note} onChange={(event) => updateInviteField("note", event.target.value)}/>
             </div>);
     }
+    // 1 <AdminDrawer> DUY NHẤT được dùng chung cho 4 loại nội dung khác nhau (bài viết/lời
+    // mời/nhà cung cấp/khách hàng) — 4 hàm drawerTitle/Subtitle/Content/Footer bên dưới đều
+    // dispatch theo `drawer.entity` (+ `drawer.mode` cho riêng bài viết) để quyết định hiện gì,
+    // thay vì viết 4 component drawer riêng biệt.
     function drawerTitle() {
         if (!drawer)
             return "";
@@ -677,25 +690,25 @@ export function AdminCommunityPage() {
             return renderInviteDrawerContent();
         if (drawer.entity === "supplier") {
             if (!activeSupplier)
-                return <p className="text-sm text-on-surface-variant">Khong tim thay nha cung cap.</p>;
+                return <p className="text-sm text-on-surface-variant">Không tìm thấy nhà cung cấp.</p>;
             return (<div className="grid gap-4 md:grid-cols-2">
-                    <FieldValue label="Ten" value={activeSupplier.name}/>
-                    <FieldValue label="Nguoi lien he" value={activeSupplier.contact_name}/>
+                    <FieldValue label="Tên" value={activeSupplier.name}/>
+                    <FieldValue label="Người liên hệ" value={activeSupplier.contact_name}/>
                     <FieldValue label="Email" value={activeSupplier.email}/>
-                    <FieldValue label="Dien thoai" value={activeSupplier.phone}/>
-                    <FieldValue label="Dia chi" value={activeSupplier.address}/>
-                    <FieldValue label="So san pham" value={activeSupplier.product_count}/>
+                    <FieldValue label="Điện thoại" value={activeSupplier.phone}/>
+                    <FieldValue label="Địa chỉ" value={activeSupplier.address}/>
+                    <FieldValue label="Số sản phẩm" value={activeSupplier.product_count}/>
                 </div>);
         }
         if (!activeCustomer)
-            return <p className="text-sm text-on-surface-variant">Khong tim thay khach hang.</p>;
+            return <p className="text-sm text-on-surface-variant">Không tìm thấy khách hàng.</p>;
         return (<div className="grid gap-4 md:grid-cols-2">
-                <FieldValue label="Ho ten" value={activeCustomer.full_name}/>
+                <FieldValue label="Họ tên" value={activeCustomer.full_name}/>
                 <FieldValue label="Email" value={activeCustomer.email}/>
-                <FieldValue label="Dien thoai" value={activeCustomer.phone}/>
-                <FieldValue label="Don hang" value={activeCustomer.order_count}/>
-                <FieldValue label="Tong chi" value={formatCurrency(Number(activeCustomer.total_spend))}/>
-                <FieldValue label="Trang thai" value={activeEntityLabel(activeCustomer)}/>
+                <FieldValue label="Điện thoại" value={activeCustomer.phone}/>
+                <FieldValue label="Đơn hàng" value={activeCustomer.order_count}/>
+                <FieldValue label="Tổng chi" value={formatCurrency(Number(activeCustomer.total_spend))}/>
+                <FieldValue label="Trạng thái" value={activeEntityLabel(activeCustomer)}/>
             </div>);
     }
     function drawerFooter() {
@@ -704,27 +717,27 @@ export function AdminCommunityPage() {
         if (drawer.entity === "post" && drawer.mode === "create") {
             return (<div className="flex flex-wrap justify-end gap-3">
                     <Button variant="outline" onClick={() => setDrawer(null)}>
-                        Huy
+                        Hủy
                     </Button>
                     <Button disabled={isPostSaving || !canCreatePost} onClick={() => void handleCreatePost()}>
-                        {isPostSaving ? "Dang tao..." : "Tao moi"}
+                        {isPostSaving ? "Đang tạo..." : "Tạo mới"}
                     </Button>
                 </div>);
         }
         if (drawer.entity === "post" && drawer.mode === "edit") {
             return (<div className="flex flex-wrap justify-end gap-3">
                     <Button variant="outline" onClick={() => setDrawer(null)}>
-                        Huy
+                        Hủy
                     </Button>
                     <Button disabled={isPostSaving || !activePost || !canUpdatePost} onClick={() => void handleUpdatePost()}>
-                        {isPostSaving ? "Dang luu..." : "Luu thay doi"}
+                        {isPostSaving ? "Đang lưu..." : "Lưu thay đổi"}
                     </Button>
                 </div>);
         }
         if (drawer.entity === "post" && drawer.mode === "view" && activePost) {
             return (<div className="flex flex-wrap justify-end gap-3">
                     <Button variant="outline" onClick={() => setDrawer(null)}>
-                        Dong
+                        Đóng
                     </Button>
                     <Button variant="secondary" disabled={!canUpdatePost} onClick={() => openPostDrawer(activePost, "edit")}>
                         Chỉnh sửa
@@ -737,16 +750,16 @@ export function AdminCommunityPage() {
         if (drawer.entity === "invite") {
             return (<div className="flex flex-wrap justify-end gap-3">
                     <Button variant="outline" onClick={() => setDrawer(null)}>
-                        Huy
+                        Hủy
                     </Button>
                     <Button disabled={isInvitationSaving || !canCreateInvitation} onClick={() => void handleSubmitInvite()}>
-                        {isInvitationSaving ? "Dang gui..." : "Gui loi moi"}
+                        {isInvitationSaving ? "Đang gửi..." : "Gửi lời mời"}
                     </Button>
                 </div>);
         }
         return (<div className="flex justify-end">
                 <Button variant="outline" onClick={() => setDrawer(null)}>
-                    Dong
+                    Đóng
                 </Button>
             </div>);
     }

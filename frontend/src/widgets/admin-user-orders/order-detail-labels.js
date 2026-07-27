@@ -1,3 +1,7 @@
+// Chỉ "bọc" lại customer-order-labels.js (key CHỮ HOA khớp đúng ORDER_TRANSITIONS/
+// PAYMENT_TRANSITIONS thật của backend) thành các hàm tiện dụng riêng cho khu vực admin xem
+// đơn hàng của khách (admin-user-orders/admin-user-order-detail) — KHÔNG liên quan gì tới
+// shared/lib/labels.js (bộ nhãn key chữ thường, hiện không khớp dữ liệu thật — xem ghi chú ở đó).
 import {
     customerOrderStatusLabels,
     customerPaymentMethodLabels,

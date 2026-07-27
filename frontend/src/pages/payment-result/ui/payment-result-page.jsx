@@ -4,12 +4,15 @@ import { apiRequest } from "@/shared/api/backend-client";
 import { routes } from "@/shared/config/routes";
 import { Badge, ButtonLink, SurfaceCard } from "@/shared/ui";
 
-// Trang khach quay ve tu cong thanh toan (VNPay/MoMo) — UC 2.2.9.
-// Chuyen toan bo query (vnp_*/... ) len backend de xac minh chu ky + cap nhat trang thai,
-// roi hien ket qua. Backend moi la noi cap nhat DB (idempotent), FE chi hien thi.
+// Trang khách quay về từ cổng thanh toán (VNPay/MoMo) — UC 2.2.9.
+// Chuyển toàn bộ query (vnp_*/... ) lên backend để xác minh chữ ký + cập nhật trạng thái,
+// rồi hiện kết quả. Backend mới là nơi cập nhật DB (idempotent), FE chỉ hiển thị.
 export function PaymentResultPage({ gateway }) {
     const location = useLocation();
     const [state, setState] = useState({ status: "loading" });
+    // calledRef (không phải state) đảm bảo verify() chỉ gọi ĐÚNG 1 LẦN dù React.StrictMode
+    // (dev) cố tình chạy effect 2 lần để phát hiện side-effect không an toàn — gọi API xác
+    // minh 2 lần tuy backend xử lý idempotent nên không hỏng dữ liệu, nhưng gây lãng phí request.
     const calledRef = useRef(false);
 
     useEffect(() => {

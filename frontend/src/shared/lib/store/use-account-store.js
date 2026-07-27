@@ -45,6 +45,9 @@ const SESSION_EXPIRED_MESSAGE = "Phiên đăng nhập đã hết hạn. Vui lòn
 function authState() {
     return useAuthStore.getState();
 }
+// Toàn bộ action trong store này đi qua customerToken() trước — chỉ khách hàng (customer)
+// đăng nhập qua backend thật mới có token, nên mọi action đều "chặn sớm" nếu không thỏa,
+// rồi theo cùng khuôn: gọi API -> cập nhật state -> trả { success, error? } cho UI.
 function customerToken() {
     const state = authState();
     if (state.authSource !== "backend" || state.session?.user.role !== "customer") {
@@ -66,6 +69,9 @@ function profilePayload(profile) {
         security_alerts: profile.securityAlerts,
     };
 }
+// ghn_* fields lưu kèm ID/tên tỉnh-huyện-xã theo chuẩn GHN (chọn lúc nhập địa chỉ qua
+// use-ghn-location-store) — cần cho backend tính phí/tạo vận đơn GHN chính xác sau này,
+// không chỉ dựa vào chuỗi địa chỉ tự do (line1/city).
 function addressPayload(input) {
     return {
         label: input.label.trim(),
@@ -82,6 +88,8 @@ function addressPayload(input) {
         note: input.note?.trim() || null,
     };
 }
+// Hầu hết API tài khoản (profile, địa chỉ, đổi thưởng...) đều trả về NGUYÊN profile mới
+// nhất sau thao tác — dùng chung 1 hàm để ghi state thay vì lặp lại ở từng action.
 function syncProfileResponse(set, response) {
     const profile = adaptBackendAccountProfile(response.data);
     const rewardSnapshot = adaptBackendRewardSnapshot(response.data.reward_snapshot);

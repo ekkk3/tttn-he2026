@@ -20,9 +20,15 @@ function isBackendCustomer() {
     const authState = useAuthStore.getState();
     return authState.authSource === "backend" && authState.session?.user.role === "customer";
 }
+// Store này quản lý 2 "thế giới" song song: `posts` (công khai, ai cũng xem được, khách
+// hàng like/bình luận) và `adminPosts` (đầy đủ mọi bài kể cả DRAFT, dùng cho trang quản
+// trị) — nhiều action dưới đây cập nhật CẢ HAI để giữ đồng bộ khi 1 thao tác ảnh hưởng tới
+// cả 2 danh sách (vd publish 1 bài DRAFT thì nó phải xuất hiện thêm ở `posts`).
 function replacePost(posts, nextPost) {
     return posts.map((post) => (post.id === nextPost.id ? nextPost : post));
 }
+// Khi admin ẩn 1 bình luận (status HIDDEN), phải gỡ nó khỏi mảng comments lồng trong
+// `posts` (view công khai) dù server đã xử lý xong — feed công khai không tự refetch.
 function removeCommentFromPublicPosts(posts, comment) {
     return posts.map((post) => {
         if (post.id !== comment.post_id)

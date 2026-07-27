@@ -6,6 +6,11 @@ import { routes } from "@/shared/config/routes";
 import { useAccountStore } from "@/shared/lib/store/use-account-store";
 import { runProtectedSessionCleanup } from "@/shared/lib/store/protected-session";
 import { useShopStore } from "@/shared/lib/store/use-shop-store";
+// Store Zustand quản lý phiên đăng nhập, dùng middleware `persist` để tự lưu vào
+// localStorage (xem cấu hình persist() ở cuối file) — refresh trang vẫn còn đăng nhập.
+// Danh sách tài khoản demo hiển thị trên trang login (chỉ để gợi ý nhanh vai trò/redirect
+// đích tương ứng) — việc đăng nhập THẬT vẫn luôn đi qua API backend (/login) bên dưới,
+// mảng này không tự xác thực offline.
 const seedCredentials = [
     {
         id: "seed-admin",
@@ -18,7 +23,7 @@ const seedCredentials = [
     {
         id: "seed-supplier",
         role: "supplier",
-        displayName: "Nha cung cap",
+        displayName: "Nhà cung cấp",
         email: "supplieruser@shop.local",
         password: "password123",
         redirectTo: routes.supplierOrders,
@@ -26,7 +31,7 @@ const seedCredentials = [
     {
         id: "seed-warehouse",
         role: "warehouse",
-        displayName: "Nhan vien kho",
+        displayName: "Nhân viên kho",
         email: "warehouse@shop.local",
         password: "password123",
         redirectTo: routes.warehouseInventory,
@@ -34,12 +39,14 @@ const seedCredentials = [
     {
         id: "seed-customer",
         role: "customer",
-        displayName: "Khach hang",
+        displayName: "Khách hàng",
         email: "customer1@shop.local",
         password: "password123",
         redirectTo: routes.accountProfile,
     },
 ];
+// Không có expiresAt (vd chưa đăng nhập) coi như "chưa hết hạn" — để các nơi gọi hàm
+// này không tự ý đăng xuất khi chưa có đủ thông tin để kết luận.
 function isExpired(expiresAt) {
     if (!expiresAt)
         return false;
@@ -54,6 +61,9 @@ const initialState = {
     isHydrating: false,
     isSubmitting: false,
 };
+// Dùng chung cho logout() và mọi trường hợp phiên không còn hợp lệ (hết hạn, 401 từ
+// server...): xóa sạch state đăng nhập + dọn thêm dữ liệu "nhạy cảm" ở các store khác
+// (giỏ hàng, thông tin tài khoản...) qua runProtectedSessionCleanup().
 function clearAuthState(set) {
     set({
         session: null,
@@ -65,6 +75,8 @@ function clearAuthState(set) {
     });
     runProtectedSessionCleanup();
 }
+// Dùng chung cho login() và register() — cả 2 đều nhận cùng shape response từ backend
+// (user + access_token + expires_at) nên xử lý sau khi xác thực thành công là như nhau.
 async function applyAuthenticatedBackendSession(response, set) {
     const session = adaptBackendUserToSession(response.user);
     if (!session) {
@@ -81,6 +93,8 @@ async function applyAuthenticatedBackendSession(response, set) {
         authSource: "backend",
         isSubmitting: false,
     });
+    // Chỉ khách hàng (customer) mới có profile/wishlist riêng cần tải ngay sau khi đăng
+    // nhập — admin/supplier/warehouse dùng các store dữ liệu khác.
     if (session.user.role === "customer") {
         await useAccountStore.getState().loadProfile();
         await useShopStore.getState().loadWishlist();
@@ -98,6 +112,8 @@ export function redirectForRole(role) {
         return routes.warehouseInventory;
     return routes.home;
 }
+// Mọi action bên dưới trả về shape { success, error? } thống nhất (thay vì throw) để
+// component gọi (login-page.jsx...) hiển thị lỗi trực tiếp mà không cần try/catch riêng.
 export const useAuthStore = create()(persist((set, get) => ({
     ...initialState,
     login: async (email, password) => {
@@ -150,6 +166,8 @@ export const useAuthStore = create()(persist((set, get) => ({
     logout: async () => {
         const currentToken = get().accessToken;
         const authSource = get().authSource;
+        // Token đã hết hạn thì gọi API logout cũng vô nghĩa (server sẽ từ chối) -> dọn state
+        // ngay tại chỗ, khỏi cần round-trip mạng.
         if (authSource === "backend" && isExpired(get().accessTokenExpiresAt)) {
             clearAuthState(set);
             return;
@@ -162,10 +180,15 @@ export const useAuthStore = create()(persist((set, get) => ({
                 });
             }
             catch {
+                // JWT là stateless (xem backend/utils/jwt.js) — server không có gì để hủy,
+                // nên dù request logout lỗi (mất mạng...) vẫn cứ đăng xuất phía client.
             }
         }
         clearAuthState(set);
     },
+    // LƯU Ý: hàm này CHƯA thực sự đổi mật khẩu qua API — chỉ validate độ dài cục bộ rồi
+    // luôn trả về lỗi hướng dẫn dùng API tài khoản thật (account-security-page.jsx gọi
+    // API riêng qua accountController, không qua store này).
     changePassword: (currentPassword, nextPassword) => {
         const session = get().session;
         if (!session) {
@@ -183,6 +206,9 @@ export const useAuthStore = create()(persist((set, get) => ({
             error: "Vui lòng đổi mật khẩu qua API tài khoản.",
         };
     },
+    // Gọi lúc app khởi động (app-bootstrap.jsx) để khôi phục phiên từ token đã persist
+    // trong localStorage — vì localStorage chỉ lưu token, chưa chắc token còn hợp lệ nên
+    // phải gọi /me để xác nhận lại với server.
     hydrateSession: async () => {
         const currentToken = get().accessToken;
         const authSource = get().authSource;
@@ -216,6 +242,8 @@ export const useAuthStore = create()(persist((set, get) => ({
             }
         }
         catch (error) {
+            // 401 = token bị server từ chối (hết hạn/thu hồi) -> coi như đăng xuất.
+            // Lỗi khác (vd mất mạng tạm thời) -> giữ nguyên session cũ, chỉ tắt cờ loading.
             if (isUnauthorizedApiError(error)) {
                 clearAuthState(set);
                 return;
@@ -228,6 +256,9 @@ export const useAuthStore = create()(persist((set, get) => ({
 }), {
     name: "heritage-auth-store",
     storage: createJSONStorage(() => localStorage),
+    // partialize: CHỈ những field liệt kê ở đây mới được ghi vào localStorage — isSubmitting/
+    // isHydrating là trạng thái loading tạm thời, không có ý nghĩa gì sau khi reload trang
+    // nên cố tình KHÔNG persist (mặc định sẽ về lại initialState sau khi hydrate lại store).
     partialize: (state) => ({
         session: state.session,
         accessToken: state.accessToken,

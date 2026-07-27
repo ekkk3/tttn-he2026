@@ -3,6 +3,10 @@ import { Outlet } from "react-router-dom";
 import { cn } from "@/shared/lib/cn";
 import { Icon } from "@/shared/ui";
 import { AdminSidebar } from "@/widgets/admin-sidebar";
+// Khung layout dùng chung cho mọi trang /admin/* (Outlet render trang con theo route hiện
+// tại). Sidebar LUÔN hiện cố định ở màn hình lớn (lg:translate-x-0); ở màn hình nhỏ mặc
+// định ẩn ngoài viewport (-translate-x-full) và trượt vào khi bấm nút menu, kèm 1 lớp phủ
+// mờ phía sau để bấm ra ngoài là đóng lại (off-canvas sidebar pattern).
 export function AdminLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     return (<div className="min-h-screen bg-surface">
