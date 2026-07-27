@@ -1,21 +1,25 @@
 import axios from 'axios';
 import 'dotenv/config';
 
+// Instance axios dùng chung cho mọi lời gọi GHN: baseURL + header Token (API key GHN) đã
+// gắn sẵn nên các hàm bên dưới chỉ cần gọi ghn.get()/ghn.post() với path tương đối.
 const ghn = axios.create({
   baseURL: process.env.GHN_API_URL || 'https://online-gateway.ghn.vn/shiip/public-api',
   headers: { Token: process.env.GHN_TOKEN || '' },
 });
 
-// GHN service_type_id = 2: hang nhe / giao hang tieu chuan (phu hop dac san dong goi nho).
+// GHN service_type_id = 2: hàng nhẹ / giao hàng tiêu chuẩn (phù hợp đặc sản đóng gói nhỏ).
 const SERVICE_TYPE_ID = 2;
-// Kich thuoc & khoi luong mac dinh cho 1 kien dac san khi admin khong nhap tay.
+// Kích thước & khối lượng mặc định cho 1 kiện đặc sản khi admin không nhập tay.
 const DEFAULT_PARCEL = { weight: 500, length: 20, width: 20, height: 10 };
 
-// Da du token + shop id de goi API tinh phi / tao van don that chua?
+// Đã đủ token + shop id để gọi API tính phí / tạo vận đơn thật chưa?
 export function ghnConfigured() {
   return Boolean(process.env.GHN_TOKEN && process.env.GHN_SHOP_ID);
 }
 
+// Một số API GHN (tính phí, tạo/hủy vận đơn) cần thêm header ShopId ngoài Token chung —
+// header riêng theo từng request nên tách thành hàm helper thay vì gắn cố định vào `ghn`.
 function shopHeaders() {
   return { headers: { ShopId: process.env.GHN_SHOP_ID } };
 }
@@ -35,8 +39,8 @@ export async function getWards(districtId) {
   return data.data;
 }
 
-// Tinh phi van chuyen GHN theo quan/huyen + phuong/xa nhan. Tra ve null neu chua cau hinh
-// (caller se fallback ve bang phi noi bo). GHN_FROM_DISTRICT_ID = quan/huyen kho lay hang.
+// Tính phí vận chuyển GHN theo quận/huyện + phường/xã nhận. Trả về null nếu chưa cấu hình
+// (caller sẽ fallback về bảng phí nội bộ). GHN_FROM_DISTRICT_ID = quận/huyện kho lấy hàng.
 export async function calculateFee({ toDistrictId, toWardCode, weight, length, width, height, insuranceValue = 0 }) {
   if (!ghnConfigured()) return null;
   const body = {
@@ -54,7 +58,7 @@ export async function calculateFee({ toDistrictId, toWardCode, weight, length, w
   return data.data; // { total, service_fee, insurance_fee, ... }
 }
 
-// Tao van don GHN that. Tra ve null neu chua cau hinh -> caller tao van don thu cong.
+// Tạo vận đơn GHN thật. Trả về null nếu chưa cấu hình -> caller tạo vận đơn thủ công.
 export async function createShippingOrder({
   order, toDistrictId, toWardCode, items,
   weight, length, width, height, codAmount, insuranceValue = 0,
@@ -62,7 +66,7 @@ export async function createShippingOrder({
 }) {
   if (!ghnConfigured()) return null;
   const body = {
-    payment_type_id: 1, // shop tra phi (COD thu ho rieng qua cod_amount).
+    payment_type_id: 1, // shop trả phí (COD thu hộ riêng qua cod_amount).
     required_note: requiredNote,
     to_name: order.recipient_name,
     to_phone: order.recipient_phone,
@@ -82,14 +86,14 @@ export async function createShippingOrder({
   return data.data; // { order_code, total_fee, expected_delivery_time, ... }
 }
 
-// Tra cuu trang thai van don GHN theo order_code (dung khi admin bam "Dong bo").
+// Tra cứu trạng thái vận đơn GHN theo order_code (dùng khi admin bấm "Đồng bộ").
 export async function getShippingOrderDetail(orderCode) {
   if (!ghnConfigured()) return null;
   const { data } = await ghn.post('/v2/shipping-order/detail', { order_code: orderCode }, shopHeaders());
   return data.data; // { status, log, leadtime, ... }
 }
 
-// Huy van don GHN (khi admin xoa van don). Tra ve null neu chua cau hinh.
+// Hủy vận đơn GHN (khi admin xóa vận đơn). Trả về null nếu chưa cấu hình.
 export async function cancelShippingOrder(orderCode) {
   if (!ghnConfigured()) return null;
   const { data } = await ghn.post('/v2/switch-status/cancel', { order_codes: [orderCode] }, shopHeaders());

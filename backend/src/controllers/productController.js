@@ -4,21 +4,25 @@ import { esClient, PRODUCTS_INDEX } from '../config/elasticsearch.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts, paginated, parsePagination } from '../utils/serializers.js';
 
 // GET /api/products?keyword=&category_id=&region_id=&supplier_id=&max_price=&sort=&page=&per_page=
-// Frontend (use-storefront-catalog-store.js) gui "keyword", "category_id" (co the CSV),
-// "supplier_id", "max_price", "sort" va doc { data, current_page, last_page, per_page, total }.
-// Neu co Elasticsearch va co keyword -> fuzzy search; neu ES loi/khong cau hinh -> fallback MySQL LIKE.
+// Frontend (use-storefront-catalog-store.js) gửi "keyword", "category_id" (có thể CSV),
+// "supplier_id", "max_price", "sort" và đọc { data, current_page, last_page, per_page, total }.
+// Nếu có Elasticsearch và có keyword -> fuzzy search; nếu ES lỗi/không cấu hình -> fallback MySQL LIKE.
 export const index = asyncHandler(async (req, res) => {
   const { keyword, q, category_id, region_id, supplier_id, min_price, max_price, sort } = req.query;
   const searchTerm = keyword || q;
   const { page, perPage, offset } = parsePagination(req.query);
 
-  // Ho tro CSV (frontend gui "category_id=1,2"): tach thanh mang.
+  // Hỗ trợ CSV (frontend gửi "category_id=1,2"): tách thành mảng.
   const csv = (value) => String(value).split(',').map((v) => v.trim()).filter(Boolean);
 
+  // Build câu WHERE ĐỘNG: mỗi bộ lọc client gửi lên (category, supplier, giá, từ khóa...)
+  // thêm 1 điều kiện vào mảng `where` + giá trị tương ứng vào `params` (cùng thứ tự với
+  // dấu ? trong `where`); cuối cùng join tất cả bằng AND. Không lọc gì thì chỉ còn 2 điều
+  // kiện mặc định (active + chưa xóa).
   const where = ['p.is_active = 1', 'p.is_deleted = 0'];
   const params = [];
 
-  // Uu tien Elasticsearch fuzzy search khi co keyword.
+  // Ưu tiên Elasticsearch fuzzy search khi có keyword.
   let esProductIds = null;
   if (searchTerm && esClient) {
     try {
@@ -27,8 +31,8 @@ export const index = asyncHandler(async (req, res) => {
         size: 200,
         query: {
           bool: {
-            // fuzziness AUTO -> chiu duoc loi go/sai chinh ta; multi_match tim tren nhieu
-            // truong (ten uu tien cao nhat, roi nguon goc/vung mien/mo ta).
+            // fuzziness AUTO -> chịu được lỗi gõ/sai chính tả; multi_match tìm trên nhiều
+            // trường (tên ưu tiên cao nhất, rồi nguồn gốc/vùng miền/mô tả).
             must: [{
               multi_match: {
                 query: searchTerm,
@@ -46,7 +50,7 @@ export const index = asyncHandler(async (req, res) => {
         return res.json(paginated([], { page, perPage, total: 0 }));
       }
     } catch (err) {
-      console.warn('[elasticsearch] search that bai, fallback ve MySQL LIKE:', err.message);
+      console.warn('[elasticsearch] search thất bại, fallback về MySQL LIKE:', err.message);
       esProductIds = null;
     }
   }
@@ -74,8 +78,10 @@ export const index = asyncHandler(async (req, res) => {
   if (max_price) { where.push('p.sale_price <= ?'); params.push(max_price); }
 
   const whereSql = where.join(' AND ');
+  // Từ đây, whereSql dùng chung cho cả câu COUNT (đếm tổng để tính last_page) lẫn câu
+  // SELECT thật (lấy đúng 1 trang) — đảm bảo 2 câu luôn lọc cùng 1 tập dữ liệu.
 
-  // sort: frontend gui 'popular' (mac dinh), 'price-asc', 'price-desc', 'newest'.
+  // sort: frontend gửi 'popular' (mặc định), 'price-asc', 'price-desc', 'newest'.
   let orderBy = 'p.id DESC';
   if (sort === 'price-asc') orderBy = 'p.sale_price ASC';
   else if (sort === 'price-desc') orderBy = 'p.sale_price DESC';
@@ -92,7 +98,7 @@ export const index = asyncHandler(async (req, res) => {
 
 export const show = asyncHandler(async (req, res) => {
   const [product] = await query(`${PRODUCT_SELECT} WHERE p.id = ? AND p.is_deleted = 0`, [req.params.id]);
-  if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
   const images = await query('SELECT * FROM product_images WHERE product_id = ? ORDER BY sort_order', [product.id]);
   const [{ avg_rating, review_count }] = await query(
     "SELECT COALESCE(AVG(rating),0) AS avg_rating, COUNT(*) AS review_count FROM product_reviews WHERE product_id = ? AND status = 'VISIBLE'",

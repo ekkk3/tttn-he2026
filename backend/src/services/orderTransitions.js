@@ -1,6 +1,10 @@
-// State machine dung chung cho trang thai don hang / thanh toan (UC 2.2.17 Quan ly don hang).
-// Nguon duy nhat de cac controller (admin/orders.controller.js, va sau nay orderController.js
-// neu can validate) cung tham chieu thay vi dinh nghia lai rai rac.
+// State machine dùng chung cho trạng thái đơn hàng / thanh toán (UC 2.2.17 Quản lý đơn hàng).
+// Nguồn duy nhất để các controller (admin/orders.controller.js, và sau này orderController.js
+// nếu cần validate) cùng tham chiếu thay vì định nghĩa lại rải rác.
+// Đọc bảng này như sau: key = trạng thái HIỆN TẠI, value = mảng trạng thái ĐƯỢC PHÉP
+// chuyển tới tiếp theo. Mảng rỗng ([]) nghĩa là trạng thái cuối (terminal), không đi tiếp được.
+// Nơi gọi (vd operationController.js) kiểm tra `ORDER_TRANSITIONS[status].includes(next)`
+// trước khi cho phép cập nhật, để không ai gán bừa 1 chuỗi tùy ý vào cột orders.status.
 export const ORDER_TRANSITIONS = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
   AWAITING_PAYMENT_CONFIRMATION: ['CONFIRMED', 'CANCELLED'],

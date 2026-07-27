@@ -1,8 +1,8 @@
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 
-// ---------------- Settings ---------------- (frontend adaptSettings doc { data } voi
-// nhieu field; bang admin_settings chi co 4 cot nen bo sung default cho phan con lai).
+// ---------------- Settings ---------------- (frontend adaptSettings đọc { data } với
+// nhiều field; bảng admin_settings chỉ có 4 cột nên bổ sung default cho phần còn lại).
 function serializeSettings(s) {
   return {
     store_name: s?.store_name ?? 'Heritage Harvest',
@@ -21,6 +21,9 @@ export const showSettings = asyncHandler(async (req, res) => {
   const [settings] = await query('SELECT * FROM admin_settings WHERE user_id = ?', [req.user.id]);
   res.json({ data: serializeSettings(settings) });
 });
+// "Upsert" bằng 1 câu lệnh: INSERT bình thường nếu admin này CHƯA có dòng settings; nếu
+// user_id đã tồn tại (trùng UNIQUE key) thì MySQL tự chuyển sang nhánh ON DUPLICATE KEY
+// UPDATE — khỏi phải tự SELECT kiểm tra tồn tại rồi mới quyết định INSERT hay UPDATE.
 export const updateSettings = asyncHandler(async (req, res) => {
   const { store_name, support_email, support_phone, low_stock_threshold } = req.body;
   await query(

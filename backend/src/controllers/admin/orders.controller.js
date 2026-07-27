@@ -7,11 +7,11 @@ import {
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from '../../services/orderTransitions.js';
 import { notifyUser } from '../../services/notificationService.js';
 
-// ---------------- Orders (admin) — UC 2.2.17 Quan ly don hang ----------------
-// Frontend (admin-logistics-page.jsx + use-admin-orders-store.js) doc { data } voi
-// customer/payment/shipment long, allowed_next_statuses (state machine),
+// ---------------- Orders (admin) — UC 2.2.17 Quản lý đơn hàng ----------------
+// Frontend (admin-logistics-page.jsx + use-admin-orders-store.js) đọc { data } với
+// customer/payment/shipment lồng, allowed_next_statuses (state machine),
 // allowed_payment_statuses, status_history, payment_status_history.
-// ORDER_TRANSITIONS/PAYMENT_TRANSITIONS: xem services/orderTransitions.js (nguon dung chung).
+// ORDER_TRANSITIONS/PAYMENT_TRANSITIONS: xem services/orderTransitions.js (nguồn dùng chung).
 
 const BULK_ACTION_STATUS = {
   CONFIRM: 'CONFIRMED', SHIP: 'SHIPPED', DELIVER: 'DELIVERED',
@@ -77,8 +77,8 @@ export const listOrders = asyncHandler(async (req, res) => {
   );
   if (!rows.length) return res.json({ data: [] });
 
-  // Lay het payment/shipment lien quan trong 2 truy van gop (IN (...)) thay vi 2*N truy van
-  // trong vong lap (N+1), roi gop lai bang Map trong bo nho — giu nguyen shape du lieu tra ve.
+  // Lấy hết payment/shipment liên quan trong 2 truy vấn gộp (IN (...)) thay vì 2*N truy vấn
+  // trong vòng lặp (N+1), rồi gộp lại bằng Map trong bộ nhớ — giữ nguyên shape dữ liệu trả về.
   const orderIds = rows.map((o) => o.id);
   const placeholders = orderIds.map(() => '?').join(',');
 
@@ -115,17 +115,20 @@ export const listOrders = asyncHandler(async (req, res) => {
 
 export const showOrder = asyncHandler(async (req, res) => {
   const detail = await loadAdminOrderDetail(req.params.order);
-  if (!detail) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!detail) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   res.json({ data: detail });
 });
 
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status, note, restock_inventory } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(status)) {
-    return res.status(422).json({ message: `Khong the chuyen tu ${order.status} sang ${status}.` });
+    return res.status(422).json({ message: `Không thể chuyển từ ${order.status} sang ${status}.` });
   }
+  // Ngoài đổi status, một số trạng thái đích cần TỰ ĐỘNG ghi thêm mốc thời gian tương ứng
+  // (shipped_at/delivered_at/cancelled_at) — COALESCE cho shipped_at để không ghi đè nếu
+  // đơn đã từng được đánh dấu SHIPPED trước đó rồi lại chuyển qua chuyển lại.
   const sets = ['status = ?'];
   const params = [status];
   if (status === 'SHIPPED') { sets.push('shipped_at = COALESCE(shipped_at, NOW())'); }
@@ -136,25 +139,25 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [order.id, order.status, status, note || null, req.user.id]
   );
-  // Hoan kho khi huy don (neu chon restock_inventory) — UC 2.2.17/2.2.21.
+  // Hoàn kho khi hủy đơn (nếu chọn restock_inventory) — UC 2.2.17/2.2.21.
   if (status === 'CANCELLED' && restock_inventory) {
     const items = await query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
     for (const it of items) {
       if (it.product_id) await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [it.quantity, it.product_id]);
     }
   }
-  await notifyOrderUser(order, 'Cap nhat don hang', `Don ${order.order_no} chuyen sang trang thai ${status}.`);
+  await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${status}.`);
   res.json({ data: await loadAdminOrderDetail(order.id) });
 });
 
 export const updatePaymentStatus = asyncHandler(async (req, res) => {
   const { payment_status, note } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
   const current = payment?.payment_status ?? 'PENDING';
   if (!(PAYMENT_TRANSITIONS[current] ?? []).includes(payment_status)) {
-    return res.status(422).json({ message: `Khong the chuyen thanh toan tu ${current} sang ${payment_status}.` });
+    return res.status(422).json({ message: `Không thể chuyển thanh toán từ ${current} sang ${payment_status}.` });
   }
   const paidAtSql = payment_status === 'SUCCESS' ? ', paid_at = NOW()' : '';
   await query(`UPDATE payments SET payment_status = ?${paidAtSql} WHERE order_id = ?`, [payment_status, order.id]);
@@ -165,18 +168,21 @@ export const updatePaymentStatus = asyncHandler(async (req, res) => {
   res.json({ data: await loadAdminOrderDetail(order.id) });
 });
 
+// Xử lý TỪNG đơn độc lập (không bọc trong 1 transaction chung): 1 đơn lỗi (vd sai state
+// machine) không làm hỏng các đơn khác trong cùng lượt chọn — kết quả trả về mảng `results`
+// để frontend hiện rõ đơn nào thành công/thất bại và vì sao.
 export const bulkUpdateStatus = asyncHandler(async (req, res) => {
   const { orderIds, order_ids, action, status } = req.body;
   const ids = orderIds || order_ids || [];
   const targetStatus = action ? BULK_ACTION_STATUS[action] : status;
-  if (!ids.length || !targetStatus) return res.status(422).json({ message: 'Thieu orderIds hoac action.' });
+  if (!ids.length || !targetStatus) return res.status(422).json({ message: 'Thiếu orderIds hoặc action.' });
 
   const results = [];
   for (const id of ids) {
     const [order] = await query('SELECT * FROM orders WHERE id = ?', [id]);
-    if (!order) { results.push({ orderId: id, orderNo: null, success: false, message: 'Khong tim thay don.' }); continue; }
+    if (!order) { results.push({ orderId: id, orderNo: null, success: false, message: 'Không tìm thấy đơn.' }); continue; }
     if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(targetStatus)) {
-      results.push({ orderId: id, orderNo: order.order_no, success: false, message: `Khong the chuyen ${order.status} -> ${targetStatus}.` });
+      results.push({ orderId: id, orderNo: order.order_no, success: false, message: `Không thể chuyển ${order.status} -> ${targetStatus}.` });
       continue;
     }
     const sets = ['status = ?'];
@@ -189,27 +195,27 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
       'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
       [id, order.status, targetStatus, req.body.note || null, req.user.id]
     );
-    await notifyOrderUser(order, 'Cap nhat don hang', `Don ${order.order_no} chuyen sang ${targetStatus}.`);
-    results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Da chuyen sang ${targetStatus}.` });
+    await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang ${targetStatus}.`);
+    results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Đã chuyển sang ${targetStatus}.` });
   }
   const success = results.filter((r) => r.success).length;
   res.json({ data: { total: ids.length, success, failed: ids.length - success, results } });
 });
 
 // ---------------- Order shipment (UC 2.2.17 / 2.2.22) ----------------
-// GHN thuc: neu carrier la GHN + da cau hinh GHN_TOKEN/GHN_SHOP_ID + don co dia chi
-// huyen/xa -> goi API tao van don that (co ma van don, phi, thoi gian giao du kien).
-// Nguoc lai -> tao van don thu cong (ma noi bo) de van van hanh khi chua co token.
+// GHN thực: nếu carrier là GHN + đã cấu hình GHN_TOKEN/GHN_SHOP_ID + đơn có địa chỉ
+// huyện/xã -> gọi API tạo vận đơn thật (có mã vận đơn, phí, thời gian giao dự kiến).
+// Ngược lại -> tạo vận đơn thủ công (mã nội bộ) để vẫn vận hành khi chưa có token.
 function parseGhnTime(v) {
   if (!v) return null;
   const d = typeof v === 'number' ? new Date(v * 1000) : new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// POST /api/admin/orders/:order/shipment/fee-preview — xem truoc phi GHN truoc khi tao van don.
+// POST /api/admin/orders/:order/shipment/fee-preview — xem trước phí GHN trước khi tạo vận đơn.
 export const previewShipmentFee = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   const toDistrict = req.body.to_district_id || order.shipping_district_id;
   const toWard = req.body.to_ward_code || order.shipping_ward_code;
 
@@ -219,13 +225,13 @@ export const previewShipmentFee = asyncHandler(async (req, res) => {
     });
   }
   if (!toDistrict || !toWard) {
-    return res.status(422).json({ message: 'Don hang thieu quan/huyen hoac phuong/xa GHN de tinh phi.' });
+    return res.status(422).json({ message: 'Đơn hàng thiếu quận/huyện hoặc phường/xã GHN để tính phí.' });
   }
   try {
     const fee = await calculateFee({ toDistrictId: toDistrict, toWardCode: toWard, insuranceValue: Number(order.total_amount) });
     res.json({ data: { configured: true, source: 'GHN', fee: fee?.total != null ? Number(fee.total) : null, detail: fee } });
   } catch (err) {
-    res.status(502).json({ message: 'GHN tinh phi that bai: ' + (err.response?.data?.message || err.message) });
+    res.status(502).json({ message: 'GHN tính phí thất bại: ' + (err.response?.data?.message || err.message) });
   }
 });
 
@@ -235,16 +241,18 @@ export const storeShipment = asyncHandler(async (req, res) => {
     to_district_id, to_ward_code, cod_amount,
   } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [shipping_carrier_id]);
 
   const provider = carrier?.provider || 'MANUAL';
   const toDistrict = to_district_id || order.shipping_district_id;
   const toWard = to_ward_code || order.shipping_ward_code;
-  // COD: mac dinh thu ho tong tien don neu thanh toan COD, con thanh toan online -> 0.
+  // COD: mặc định thu hộ tổng tiền đơn nếu thanh toán COD, còn thanh toán online -> 0.
   const codAmount = cod_amount != null ? Number(cod_amount)
     : (order.payment_method === 'COD' ? Number(order.total_amount) : 0);
 
+  // Các biến này sẽ được GHN trả về ghi đè (nếu gọi API thật thành công), hoặc giữ giá trị
+  // mặc định/thủ công (nhánh fallback ngay dưới) nếu không phải GHN hoặc GHN lỗi.
   let trackingCode = tracking_code || null;
   let trackingUrl = tracking_url || null;
   let shippingFee = null;
@@ -252,6 +260,8 @@ export const storeShipment = asyncHandler(async (req, res) => {
   let status = 'created';
   let ghnError = null;
 
+  // Chỉ thực sự gọi API GHN khi: carrier chọn là GHN + đã cấu hình token/shop id + đơn có
+  // đủ thông tin quận/huyện + phường/xã GHN (bắt buộc để GHN tính được tuyến giao).
   if (provider === 'GHN' && ghnConfigured() && toDistrict && toWard) {
     try {
       const items = await query(
@@ -270,12 +280,14 @@ export const storeShipment = asyncHandler(async (req, res) => {
         status = 'ready_to_pick';
       }
     } catch (err) {
+      // Lỗi GHN KHÔNG làm hỏng cả request — chỉ ghi lại lỗi (trả về cho admin biết) rồi
+      // để code rơi xuống nhánh fallback thủ công bên dưới, đơn vẫn tạo được vận đơn (nội bộ).
       ghnError = err.response?.data?.message || err.message;
-      console.error('[ghn] createShippingOrder that bai, tao van don thu cong:', ghnError);
+      console.error('[ghn] createShippingOrder thất bại, tạo vận đơn thủ công:', ghnError);
     }
   }
 
-  // Fallback thu cong: sinh ma van don noi bo + lay phi tu don hang neu GHN khong tra.
+  // Fallback thủ công: sinh mã vận đơn nội bộ + lấy phí từ đơn hàng nếu GHN không trả.
   if (!trackingCode) trackingCode = `${carrier?.code || 'SHIP'}${Date.now()}`;
   if (shippingFee == null) shippingFee = order.shipping_fee != null ? Number(order.shipping_fee) : null;
 
@@ -297,7 +309,7 @@ export const syncShipment = asyncHandler(async (req, res) => {
      WHERE s.order_id = ? ORDER BY s.id DESC LIMIT 1`,
     [req.params.order]
   );
-  if (!shipment) return res.status(404).json({ message: 'Don hang chua co van don.' });
+  if (!shipment) return res.status(404).json({ message: 'Đơn hàng chưa có vận đơn.' });
 
   let newStatus = shipment.status;
   if (shipment.provider === 'GHN' && ghnConfigured() && shipment.tracking_code) {
@@ -305,7 +317,7 @@ export const syncShipment = asyncHandler(async (req, res) => {
       const detail = await getShippingOrderDetail(shipment.tracking_code);
       if (detail?.status) newStatus = detail.status;
     } catch (err) {
-      console.error('[ghn] getShippingOrderDetail that bai:', err.response?.data?.message || err.message);
+      console.error('[ghn] getShippingOrderDetail thất bại:', err.response?.data?.message || err.message);
     }
   }
   await query('UPDATE order_shipments SET status = ?, synced_at = NOW() WHERE id = ?', [newStatus, shipment.id]);
@@ -323,7 +335,7 @@ export const destroyShipment = asyncHandler(async (req, res) => {
     try {
       await cancelShippingOrder(shipment.tracking_code);
     } catch (err) {
-      console.error('[ghn] cancelShippingOrder that bai:', err.response?.data?.message || err.message);
+      console.error('[ghn] cancelShippingOrder thất bại:', err.response?.data?.message || err.message);
     }
   }
   await query('DELETE FROM order_shipments WHERE order_id = ?', [req.params.order]);

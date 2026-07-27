@@ -2,9 +2,9 @@ import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 
 // ---------------- Dashboard ----------------
-// Frontend (admin-dashboard-page.jsx) doc mot response giau: metrics, revenue_chart,
+// Frontend (admin-dashboard-page.jsx) đọc một response giàu: metrics, revenue_chart,
 // top_customers, work_queue, low_stock_products, featured_products, recent_orders, filters.
-// "Doanh thu thuc thu" = don da giao (DELIVERED). Xem UC 2.2.19 Bao cao thong ke.
+// "Doanh thu thực thu" = đơn đã giao (DELIVERED). Xem UC 2.2.19 Báo cáo thống kê.
 export const dashboard = asyncHandler(async (req, res) => {
   const chartRange = req.query.chart_range || '30d';
   const dateTo = req.query.date_to || new Date().toISOString().slice(0, 10);
@@ -51,7 +51,7 @@ export const dashboard = asyncHandler(async (req, res) => {
     product_count,
   };
 
-  // Bieu do doanh thu theo ngay (so ngay tuy chart_range).
+  // Biểu đồ doanh thu theo ngày (số ngày tùy chart_range).
   const days = chartRange === '7d' ? 7 : chartRange === 'this_month' ? new Date().getDate() : 30;
   const revenueRows = await query(
     `SELECT DATE(delivered_at) AS d, COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS successful_orders
@@ -59,6 +59,8 @@ export const dashboard = asyncHandler(async (req, res) => {
      GROUP BY DATE(delivered_at) ORDER BY d ASC`,
     [days]
   );
+  // Cùng kỹ thuật với supplierController.myRevenue: SQL chỉ trả về NGÀY CÓ dữ liệu, nên phải
+  // tự dựng đủ chuỗi ngày liên tiếp ở đây, ngày nào thiếu thì mặc định revenue = 0.
   const revenueMap = new Map(revenueRows.map((r) => [r.d, r]));
   const revenue_chart = [];
   for (let i = days - 1; i >= 0; i -= 1) {
@@ -88,6 +90,9 @@ export const dashboard = asyncHandler(async (req, res) => {
   const withCustomer = (o) => ({ ...o, customer: { full_name: o.customer_name }, total_amount: Number(o.total_amount) });
   const recent_orders = recentOrders.map(withCustomer);
 
+  // Định nghĩa 1 danh sách "nhóm trạng thái cần xử lý" rồi LẶP QUA để query từng nhóm —
+  // thêm/bớt 1 nhóm ở đây tự động thêm/bớt 1 cột trong work_queue trả về, không cần sửa
+  // logic bên dưới.
   const queueGroups = [
     { key: 'pending', label: 'Chờ xác nhận', statuses: ['PENDING'] },
     { key: 'transfer', label: 'Chờ xác nhận chuyển khoản', statuses: ['AWAITING_PAYMENT_CONFIRMATION'] },

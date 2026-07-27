@@ -2,7 +2,7 @@ import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { POST_SELECT, serializePost, loadPostComments } from '../miscController.js';
 
-// ---------------- Admin posts CRUD ---------------- (frontend doc { data } + comments)
+// ---------------- Admin posts CRUD ---------------- (frontend đọc { data } + comments)
 async function loadAdminPost(id) {
   const [row] = await query(`${POST_SELECT} WHERE p.id = ?`, [id]);
   if (!row) return null;
@@ -16,7 +16,7 @@ export const listAdminPosts = asyncHandler(async (req, res) => {
 });
 export const storePost = asyncHandler(async (req, res) => {
   const { title, excerpt, body, cover_image_url, status = 'DRAFT' } = req.body;
-  if (!title || !body) return res.status(422).json({ message: 'Tieu de va noi dung la bat buoc.' });
+  if (!title || !body) return res.status(422).json({ message: 'Tiêu đề và nội dung là bắt buộc.' });
   const result = await query(
     `INSERT INTO posts (created_by_user_id, title, excerpt, body, cover_image_url, status, published_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,

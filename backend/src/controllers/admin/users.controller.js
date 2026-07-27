@@ -3,9 +3,9 @@ import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 
 // ---------------- Users ----------------
-// Ghi chu: frontend (use-admin-user-store.js, da co san tu truoc) doc { data: [...] }
-// va can them cot tinh toan "orders_count" tren tung user — khong co san trong DB nen
-// JOIN dem tu bang orders. Xem PLAN_3_TUAN.md muc "Sua backend cho khop frontend".
+// Ghi chú: frontend (use-admin-user-store.js, đã có sẵn từ trước) đọc { data: [...] }
+// và cần thêm cột tính toán "orders_count" trên từng user — không có sẵn trong DB nên
+// JOIN đếm từ bảng orders. Xem PLAN_3_TUAN.md mục "Sửa backend cho khớp frontend".
 const USER_LIST_SELECT = `
   SELECT u.*, COALESCE(o.orders_count, 0) AS orders_count
   FROM users u
@@ -13,6 +13,9 @@ const USER_LIST_SELECT = `
     ON o.user_id = u.id
 `;
 
+// Tách password_hash ra khỏi object bằng destructuring rồi CHỈ giữ lại phần còn lại
+// (...rest) — đảm bảo hash mật khẩu không bao giờ lọt vào response trả về frontend,
+// dù câu SELECT phía trên dùng `u.*` (lấy hết mọi cột).
 function stripPasswordHash(user) {
   if (!user) return user;
   const { password_hash, ...rest } = user;
@@ -25,7 +28,7 @@ export const listUsers = asyncHandler(async (req, res) => {
 });
 export const showUser = asyncHandler(async (req, res) => {
   const [user] = await query(`${USER_LIST_SELECT} WHERE u.id = ?`, [req.params.user]);
-  if (!user) return res.status(404).json({ message: 'Khong tim thay nguoi dung.' });
+  if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
   res.json({ data: stripPasswordHash(user) });
 });
 export const userOrders = asyncHandler(async (req, res) => {
@@ -47,7 +50,7 @@ export const userOrders = asyncHandler(async (req, res) => {
 export const storeUser = asyncHandler(async (req, res) => {
   const { full_name, email, phone, password, role = 'CUSTOMER' } = req.body;
   if (!full_name || !email || !phone || !password) {
-    return res.status(422).json({ message: 'full_name, email, phone, password la bat buoc.' });
+    return res.status(422).json({ message: 'full_name, email, phone, password là bắt buộc.' });
   }
   const password_hash = await bcrypt.hash(password, 10);
   const result = await query(

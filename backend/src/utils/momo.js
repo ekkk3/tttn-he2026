@@ -2,19 +2,25 @@ import crypto from 'crypto';
 import axios from 'axios';
 import 'dotenv/config';
 
-// Tao yeu cau thanh toan MoMo (captureWallet) theo dung chuan chu ky HMAC-SHA256 cua MoMo.
-// Can dang ky merchant sandbox va dien cac bien MOMO_* trong .env.
+// Tạo yêu cầu thanh toán MoMo (captureWallet) theo đúng chuẩn chữ ký HMAC-SHA256 của MoMo.
+// Cần đăng ký merchant sandbox và điền các biến MOMO_* trong .env.
 export async function createMomoPayment({ orderId, amount }) {
   if (!process.env.MOMO_PARTNER_CODE || !process.env.MOMO_SECRET_KEY) {
-    console.warn('[momo] Chua cau hinh MOMO_PARTNER_CODE/MOMO_SECRET_KEY — tra ve null.');
+    console.warn('[momo] Chưa cấu hình MOMO_PARTNER_CODE/MOMO_SECRET_KEY — trả về null.');
     return null;
   }
   const requestId = `${Date.now()}`;
+  // MoMo yêu cầu orderId duy nhất cho mỗi request tạo thanh toán (kể cả khi thanh toán lại
+  // cùng 1 đơn hàng nội bộ) -> ghép thêm requestId để không trùng; verifyMomoCallback() bên
+  // dưới sẽ tách ngược lại để lấy orderId nội bộ thật.
   const orderIdMomo = `${orderId}-${requestId}`;
   const requestType = 'captureWallet';
   const extraData = '';
   const orderInfo = `Thanh toan don hang ${orderId}`;
 
+  // MoMo yêu cầu ký HMAC trên 1 chuỗi ghép đúng theo THỨ TỰ TÊN TRƯỜNG cố định (alphabet)
+  // được quy định trong tài liệu — sai thứ tự hoặc thiếu field sẽ khiến chữ ký không khớp
+  // và MoMo từ chối request dù dữ liệu gửi lên đúng.
   const rawSignature =
     `accessKey=${process.env.MOMO_ACCESS_KEY}` +
     `&amount=${Math.round(amount)}` +
@@ -32,6 +38,8 @@ export async function createMomoPayment({ orderId, amount }) {
     .update(rawSignature)
     .digest('hex');
 
+  // Gửi request tạo giao dịch lên MoMo kèm chữ ký vừa tính; MoMo trả về payUrl để
+  // redirect trình duyệt khách sang trang thanh toán MoMo thật.
   const { data } = await axios.post(process.env.MOMO_ENDPOINT, {
     partnerCode: process.env.MOMO_PARTNER_CODE,
     accessKey: process.env.MOMO_ACCESS_KEY,
@@ -50,9 +58,9 @@ export async function createMomoPayment({ orderId, amount }) {
   return data.payUrl || null;
 }
 
-// Xac minh chu ky MoMo tra ve (IPN POST hoac redirectUrl GET). MoMo ky HMAC-SHA256 tren
-// chuoi rawSignature voi cac truong sap xep theo alphabet (theo tai lieu MoMo v2).
-// orderId MoMo co dang `${orderIdNoiBo}-${requestId}` -> tach lay id noi bo.
+// Xác minh chữ ký MoMo trả về (IPN POST hoặc redirectUrl GET). MoMo ký HMAC-SHA256 trên
+// chuỗi rawSignature với các trường sắp xếp theo alphabet (theo tài liệu MoMo v2).
+// orderId MoMo có dạng `${orderIdNoiBo}-${requestId}` -> tách lấy id nội bộ.
 export function verifyMomoCallback(payload) {
   if (!process.env.MOMO_SECRET_KEY) return { valid: false, reason: 'NOT_CONFIGURED' };
   const raw =
@@ -72,9 +80,11 @@ export function verifyMomoCallback(payload) {
   const signature = crypto.createHmac('sha256', process.env.MOMO_SECRET_KEY).update(raw).digest('hex');
 
   return {
+    // So sánh chữ ký TỰ TÍNH LẠI với chữ ký MoMo gửi kèm — chỉ khớp khi request thực sự
+    // đến từ MoMo (biết SECRET_KEY) và dữ liệu không bị sửa trên đường truyền.
     valid: signature === payload.signature,
     orderId: payload.orderId ? Number(String(payload.orderId).split('-')[0]) : null,
-    // resultCode 0 = thanh cong (theo tai lieu MoMo).
+    // resultCode 0 = thành công (theo tài liệu MoMo).
     success: String(payload.resultCode) === '0',
     transactionCode: payload.transId ? String(payload.transId) : null,
     amount: payload.amount != null ? Number(payload.amount) : null,

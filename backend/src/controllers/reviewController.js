@@ -1,7 +1,7 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// UC 2.2.10 Danh gia san pham + 2.2.10a Kiem duyet danh gia.
+// UC 2.2.10 Đánh giá sản phẩm + 2.2.10a Kiểm duyệt đánh giá.
 
 function serializeReview(r) {
   return {
@@ -22,7 +22,7 @@ const REVIEW_SELECT = `
   LEFT JOIN products p ON p.id = rv.product_id
 `;
 
-// GET /api/products/:id/reviews (public) — chi review da duyet (VISIBLE).
+// GET /api/products/:id/reviews (public) — chỉ review đã duyệt (VISIBLE).
 export const listForProduct = asyncHandler(async (req, res) => {
   const rows = await query(
     `${REVIEW_SELECT} WHERE rv.product_id = ? AND rv.status = 'VISIBLE' ORDER BY rv.id DESC`,
@@ -38,15 +38,15 @@ export const listForProduct = asyncHandler(async (req, res) => {
   });
 });
 
-// POST /api/products/:id/reviews (auth) — khach gui danh gia.
+// POST /api/products/:id/reviews (auth) — khách gửi đánh giá.
 export const store = asyncHandler(async (req, res) => {
   const { rating, comment } = req.body;
   const numRating = Number(rating);
   if (!numRating || numRating < 1 || numRating > 5) {
-    return res.status(422).json({ message: 'Diem danh gia phai tu 1 den 5.' });
+    return res.status(422).json({ message: 'Điểm đánh giá phải từ 1 đến 5.' });
   }
   const [product] = await query('SELECT id FROM products WHERE id = ? AND is_deleted = 0', [req.params.id]);
-  if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
 
   const result = await query(
     "INSERT INTO product_reviews (product_id, user_id, rating, comment, status) VALUES (?, ?, ?, ?, 'VISIBLE')",
@@ -56,7 +56,7 @@ export const store = asyncHandler(async (req, res) => {
   res.status(201).json({ data: serializeReview(row) });
 });
 
-// --- Admin kiem duyet (UC 2.2.10a) ---
+// --- Admin kiểm duyệt (UC 2.2.10a) ---
 export const adminList = asyncHandler(async (req, res) => {
   const rows = await query(`${REVIEW_SELECT} ORDER BY rv.id DESC`);
   res.json({ data: rows.map(serializeReview) });
@@ -64,7 +64,7 @@ export const adminList = asyncHandler(async (req, res) => {
 export const adminModerate = asyncHandler(async (req, res) => {
   const { status } = req.body; // 'VISIBLE' | 'HIDDEN'
   if (!['VISIBLE', 'HIDDEN'].includes(status)) {
-    return res.status(422).json({ message: 'status phai la VISIBLE hoac HIDDEN.' });
+    return res.status(422).json({ message: 'status phải là VISIBLE hoặc HIDDEN.' });
   }
   await query(
     'UPDATE product_reviews SET status = ?, moderated_by_user_id = ?, moderated_at = NOW() WHERE id = ?',

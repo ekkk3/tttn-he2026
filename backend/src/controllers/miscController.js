@@ -1,17 +1,19 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// File nay gom cac nhom route nho (khong can rieng 1 file/controller) de de doi chieu
-// voi routes/api.php cua Laravel: Notifications, Complaints, Support tickets, Newsletter, Posts.
+// File này gom các nhóm route nhỏ (không cần riêng 1 file/controller) để dễ đối chiếu
+// với routes/api.php của Laravel: Notifications, Complaints, Support tickets, Newsletter, Posts.
 
-// --- Notifications --- (frontend adaptBackendNotification doc { data } voi
-// channel/status/sent_at; bang notifications khong co san nen suy ra tu type/read_at).
+// --- Notifications --- (frontend adaptBackendNotification đọc { data } với
+// channel/status/sent_at; bảng notifications không có sẵn nên suy ra từ type/read_at).
 function serializeNotification(row) {
   return {
     id: row.id,
     title: row.title,
     message: row.message,
     channel: row.type || 'SYSTEM',
+    // Bảng notifications không có cột status riêng — SUY RA "đã đọc hay chưa" từ việc
+    // read_at có giá trị hay còn NULL, thay vì lưu thêm 1 cột trạng thái trùng lặp thông tin.
     status: row.read_at ? 'READ' : 'UNREAD',
     sent_at: row.created_at,
     read_at: row.read_at,
@@ -33,8 +35,8 @@ export const markNotificationRead = asyncHandler(async (req, res) => {
   res.json({ data: row ? serializeNotification(row) : null });
 });
 
-// --- Complaints (UC 2.2.11 Khieu nai) ---
-// Frontend adaptBackendComplaint doc { data } voi order/product/resolver long + resolution_note.
+// --- Complaints (UC 2.2.11 Khiếu nại) ---
+// Frontend adaptBackendComplaint đọc { data } với order/product/resolver lồng + resolution_note.
 const COMPLAINT_SELECT = `
   SELECT c.*, o.order_no, o.status AS order_status, o.total_amount AS order_total_amount,
          p.name AS product_name, p.sku AS product_sku, ru.full_name AS resolver_name
@@ -63,24 +65,24 @@ export const listComplaints = asyncHandler(async (req, res) => {
 });
 export const storeComplaint = asyncHandler(async (req, res) => {
   const { order_id, product_id, reason, content, image_url } = req.body;
-  if (!reason || !content) return res.status(422).json({ message: 'Ly do va noi dung la bat buoc.' });
+  if (!reason || !content) return res.status(422).json({ message: 'Lý do và nội dung là bắt buộc.' });
   const result = await query(
     "INSERT INTO complaints (order_id, user_id, product_id, reason, content, image_url, status) VALUES (?, ?, ?, ?, ?, ?, 'OPEN')",
     [order_id || null, req.user.id, product_id || null, reason, content, image_url || null]
   );
-  // Thong bao Admin co khieu nai moi (UC 2.2.18 Quan ly khieu nai).
+  // Thông báo Admin có khiếu nại mới (UC 2.2.18 Quản lý khiếu nại).
   const admins = await query("SELECT id FROM users WHERE role = 'ADMIN' AND is_deleted = 0");
   for (const admin of admins) {
     await query(
-      "INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'COMPLAINT', 'Khieu nai moi', ?, '/admin/complaints')",
-      [admin.id, `Co khieu nai moi: ${reason}`]
+      "INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'COMPLAINT', 'Khiếu nại mới', ?, '/admin/complaints')",
+      [admin.id, `Có khiếu nại mới: ${reason}`]
     );
   }
   const [row] = await query(`${COMPLAINT_SELECT} WHERE c.id = ?`, [result.insertId]);
   res.status(201).json({ data: serializeComplaint(row) });
 });
 
-// --- Admin: quan ly khieu nai (UC 2.2.18). Backend-ready; frontend chua co trang admin rieng. ---
+// --- Admin: quản lý khiếu nại (UC 2.2.18). Backend-ready; frontend chưa có trang admin riêng. ---
 export const adminListComplaints = asyncHandler(async (req, res) => {
   const rows = await query(`${COMPLAINT_SELECT} ORDER BY c.id DESC`);
   res.json({ data: rows.map(serializeComplaint) });
@@ -94,8 +96,8 @@ export const adminResolveComplaint = asyncHandler(async (req, res) => {
   const [row] = await query(`${COMPLAINT_SELECT} WHERE c.id = ?`, [req.params.complaint]);
   if (row) {
     await query(
-      "INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'COMPLAINT_RESOLVED', 'Khieu nai da duoc xu ly', ?, '/account/disputes')",
-      [row.user_id, resolution_note || 'Khieu nai cua ban da duoc xu ly.']
+      "INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'COMPLAINT_RESOLVED', 'Khiếu nại đã được xử lý', ?, '/account/disputes')",
+      [row.user_id, resolution_note || 'Khiếu nại của bạn đã được xử lý.']
     );
   }
   res.json({ data: row ? serializeComplaint(row) : null });
@@ -106,7 +108,7 @@ function serializeTicket(t) {
   return { id: t.id, subject: t.subject, message: t.message, channel: t.channel, status: t.status, created_at: t.created_at };
 }
 export const listSupportTickets = asyncHandler(async (req, res) => {
-  // WAREHOUSE_STAFF/ADMIN xem toan bo; khach hang chi xem cua minh.
+  // WAREHOUSE_STAFF/ADMIN xem toàn bộ; khách hàng chỉ xem của mình.
   const isStaff = ['ADMIN', 'WAREHOUSE_STAFF'].includes(req.user.role);
   const rows = isStaff
     ? await query('SELECT * FROM support_tickets ORDER BY id DESC')
@@ -123,13 +125,13 @@ export const storeSupportTicket = asyncHandler(async (req, res) => {
   res.status(201).json({ data: serializeTicket(row) });
 });
 export const resolveSupportTicket = asyncHandler(async (req, res) => {
-  // Cung quyen xem voi listSupportTickets: staff duoc xu ly moi ticket, khach hang
-  // chi duoc dong ticket cua chinh minh (tranh IDOR qua id de doan).
+  // Cùng quyền xem với listSupportTickets: staff được xử lý mọi ticket, khách hàng
+  // chỉ được đóng ticket của chính mình (tránh IDOR qua id dễ đoán).
   const isStaff = ['ADMIN', 'WAREHOUSE_STAFF'].includes(req.user.role);
   const [ticket] = await query('SELECT * FROM support_tickets WHERE id = ?', [req.params.ticket]);
-  if (!ticket) return res.status(404).json({ message: 'Khong tim thay yeu cau ho tro.' });
+  if (!ticket) return res.status(404).json({ message: 'Không tìm thấy yêu cầu hỗ trợ.' });
   if (!isStaff && ticket.user_id !== req.user.id) {
-    return res.status(403).json({ message: 'Ban chi co the xu ly yeu cau ho tro cua minh.' });
+    return res.status(403).json({ message: 'Bạn chỉ có thể xử lý yêu cầu hỗ trợ của mình.' });
   }
   await query(
     "UPDATE support_tickets SET status = 'RESOLVED', resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ?",
@@ -143,11 +145,11 @@ export const resolveSupportTicket = asyncHandler(async (req, res) => {
 export const subscribeNewsletter = asyncHandler(async (req, res) => {
   const { email, source = 'storefront' } = req.body;
   await query('INSERT IGNORE INTO newsletter_subscriptions (email, source) VALUES (?, ?)', [email, source]);
-  res.status(201).json({ message: 'Da dang ky nhan tin.' });
+  res.status(201).json({ message: 'Đã đăng ký nhận tin.' });
 });
 
-// --- Posts (blog / community) — frontend doc { data } voi likes_count, comments_count,
-// comments[] va author long (xem use-post-store.js + story-page.jsx). ---
+// --- Posts (blog / community) — frontend đọc { data } với likes_count, comments_count,
+// comments[] và author lồng (xem use-post-store.js + story-page.jsx). ---
 export const POST_SELECT = `
   SELECT p.*, u.full_name AS author_name,
     (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes_count,
@@ -171,6 +173,8 @@ export function serializePost(row, comments = []) {
     cover_image_url: row.cover_image_url, status: row.status,
     published_at: row.published_at, created_at: row.created_at,
     likes_count: Number(row.likes_count || 0), comments_count: Number(row.comments_count || 0),
+    // Bài viết seed sẵn (không gắn created_by_user_id) hiện tên tác giả mặc định "Admin"
+    // thay vì để trống.
     author: row.created_by_user_id ? { full_name: row.author_name } : { full_name: 'Admin' },
     comments,
   };
@@ -187,7 +191,7 @@ export const myLikedPosts = asyncHandler(async (req, res) => {
 });
 export const storeComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
-  if (!content || content.trim().length < 2) return res.status(422).json({ message: 'Binh luan qua ngan.' });
+  if (!content || content.trim().length < 2) return res.status(422).json({ message: 'Bình luận quá ngắn.' });
   const result = await query(
     "INSERT INTO post_comments (post_id, user_id, content, status) VALUES (?, ?, ?, 'VISIBLE')",
     [req.params.post, req.user.id, content.trim()]

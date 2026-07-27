@@ -3,10 +3,13 @@ import 'dotenv/config';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { query } from '../config/db.js';
 
-// POST /api/chat — AI Chatbot tu van dac san (UC 2.2.6a).
-// Uu tien OpenAI/Gemini neu co API key; neu chua cau hinh key -> fallback tra loi
-// dua tren du lieu san pham that trong DB (tim theo tu khoa) de van dung duoc ngay.
+// POST /api/chat — AI Chatbot tư vấn đặc sản (UC 2.2.6a).
+// Ưu tiên OpenAI/Gemini nếu có API key; nếu chưa cấu hình key -> fallback trả lời
+// dựa trên dữ liệu sản phẩm thật trong DB (tìm theo từ khóa) để vẫn dùng được ngay.
 
+// Fallback "giả AI": không gọi model ngôn ngữ nào cả, chỉ LIKE-search từ khóa trong tên/mô
+// tả/nguồn gốc sản phẩm rồi dựng câu trả lời từ dữ liệu thật — dùng khi chưa có API key
+// OpenAI/Gemini, hoặc khi gọi provider thật bị lỗi (xem catch bên dưới).
 async function localProductReply(message) {
   const keyword = message.trim();
   const rows = await query(
@@ -32,10 +35,13 @@ async function localProductReply(message) {
 
 export const chat = asyncHandler(async (req, res) => {
   const { message } = req.body;
-  if (!message) return res.status(422).json({ message: 'Thieu truong message.' });
+  if (!message) return res.status(422).json({ message: 'Thiếu trường message.' });
 
   const provider = process.env.AI_PROVIDER || 'gemini';
 
+  // Cả 2 nhánh if bên dưới đều return ngay khi gọi API thành công. Nếu provider không khớp,
+  // hoặc thiếu API key, hoặc lệnh gọi ném lỗi (bắt ở catch) — code sẽ "rơi" xuống hết khối
+  // try/catch này mà không return, tới thẳng fallback localProductReply() ở cuối hàm.
   try {
     if (provider === 'openai' && process.env.OPENAI_API_KEY) {
       const { data } = await axios.post(
@@ -43,7 +49,7 @@ export const chat = asyncHandler(async (req, res) => {
         {
           model: 'gpt-4o-mini',
           messages: [
-            { role: 'system', content: 'Ban la tro ly tu van ban dac san vung mien Viet Nam.' },
+            { role: 'system', content: 'Bạn là trợ lý tư vấn bán đặc sản vùng miền Việt Nam.' },
             { role: 'user', content: message },
           ],
         },
@@ -53,21 +59,21 @@ export const chat = asyncHandler(async (req, res) => {
     }
 
     if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
-      // gemini-1.5-flash da bi Google ngung ho tro (tra ve 404) — dung alias
-      // "gemini-flash-latest" de luon tro toi model flash hien hanh, tranh phai
-      // sua code lai moi khi Google deprecate mot phien ban model cu the.
+      // gemini-1.5-flash đã bị Google ngừng hỗ trợ (trả về 404) — dùng alias
+      // "gemini-flash-latest" để luôn trỏ tới model flash hiện hành, tránh phải
+      // sửa code lại mỗi khi Google deprecate một phiên bản model cụ thể.
       const { data } = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
         { contents: [{ parts: [{ text: message }] }] }
       );
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin loi, toi chua co cau tra loi.';
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi chưa có câu trả lời.';
       return res.json({ reply, source: 'gemini' });
     }
   } catch (err) {
-    console.warn('[chat] Goi AI provider that bai, fallback ve tim san pham noi bo:', err.message);
+    console.warn('[chat] Gọi AI provider thất bại, fallback về tìm sản phẩm nội bộ:', err.message);
   }
 
-  // Fallback: chua cau hinh API key (hoac goi that bai) -> tra loi dua tren du lieu san pham.
+  // Fallback: chưa cấu hình API key (hoặc gọi thất bại) -> trả lời dựa trên dữ liệu sản phẩm.
   const reply = await localProductReply(message);
   res.json({ reply, source: 'local' });
 });

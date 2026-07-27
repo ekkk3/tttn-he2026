@@ -1,8 +1,8 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { getProvinces, getDistricts, getWards, calculateFee, ghnConfigured } from '../utils/ghn.js';
 
-// Frontend (use-ghn-location-store.js) doc { data }. Neu chua cau hinh GHN_TOKEN,
-// goi GHN se loi -> tra 200 voi mang rong de UI khong sap (chi la khong co lua chon).
+// Frontend (use-ghn-location-store.js) đọc { data }. Nếu chưa cấu hình GHN_TOKEN,
+// gọi GHN sẽ lỗi -> trả 200 với mảng rỗng để UI không sập (chỉ là không có lựa chọn).
 export const provinces = asyncHandler(async (req, res) => {
   try {
     res.json({ data: await getProvinces() });
@@ -27,15 +27,15 @@ export const wards = asyncHandler(async (req, res) => {
   }
 });
 
-// POST /api/shipping/ghn/fee — tinh phi GHN thoi gian thuc cho trang checkout.
+// POST /api/shipping/ghn/fee — tính phí GHN thời gian thực cho trang checkout.
 // Body: { to_district_id, to_ward_code, weight?, insurance_value? }.
-// Neu chua cau hinh GHN (hoac loi) -> tra { configured:false, fee:null } de UI dung
-// bang phi noi bo (calculateShippingFee ben orderController) — khong lam sap checkout.
+// Nếu chưa cấu hình GHN (hoặc lỗi) -> trả { configured:false, fee:null } để UI dùng
+// bảng phí nội bộ (calculateShippingFee bên orderController) — không làm sập checkout.
 export const fee = asyncHandler(async (req, res) => {
   const { to_district_id, to_ward_code, weight, insurance_value } = req.body;
   if (!ghnConfigured()) return res.json({ data: { configured: false, fee: null } });
   if (!to_district_id || !to_ward_code) {
-    return res.status(422).json({ message: 'Thieu to_district_id hoac to_ward_code.' });
+    return res.status(422).json({ message: 'Thiếu to_district_id hoặc to_ward_code.' });
   }
   try {
     const result = await calculateFee({

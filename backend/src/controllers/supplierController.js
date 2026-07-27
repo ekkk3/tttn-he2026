@@ -4,13 +4,17 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
 import { indexProduct } from '../utils/productIndex.js';
 
-// --- UC 2.2.15 (phan NCC): NCC quan ly san pham CUA MINH ---
+// --- UC 2.2.15 (phần NCC): NCC quản lý sản phẩm CỦA MÌNH ---
 async function currentSupplierId(req) {
   const [supplier] = await query(
     "SELECT id FROM suppliers WHERE user_id = ? AND status = 'APPROVED' LIMIT 1", [req.user.id]
   );
   return supplier ? supplier.id : null;
 }
+// Chuyển tên sản phẩm (có dấu) thành slug URL-safe: normalize('NFD') tách chữ cái khỏi
+// dấu thanh (vd "á" -> "a" + dấu sắc riêng), regex sau đó xóa các dấu đã tách; "đ" phải
+// thay tay vì Unicode không tách "đ" thành "d" + dấu như các chữ có dấu khác; cuối cùng
+// thay mọi ký tự không phải a-z0-9 bằng "-" và cắt "-" thừa ở 2 đầu.
 function slugify(input) {
   return String(input).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -18,19 +22,19 @@ function slugify(input) {
 
 export const myProducts = asyncHandler(async (req, res) => {
   const supplierId = await currentSupplierId(req);
-  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  if (!supplierId) return res.status(403).json({ message: 'Tài khoản chưa gắn với Nhà cung cấp đã duyệt.' });
   const rows = await query(`${PRODUCT_SELECT} WHERE p.supplier_id = ? AND p.is_deleted = 0 ORDER BY p.id DESC`, [supplierId]);
   res.json({ data: serializeProducts(rows) });
 });
 
 export const storeMyProduct = asyncHandler(async (req, res) => {
   const supplierId = await currentSupplierId(req);
-  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  if (!supplierId) return res.status(403).json({ message: 'Tài khoản chưa gắn với Nhà cung cấp đã duyệt.' });
   const { category_id, region_id, sku, name, description, short_description, origin, image_url,
     sale_price, stock_quantity = 0 } = req.body;
-  if (!name || !category_id) return res.status(422).json({ message: 'Ten va danh muc la bat buoc.' });
+  if (!name || !category_id) return res.status(422).json({ message: 'Tên và danh mục là bắt buộc.' });
   const slug = `${slugify(name)}-${Date.now()}`;
-  // Tu sinh SKU neu NCC khong nhap (tranh sku null -> loi khi loc/hien thi).
+  // Tự sinh SKU nếu NCC không nhập (tránh sku null -> lỗi khi lọc/hiển thị).
   const finalSku = (sku && sku.trim()) || `SP${Date.now().toString().slice(-6)}`;
   const result = await query(
     `INSERT INTO products (category_id, supplier_id, region_id, sku, slug, name, description,
@@ -44,10 +48,10 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
   res.status(201).json({ data: serializeProduct(row) });
 });
 
-// UC "Bao cao doanh thu cho NCC": doanh thu tu don DA GIAO chua san pham cua NCC.
+// UC "Báo cáo doanh thu cho NCC": doanh thu từ đơn ĐÃ GIAO chứa sản phẩm của NCC.
 export const myRevenue = asyncHandler(async (req, res) => {
   const supplierId = await currentSupplierId(req);
-  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
+  if (!supplierId) return res.status(403).json({ message: 'Tài khoản chưa gắn với Nhà cung cấp đã duyệt.' });
 
   const [{ total_revenue, units_sold }] = await query(
     `SELECT COALESCE(SUM(oi.line_total),0) AS total_revenue, COALESCE(SUM(oi.quantity),0) AS units_sold
@@ -86,6 +90,9 @@ export const myRevenue = asyncHandler(async (req, res) => {
      GROUP BY DATE(o.delivered_at) ORDER BY d ASC`,
     [supplierId]
   );
+  // Query trên chỉ trả về NGÀY CÓ DOANH THU (GROUP BY), nên phải tự dựng đủ 30 ngày liên
+  // tiếp ở đây và tra revenueMap — ngày nào không bán được gì thì mặc định revenue = 0,
+  // để biểu đồ trên frontend không bị "gãy khúc" ở những ngày không có đơn.
   const revenueMap = new Map(revenueRows.map((r) => [r.d, Number(r.revenue)]));
   const revenue_chart = [];
   for (let i = 29; i >= 0; i -= 1) {
@@ -110,10 +117,10 @@ export const myRevenue = asyncHandler(async (req, res) => {
 
 export const updateMyProduct = asyncHandler(async (req, res) => {
   const supplierId = await currentSupplierId(req);
-  if (!supplierId) return res.status(403).json({ message: 'Tai khoan chua gan voi Nha cung cap da duyet.' });
-  // Chi cho sua san pham CUA CHINH NCC nay.
+  if (!supplierId) return res.status(403).json({ message: 'Tài khoản chưa gắn với Nhà cung cấp đã duyệt.' });
+  // Chỉ cho sửa sản phẩm CỦA CHÍNH NCC này.
   const [owned] = await query('SELECT id FROM products WHERE id = ? AND supplier_id = ?', [req.params.id, supplierId]);
-  if (!owned) return res.status(403).json({ message: 'Ban chi co the sua san pham cua minh.' });
+  if (!owned) return res.status(403).json({ message: 'Bạn chỉ có thể sửa sản phẩm của mình.' });
   const fields = ['category_id', 'region_id', 'sku', 'name', 'description', 'short_description',
     'origin', 'image_url', 'sale_price', 'stock_quantity'];
   const updates = [];
@@ -131,7 +138,7 @@ export const updateMyProduct = asyncHandler(async (req, res) => {
   res.json({ data: serializeProduct(row) });
 });
 
-// Chi liet ke NCC da duyet (APPROVED) cho storefront. Frontend doc { data: [...] }.
+// Chỉ liệt kê NCC đã duyệt (APPROVED) cho storefront. Frontend đọc { data: [...] }.
 export const index = asyncHandler(async (req, res) => {
   const rows = await query(
     "SELECT * FROM suppliers WHERE is_active = 1 AND is_deleted = 0 AND status = 'APPROVED' ORDER BY name"
@@ -141,7 +148,7 @@ export const index = asyncHandler(async (req, res) => {
 
 export const show = asyncHandler(async (req, res) => {
   const [supplier] = await query('SELECT * FROM suppliers WHERE id = ? AND is_deleted = 0', [req.params.supplier]);
-  if (!supplier) return res.status(404).json({ message: 'Khong tim thay nha cung cap.' });
+  if (!supplier) return res.status(404).json({ message: 'Không tìm thấy nhà cung cấp.' });
   res.json({ data: supplier });
 });
 
@@ -161,7 +168,7 @@ export const adminIndex = asyncHandler(async (req, res) => {
 
 export const store = asyncHandler(async (req, res) => {
   const { supplier_code, name, contact_name, phone, email, address } = req.body;
-  if (!name) return res.status(422).json({ message: 'Ten nha cung cap la bat buoc.' });
+  if (!name) return res.status(422).json({ message: 'Tên nhà cung cấp là bắt buộc.' });
   const result = await query(
     `INSERT INTO suppliers (supplier_code, name, contact_name, phone, email, address, status, approved_at)
      VALUES (?, ?, ?, ?, ?, ?, 'APPROVED', NOW())`,
@@ -192,8 +199,12 @@ export const destroy = asyncHandler(async (req, res) => {
   res.json({ data: supplier });
 });
 
-// ---------------- UC 2.2.12a: Dang ky Nha cung cap (public, self-service) ----------------
+// ---------------- UC 2.2.12a: Đăng ký Nhà cung cấp (public, self-service) ----------------
 // POST /api/suppliers/apply (multipart/form-data, field file: license_file)
+// Tạo CÙNG LÚC 2 bản ghi: users (role SUPPLIER, is_active=0 -> chưa đăng nhập được) và
+// suppliers (status='PENDING') liên kết qua user_id, rồi báo cho mọi Admin để xét duyệt
+// (approve()/reject() bên dưới). File giấy phép đã được middleware upload.js xử lý trước
+// khi vào tới đây — req.file.filename là tên file đã lưu trên đĩa.
 export const apply = asyncHandler(async (req, res) => {
   const {
     name, contact_name, phone, email, address, region_id, category_id, note,
@@ -201,10 +212,10 @@ export const apply = asyncHandler(async (req, res) => {
   } = req.body;
 
   if (!name || !contact_name || !phone || !email || !address || !password) {
-    return res.status(422).json({ message: 'Vui long nhap day du thong tin bat buoc.' });
+    return res.status(422).json({ message: 'Vui lòng nhập đầy đủ thông tin bắt buộc.' });
   }
   if (password !== password_confirmation) {
-    return res.status(422).json({ message: 'Mat khau xac nhan chua khop.' });
+    return res.status(422).json({ message: 'Mật khẩu xác nhận chưa khớp.' });
   }
 
   const [existingSupplier] = await query(
@@ -213,7 +224,7 @@ export const apply = asyncHandler(async (req, res) => {
   );
   const [existingUser] = await query('SELECT id FROM users WHERE email = ? OR phone = ? LIMIT 1', [email, phone]);
   if (existingSupplier || existingUser) {
-    return res.status(422).json({ message: 'Nha cung cap da ton tai trong he thong hoac dang cho duyet.' });
+    return res.status(422).json({ message: 'Nhà cung cấp đã tồn tại trong hệ thống hoặc đang chờ duyệt.' });
   }
 
   const password_hash = await bcrypt.hash(password, 10);
@@ -237,18 +248,18 @@ export const apply = asyncHandler(async (req, res) => {
   for (const admin of admins) {
     await query(
       `INSERT INTO notifications (user_id, type, title, message, link_url)
-       VALUES (?, 'SUPPLIER_APPLICATION', 'Yeu cau dang ky Nha cung cap moi', ?, '/admin/suppliers?tab=pending')`,
-      [admin.id, `${name} vua gui yeu cau dang ky lam Nha cung cap.`]
+       VALUES (?, 'SUPPLIER_APPLICATION', 'Yêu cầu đăng ký Nhà cung cấp mới', ?, '/admin/suppliers?tab=pending')`,
+      [admin.id, `${name} vừa gửi yêu cầu đăng ký làm Nhà cung cấp.`]
     );
   }
 
   res.status(201).json({
     id: supplierResult.insertId,
-    message: 'Dang ky thanh cong, vui long cho Admin xet duyet.',
+    message: 'Đăng ký thành công, vui lòng chờ Admin xét duyệt.',
   });
 });
 
-// ---------------- UC 2.2.12b: Duyet dang ky Nha cung cap (Admin) ----------------
+// ---------------- UC 2.2.12b: Duyệt đăng ký Nhà cung cấp (Admin) ----------------
 export const pending = asyncHandler(async (req, res) => {
   const rows = await query("SELECT * FROM suppliers WHERE status = 'PENDING' ORDER BY id DESC");
   res.json({ suppliers: rows });
@@ -256,9 +267,11 @@ export const pending = asyncHandler(async (req, res) => {
 
 export const approve = asyncHandler(async (req, res) => {
   const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.supplier]);
-  if (!supplier) return res.status(404).json({ message: 'Khong tim thay yeu cau dang ky.' });
+  if (!supplier) return res.status(404).json({ message: 'Không tìm thấy yêu cầu đăng ký.' });
+  // Chặn duyệt/từ chối 2 lần (vd 2 admin cùng bấm gần như đồng thời) — chỉ xử lý được khi
+  // status vẫn đang PENDING.
   if (supplier.status !== 'PENDING') {
-    return res.status(422).json({ message: 'Yeu cau nay da duoc xu ly truoc do.' });
+    return res.status(422).json({ message: 'Yêu cầu này đã được xử lý trước đó.' });
   }
 
   await query(
@@ -267,22 +280,23 @@ export const approve = asyncHandler(async (req, res) => {
     [req.user.id, supplier.id]
   );
   if (supplier.user_id) {
+    // Kích hoạt luôn tài khoản user liên kết (is_active=0 lúc apply() -> 1) để NCC đăng nhập được.
     await query('UPDATE users SET is_active = 1 WHERE id = ?', [supplier.user_id]);
     await query(
       `INSERT INTO notifications (user_id, type, title, message)
-       VALUES (?, 'SUPPLIER_APPROVED', 'Yeu cau dang ky NCC da duoc duyet', 'Ban co the dang nhap va quan ly san pham ngay bay gio.')`,
+       VALUES (?, 'SUPPLIER_APPROVED', 'Yêu cầu đăng ký NCC đã được duyệt', 'Bạn có thể đăng nhập và quản lý sản phẩm ngay bây giờ.')`,
       [supplier.user_id]
     );
   }
-  res.json({ message: 'Da duyet yeu cau dang ky Nha cung cap.' });
+  res.json({ message: 'Đã duyệt yêu cầu đăng ký Nhà cung cấp.' });
 });
 
 export const reject = asyncHandler(async (req, res) => {
   const { reason } = req.body;
   const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.supplier]);
-  if (!supplier) return res.status(404).json({ message: 'Khong tim thay yeu cau dang ky.' });
+  if (!supplier) return res.status(404).json({ message: 'Không tìm thấy yêu cầu đăng ký.' });
   if (supplier.status !== 'PENDING') {
-    return res.status(422).json({ message: 'Yeu cau nay da duoc xu ly truoc do.' });
+    return res.status(422).json({ message: 'Yêu cầu này đã được xử lý trước đó.' });
   }
 
   await query(
@@ -293,9 +307,9 @@ export const reject = asyncHandler(async (req, res) => {
   if (supplier.user_id) {
     await query(
       `INSERT INTO notifications (user_id, type, title, message)
-       VALUES (?, 'SUPPLIER_REJECTED', 'Yeu cau dang ky NCC bi tu choi', ?)`,
-      [supplier.user_id, reason || 'Yeu cau dang ky cua ban khong duoc chap thuan.']
+       VALUES (?, 'SUPPLIER_REJECTED', 'Yêu cầu đăng ký NCC bị từ chối', ?)`,
+      [supplier.user_id, reason || 'Yêu cầu đăng ký của bạn không được chấp thuận.']
     );
   }
-  res.json({ message: 'Da tu choi yeu cau dang ky Nha cung cap.' });
+  res.json({ message: 'Đã từ chối yêu cầu đăng ký Nhà cung cấp.' });
 });

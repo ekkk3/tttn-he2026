@@ -1,6 +1,6 @@
-// Barrel: gom lai toan bo handler admin.* da duoc tach theo domain (xem cac file
-// *.controller.js trong thu muc nay). routes/api.routes.js import mot lan tu day
-// (import * as admin from '../controllers/admin/index.js') nen thu tu route khong doi.
+// Barrel: gom lại toàn bộ handler admin.* đã được tách theo domain (xem các file
+// *.controller.js trong thư mục này). routes/api.routes.js import một lần từ đây
+// (import * as admin from '../controllers/admin/index.js') nên thứ tự route không đổi.
 export * from './dashboard.controller.js';
 export * from './users.controller.js';
 export * from './admins.controller.js';

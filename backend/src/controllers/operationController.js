@@ -2,9 +2,9 @@ import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 
-// Danh cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yeu cau nhap hang, 2.2.21 Quan ly kho,
-// 2.2.22 Cap nhat trang thai don, 2.2.23 Xu ly don, 2.2.24 Quan ly gia nhap).
-// Frontend (use-operations-data-store.js) doc { data } va adapt sang camelCase.
+// Dành cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yêu cầu nhập hàng, 2.2.21 Quản lý kho,
+// 2.2.22 Cập nhật trạng thái đơn, 2.2.23 Xử lý đơn, 2.2.24 Quản lý giá nhập).
+// Frontend (use-operations-data-store.js) đọc { data } và adapt sang camelCase.
 
 function inventoryStatus(quantity, reorderLevel) {
   if (quantity <= 0) return 'out-of-stock';
@@ -12,16 +12,16 @@ function inventoryStatus(quantity, reorderLevel) {
   return 'in-stock';
 }
 
-// Neu nguoi goi la NCC -> tra ve supplier_id cua ho de loc du lieu (chi thay san
-// pham/don cua minh). WAREHOUSE_STAFF/ADMIN -> null (thay tat ca).
+// Nếu người gọi là NCC -> trả về supplier_id của họ để lọc dữ liệu (chỉ thấy sản
+// phẩm/đơn của mình). WAREHOUSE_STAFF/ADMIN -> null (thấy tất cả).
 async function supplierScopeId(req) {
   if (req.user.role !== 'SUPPLIER') return null;
   const [supplier] = await query('SELECT id FROM suppliers WHERE user_id = ? LIMIT 1', [req.user.id]);
-  return supplier ? supplier.id : -1; // -1: NCC chua co ban ghi supplier -> khong thay gi
+  return supplier ? supplier.id : -1; // -1: NCC chưa có bản ghi supplier -> không thấy gì
 }
 
-// Don co chua san pham cua supplier (scopeId) hay khong — chan NCC thao tac don khong
-// lien quan gi den minh (updateOrderDeliveryStatus / advanceFulfillmentTask).
+// Đơn có chứa sản phẩm của supplier (scopeId) hay không — chặn NCC thao tác đơn không
+// liên quan gì đến mình (updateOrderDeliveryStatus / advanceFulfillmentTask).
 async function orderBelongsToSupplier(orderId, supplierScopeIdValue) {
   const [row] = await query(
     'SELECT 1 FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ? AND p.supplier_id = ? LIMIT 1',
@@ -30,7 +30,7 @@ async function orderBelongsToSupplier(orderId, supplierScopeIdValue) {
   return Boolean(row);
 }
 
-// Tinh so luong dang giu cho (reserved) = tong quantity trong cac don chua ket thuc.
+// Tính số lượng đang giữ chỗ (reserved) = tổng quantity trong các đơn chưa kết thúc.
 async function reservedByProduct() {
   const rows = await query(
     `SELECT oi.product_id, COALESCE(SUM(oi.quantity),0) AS reserved
@@ -46,8 +46,8 @@ const INVENTORY_ROW_SELECT = `
          p.purchase_price, p.aisle, p.supplier_id, s.name AS supplier_name, s.address AS supplier_location
   FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id
 `;
-// Khong bao gio tra sku null (san pham co the tao ma chua nhap SKU) -> tranh loi
-// toLowerCase() khi loc tim kiem o trang ton kho.
+// Không bao giờ trả sku null (sản phẩm có thể tạo mà chưa nhập SKU) -> tránh lỗi
+// toLowerCase() khi lọc tìm kiếm ở trang tồn kho.
 function serializeInventoryRow(r, reservedByProductMap) {
   return {
     sku: r.sku || `SP${r.product_id}`,
@@ -66,33 +66,37 @@ function serializeInventoryRow(r, reservedByProductMap) {
   };
 }
 
-// --- Ton kho (derive tu products) ---
+// --- Tồn kho (derive từ products) ---
 export const inventory = asyncHandler(async (req, res) => {
   const scopeId = await supplierScopeId(req);
+  // scopeId === null (WAREHOUSE_STAFF/ADMIN) -> không thêm điều kiện, thấy toàn bộ sản phẩm.
+  // scopeId là số (SUPPLIER) -> thêm "AND p.supplier_id = ?" để chỉ thấy sản phẩm của mình.
   const rows = await query(
     `${INVENTORY_ROW_SELECT} WHERE p.is_deleted = 0 ${scopeId !== null ? 'AND p.supplier_id = ?' : ''} ORDER BY p.stock_quantity ASC`,
     scopeId !== null ? [scopeId] : []
   );
+  // reservedByProduct() query 1 LẦN cho TẤT CẢ sản phẩm (không phải query lại trong vòng lặp)
+  // rồi tra cứu qua Map — tránh N+1 query khi danh sách tồn kho có hàng trăm sản phẩm.
   const reserved = await reservedByProduct();
   res.json({ data: rows.map((r) => serializeInventoryRow(r, reserved)) });
 });
 
-// PATCH /api/operations/inventory/:productId/purchase-price — Nhan vien kho/Admin cap nhat
-// gia nhap san pham (UC 2.2.24 Quan ly gia nhap san pham). Truoc day cot purchase_price chi
-// duoc DOC (hien read-only o warehouse-inventory-page.jsx), khong co endpoint nao ghi duoc.
-// NCC chi duoc XEM (route /operations/* cho phep ca SUPPLIER goi GET inventory), khong duoc
-// tu sua gia nhap cua chinh minh vi day la chi phi noi bo phia kho, khong phai gia NCC bao.
+// PATCH /api/operations/inventory/:productId/purchase-price — Nhân viên kho/Admin cập nhật
+// giá nhập sản phẩm (UC 2.2.24 Quản lý giá nhập sản phẩm). Trước đây cột purchase_price chỉ
+// được ĐỌC (hiện read-only ở warehouse-inventory-page.jsx), không có endpoint nào ghi được.
+// NCC chỉ được XEM (route /operations/* cho phép cả SUPPLIER gọi GET inventory), không được
+// tự sửa giá nhập của chính mình vì đây là chi phí nội bộ phía kho, không phải giá NCC báo.
 export const updatePurchasePrice = asyncHandler(async (req, res) => {
   if (req.user.role === 'SUPPLIER') {
-    return res.status(403).json({ message: 'Ban khong co quyen sua gia nhap san pham.' });
+    return res.status(403).json({ message: 'Bạn không có quyền sửa giá nhập sản phẩm.' });
   }
   const { purchase_price } = req.body;
   const isBlank = purchase_price === null || purchase_price === undefined || purchase_price === '';
   if (!isBlank && (Number.isNaN(Number(purchase_price)) || Number(purchase_price) < 0)) {
-    return res.status(422).json({ message: 'Gia nhap khong hop le.' });
+    return res.status(422).json({ message: 'Giá nhập không hợp lệ.' });
   }
   const [product] = await query('SELECT id FROM products WHERE id = ? AND is_deleted = 0', [req.params.productId]);
-  if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
 
   await query('UPDATE products SET purchase_price = ? WHERE id = ?', [
     isBlank ? null : Number(purchase_price), req.params.productId,
@@ -102,7 +106,7 @@ export const updatePurchasePrice = asyncHandler(async (req, res) => {
   res.json({ data: serializeInventoryRow(row, reserved) });
 });
 
-// --- Yeu cau nhap hang / phieu nhap (delivery_requests) ---
+// --- Yêu cầu nhập hàng / phiếu nhập (delivery_requests) ---
 function serializeRequisition(r) {
   return {
     id: r.id,
@@ -135,8 +139,8 @@ export const requisitions = asyncHandler(async (req, res) => {
 });
 export const storeRequisition = asyncHandler(async (req, res) => {
   const { product_id, requested_qty, reason, eta_days } = req.body;
-  if (!product_id || !requested_qty) return res.status(422).json({ message: 'product_id va requested_qty la bat buoc.' });
-  // Frontend dung status lowercase (submitted/approved/received/cancelled) - xem labels.js.
+  if (!product_id || !requested_qty) return res.status(422).json({ message: 'product_id và requested_qty là bắt buộc.' });
+  // Frontend dùng status lowercase (submitted/approved/received/cancelled) - xem labels.js.
   const result = await query(
     "INSERT INTO delivery_requests (requested_by_user_id, product_id, requested_qty, reason, eta_days, status) VALUES (?, ?, ?, ?, ?, 'submitted')",
     [req.user.id, product_id, requested_qty, reason || null, eta_days || null]
@@ -147,19 +151,22 @@ export const storeRequisition = asyncHandler(async (req, res) => {
 export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   const { status, approved_qty } = req.body;
   const [current] = await query('SELECT * FROM delivery_requests WHERE id = ?', [req.params.id]);
-  if (!current) return res.status(404).json({ message: 'Khong tim thay phieu nhap.' });
-  // Bao ve: NCC chi duoc thao tac phieu nhap cho san pham CUA MINH (UC 2.2.13).
+  if (!current) return res.status(404).json({ message: 'Không tìm thấy phiếu nhập.' });
+  // Bảo vệ: NCC chỉ được thao tác phiếu nhập cho sản phẩm CỦA MÌNH (UC 2.2.13).
   const scopeId = await supplierScopeId(req);
   if (scopeId !== null) {
     const [owned] = await query('SELECT id FROM products WHERE id = ? AND supplier_id = ?', [current.product_id, scopeId]);
-    if (!owned) return res.status(403).json({ message: 'Ban chi co the thao tac phieu nhap cua minh.' });
+    if (!owned) return res.status(403).json({ message: 'Bạn chỉ có thể thao tác phiếu nhập của mình.' });
   }
   await query(
     'UPDATE delivery_requests SET status = ?, approved_qty = COALESCE(?, approved_qty), approved_by_user_id = ? WHERE id = ?',
     [status, approved_qty ?? null, req.user.id, req.params.id]
   );
-  // Khi phieu nhap "received" (da nhap kho) -> cong ton kho san pham (UC 2.2.21).
+  // Khi phiếu nhập "received" (đã nhập kho) -> cộng tồn kho sản phẩm (UC 2.2.21).
   if (String(status).toLowerCase() === 'received') {
+    // Số lượng thực nhập ưu tiên theo thứ tự: giá trị vừa duyệt trong request này -> giá trị
+    // đã duyệt từ trước (nếu bước "approved" làm trước "received") -> số lượng yêu cầu ban đầu
+    // (nếu chưa ai duyệt số khác thì coi như nhập đúng số đã xin).
     const qty = approved_qty ?? current.approved_qty ?? current.requested_qty;
     await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [qty, current.product_id]);
   }
@@ -167,7 +174,11 @@ export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   res.json({ data: serializeRequisition(row) });
 });
 
-// --- Don cung cap (derive tu orders that, goc nhin van hanh) ---
+// --- Đơn cung cấp (derive từ orders thật, góc nhìn vận hành) ---
+// Không có bảng riêng cho "đơn cung cấp" — đây là 1 "view model" dựng lại từ orders +
+// order_items + order_status_history để khớp shape mà trang vận hành (operations) cần.
+// Vài field UI cần nhưng schema không lưu theo từng đơn (supplier_name, assigned_warehouse_zone)
+// tạm để giá trị cố định (kho chung, khu A) vì hệ thống hiện chỉ có 1 kho duy nhất.
 async function buildOperationOrder(order) {
   const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order.id]);
   const history = await query('SELECT *, created_at AS changed_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC', [order.id]);
@@ -200,7 +211,7 @@ async function buildOperationOrder(order) {
 }
 export const supplierOrders = asyncHandler(async (req, res) => {
   const scopeId = await supplierScopeId(req);
-  // NCC chi thay don co chua san pham cua ho.
+  // NCC chỉ thấy đơn có chứa sản phẩm của họ.
   const orders = scopeId !== null
     ? await query(
         `SELECT DISTINCT o.*, u.full_name AS customer_name FROM orders o
@@ -218,16 +229,16 @@ export const supplierOrders = asyncHandler(async (req, res) => {
 export const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
   const { delivery_status, note } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
-  // Bao ve: NCC chi duoc thao tac don hang co chua san pham CUA MINH.
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+  // Bảo vệ: NCC chỉ được thao tác đơn hàng có chứa sản phẩm CỦA MÌNH.
   const scopeId = await supplierScopeId(req);
   if (scopeId !== null && !(await orderBelongsToSupplier(order.id, scopeId))) {
-    return res.status(403).json({ message: 'Ban chi co the thao tac don hang co san pham cua minh.' });
+    return res.status(403).json({ message: 'Bạn chỉ có thể thao tác đơn hàng có sản phẩm của mình.' });
   }
-  // Chi cho phep chuyen trang thai hop le theo state machine dung chung (tranh gan
-  // gia tri tuy y vao orders.status — cot nay la VARCHAR, khong phai ENUM).
+  // Chỉ cho phép chuyển trạng thái hợp lệ theo state machine dùng chung (tránh gán
+  // giá trị tùy ý vào orders.status — cột này là VARCHAR, không phải ENUM).
   if (!(ORDER_TRANSITIONS[order.status] ?? []).includes(delivery_status)) {
-    return res.status(422).json({ message: `Khong the chuyen tu ${order.status} sang ${delivery_status}.` });
+    return res.status(422).json({ message: `Không thể chuyển từ ${order.status} sang ${delivery_status}.` });
   }
   await query('UPDATE orders SET status = ? WHERE id = ?', [delivery_status, req.params.order]);
   await query(
@@ -241,7 +252,7 @@ export const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
   res.json({ data: await buildOperationOrder(refreshed) });
 });
 
-// --- Fulfillment tasks (don can dong goi/giao: derive tu orders) ---
+// --- Fulfillment tasks (đơn cần đóng gói/giao: derive từ orders) ---
 async function buildFulfillmentTask(order) {
   const history = await query('SELECT *, created_at AS changed_at FROM order_status_history WHERE order_id = ? ORDER BY id ASC', [order.id]);
   const priority = order.status === 'CONFIRMED' ? 'high' : order.status === 'PACKED' ? 'medium' : 'normal';
@@ -253,7 +264,7 @@ async function buildFulfillmentTask(order) {
     status: order.status,
     priority,
     assigned_zone: 'Zone A',
-    eta_label: order.status === 'SHIPPED' ? 'Dang giao' : 'Trong ngay',
+    eta_label: order.status === 'SHIPPED' ? 'Đang giao' : 'Trong ngày',
     notes: order.note,
     status_history: history.map((h) => ({ id: h.id, actor: 'System', label: h.to_status, created_at: h.changed_at })),
   };
@@ -275,20 +286,22 @@ export const fulfillmentTasks = asyncHandler(async (req, res) => {
   res.json({ data });
 });
 export const advanceFulfillmentTask = asyncHandler(async (req, res) => {
-  // State machine dong goi: CONFIRMED -> PACKED -> SHIPPED.
+  // State machine đóng gói: CONFIRMED -> PACKED -> SHIPPED.
   const flow = { CONFIRMED: 'PACKED', PACKED: 'SHIPPED' };
   const [order] = await query('SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [req.params.order]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn.' });
   const scopeId = await supplierScopeId(req);
   if (scopeId !== null && !(await orderBelongsToSupplier(order.id, scopeId))) {
-    return res.status(403).json({ message: 'Ban chi co the thao tac don hang co san pham cua minh.' });
+    return res.status(403).json({ message: 'Bạn chỉ có thể thao tác đơn hàng có sản phẩm của mình.' });
   }
   const next = flow[order.status];
-  if (!next) return res.status(422).json({ message: 'Khong the chuyen trang thai tiep theo.' });
+  if (!next) return res.status(422).json({ message: 'Không thể chuyển trạng thái tiếp theo.' });
   await query('UPDATE orders SET status = ? WHERE id = ?', [next, req.params.order]);
   await query(
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [req.params.order, order.status, next, req.body.note || null, req.user.id]
   );
+  // Dựng response từ `order` đã có sẵn trong bộ nhớ (ghi đè status = next) thay vì SELECT lại
+  // từ DB — tiết kiệm 1 round-trip vì ta đã biết chắc DB vừa được cập nhật đúng giá trị này.
   res.json({ data: await buildFulfillmentTask({ ...order, status: next }) });
 });

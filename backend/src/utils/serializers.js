@@ -1,14 +1,14 @@
 // =====================================================================
-// Cac ham "serialize" de shape response khop dung voi cac adapter frontend
-// (storefront-adapters.js): frontend doc { data, current_page, ... } theo kieu
-// Laravel API Resource, va can cac quan he long nhau (product.category,
+// Các hàm "serialize" để shape response khớp đúng với các adapter frontend
+// (storefront-adapters.js): frontend đọc { data, current_page, ... } theo kiểu
+// Laravel API Resource, và cần các quan hệ lồng nhau (product.category,
 // product.supplier, cart.items[].product, order.items, order.payment...).
-// Xem PLAN_3_TUAN.md - "Sua backend cho khop frontend".
+// Xem PLAN_3_TUAN.md - "Sửa backend cho khớp frontend".
 // =====================================================================
 
-// SQL SELECT cho san pham kem quan he (dung chung cho storefront + admin).
-// Kem rating trung binh + so luot danh gia (chi review VISIBLE) de card/chi tiet
-// hien sao that thay vi fallback (UC 2.2.10).
+// SQL SELECT cho sản phẩm kèm quan hệ (dùng chung cho storefront + admin).
+// Kèm rating trung bình + số lượt đánh giá (chỉ review VISIBLE) để card/chi tiết
+// hiện sao thật thay vì fallback (UC 2.2.10).
 export const PRODUCT_SELECT = `
   SELECT p.*,
          c.name AS category_name,
@@ -24,6 +24,9 @@ export const PRODUCT_SELECT = `
 
 export function serializeProduct(row) {
   if (!row) return null;
+  // Row từ PRODUCT_SELECT là 1 hàng "phẳng" (JOIN ra thêm category_name/supplier_name/...).
+  // Tách riêng các cột JOIN đó ra khỏi object, để dựng lại bên dưới thành quan hệ lồng nhau
+  // { category: { id, name }, supplier: {...} } đúng hình dạng frontend cần.
   const { category_name, supplier_name, region_name, avg_rating, review_count, ...product } = row;
   return {
     ...product,
@@ -39,7 +42,7 @@ export function serializeProducts(rows) {
   return rows.map(serializeProduct);
 }
 
-// Bao response theo dinh dang phan trang Laravel.
+// Bao response theo định dạng phân trang Laravel.
 export function paginated(data, { page, perPage, total }) {
   return {
     data,
@@ -50,9 +53,9 @@ export function paginated(data, { page, perPage, total }) {
   };
 }
 
-// Cart: frontend adaptBackendCart can { id, status, item_count, total_quantity,
-// subtotal, items[] } va moi item can { id, product_id, quantity, unit_price,
-// line_total, product } (product day du de adaptBackendProduct xu ly).
+// Cart: frontend adaptBackendCart cần { id, status, item_count, total_quantity,
+// subtotal, items[] } và mỗi item cần { id, product_id, quantity, unit_price,
+// line_total, product } (product đầy đủ để adaptBackendProduct xử lý).
 export function serializeCart(cart, itemRows) {
   const items = itemRows.map((row) => ({
     id: row.id,
@@ -92,10 +95,12 @@ export function serializeCart(cart, itemRows) {
   };
 }
 
-// Payment: adaptPayment() doc transaction_code, payment_method, payment_status,
+// Payment: adaptPayment() đọc transaction_code, payment_method, payment_status,
 // amount, gateway_name, gateway_reference, paid_at, raw_payload, created_at, updated_at.
 export function serializePayment(payment) {
   if (!payment) return null;
+  // raw_payload lưu trong DB dạng chuỗi JSON (toàn bộ payload gốc từ VNPay/MoMo, để tra cứu
+  // sau này) — parse lại thành object cho frontend; nếu lỗi parse thì trả null thay vì crash.
   let rawPayload = payment.raw_payload;
   if (typeof rawPayload === 'string') {
     try { rawPayload = JSON.parse(rawPayload); } catch { rawPayload = null; }
@@ -115,8 +120,8 @@ export function serializePayment(payment) {
   };
 }
 
-// Order summary + detail. adaptBackendOrderSummary/Detail doc snake_case va can
-// item_count, payment (long), items[], status_history[].
+// Order summary + detail. adaptBackendOrderSummary/Detail đọc snake_case và cần
+// item_count, payment (lồng), items[], status_history[].
 export function serializeOrderSummary(order, { itemCount = null, payment = null } = {}) {
   return {
     id: order.id,
@@ -140,8 +145,8 @@ export function serializeOrderDetail(order, { items = [], statusHistory = [], pa
     recipient_name: order.recipient_name,
     recipient_phone: order.recipient_phone,
     shipping_address: order.shipping_address,
-    // Ten tinh/huyen/xa GHN da luu tu luc checkout — dung de hien "tuyen duong" thay vi
-    // ban do that (khong co toa do GPS trong schema).
+    // Tên tỉnh/huyện/xã GHN đã lưu từ lúc checkout — dùng để hiện "tuyến đường" thay vì
+    // bản đồ thật (không có tọa độ GPS trong schema).
     shipping_province_name: order.shipping_province_name ?? null,
     shipping_district_name: order.shipping_district_name ?? null,
     shipping_ward_name: order.shipping_ward_name ?? null,
@@ -170,6 +175,9 @@ export function serializeOrderDetail(order, { items = [], statusHistory = [], pa
   };
 }
 
+// Đọc ?page=&per_page= từ query string, ép về số hợp lệ và giới hạn trong khoảng an toàn
+// (page >= 1, 1 <= perPage <= maxPerPage) để tránh client truyền giá trị âm/quá lớn làm
+// lệch câu SQL LIMIT/OFFSET bên dưới.
 export function parsePagination(query, { defaultPerPage = 15, maxPerPage = 100 } = {}) {
   const page = Math.max(1, Number(query.page) || 1);
   const perPage = Math.min(maxPerPage, Math.max(1, Number(query.per_page) || defaultPerPage));

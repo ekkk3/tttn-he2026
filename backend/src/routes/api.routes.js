@@ -23,21 +23,21 @@ import { uploadSupplierLicense } from '../middleware/upload.js';
 const router = Router();
 
 // ==================================================================
-// Route nay duoc sap xep DUNG THEO THU TU cua routes/api.php ben repo
-// Laravel goc, de tien doi chieu tung dong khi ban tiep tuc phat trien.
+// Route này được sắp xếp ĐÚNG THEO THỨ TỰ của routes/api.php bên repo
+// Laravel gốc, để tiện đối chiếu từng dòng khi bạn tiếp tục phát triển.
 // ==================================================================
 
 // ---------------- Public ----------------
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 
-// Bo sung Tuan 1: quen mat khau + dang nhap Google/Facebook (ngoai pham vi UC goc).
+// Bổ sung Tuần 1: quên mật khẩu + đăng nhập Google/Facebook (ngoài phạm vi UC gốc).
 router.post('/password/forgot', authController.forgotPassword);
 router.post('/password/reset', authController.resetPassword);
 router.post('/auth/google', authController.loginWithGoogle);
 router.post('/auth/facebook', authController.loginWithFacebook);
 
-// UC 2.2.12a: Dang ky Nha cung cap (public, cho Admin duyet o UC 2.2.12b ben duoi).
+// UC 2.2.12a: Đăng ký Nhà cung cấp (public, chờ Admin duyệt ở UC 2.2.12b bên dưới).
 router.post('/suppliers/apply', uploadSupplierLicense, supplierController.apply);
 
 router.get('/products', productController.index);
@@ -50,8 +50,8 @@ router.get('/shipping/ghn/districts', ghnLocationController.districts);
 router.get('/shipping/ghn/wards', ghnLocationController.wards);
 router.post('/shipping/ghn/fee', ghnLocationController.fee);
 
-// Callback thanh toan (public, cong thanh toan goi ve — khong qua middleware auth).
-// UC 2.2.9 / 2.2.25. Return = trinh duyet khach quay ve; IPN = server->server.
+// Callback thanh toán (public, cổng thanh toán gọi về — không qua middleware auth).
+// UC 2.2.9 / 2.2.25. Return = trình duyệt khách quay về; IPN = server->server.
 router.get('/payments/vnpay/return', paymentController.vnpayReturn);
 router.get('/payments/vnpay/ipn', paymentController.vnpayIpn);
 router.get('/payments/momo/return', paymentController.momoReturn);
@@ -69,10 +69,13 @@ router.get('/suppliers/:supplier/products', supplierController.getProducts);
 
 router.get('/test', (req, res) => res.send('ok'));
 
-// Tinh nang moi so voi Laravel: AI Chatbot (dien theo de cuong, chua co ben Laravel).
+// Tính năng mới so với Laravel: AI Chatbot (điền theo đề cương, chưa có bên Laravel).
 router.post('/chat', chatController.chat);
 
-// ---------------- Authenticated (tuong duong middleware 'auth:sanctum') ----------------
+// ---------------- Authenticated (tương đương middleware 'auth:sanctum') ----------------
+// router.use(auth) áp dụng middleware auth() cho MỌI route định nghĩa PHÍA DƯỚI dòng này
+// (Express chạy middleware theo đúng thứ tự khai báo) — từ đây trở xuống, request phải có
+// JWT hợp lệ (req.user được gắn sẵn) mới vào tới controller; các route Public ở trên không bị ảnh hưởng.
 router.use(auth);
 
 router.get('/me', authController.me);
@@ -121,6 +124,10 @@ router.post('/support-tickets', misc.storeSupportTicket);
 router.patch('/support-tickets/:ticket/resolve', misc.resolveSupportTicket);
 
 // ---------------- Warehouse staff: /api/operations/* ----------------
+// Router con: định nghĩa route trước, rồi mount vào path gốc kèm requireRole(...) ở dòng
+// cuối khối này — nghĩa là mọi route trong `operations` đều bắt buộc 1 trong 3 role đó,
+// dù không thấy requireRole lặp lại ở từng route. SUPPLIER cũng được liệt kê vì NCC được
+// phép GỌI XEM (GET) 1 số endpoint operations, dù không được sửa (chặn chi tiết trong controller).
 const operations = Router();
 operations.get('/inventory', operationController.inventory);
 operations.patch('/inventory/:productId/purchase-price', operationController.updatePurchasePrice);
@@ -133,7 +140,7 @@ operations.patch('/orders/:order/delivery-status', operationController.updateOrd
 operations.patch('/fulfillment-tasks/:order/advance', operationController.advanceFulfillmentTask);
 router.use('/operations', requireRole('WAREHOUSE_STAFF', 'ADMIN', 'SUPPLIER'), operations);
 
-// ---------------- Nha cung cap quan ly san pham cua minh (UC 2.2.15) ----------------
+// ---------------- Nhà cung cấp quản lý sản phẩm của mình (UC 2.2.15) ----------------
 const supplierPortal = Router();
 supplierPortal.get('/products', supplierController.myProducts);
 supplierPortal.post('/products', supplierController.storeMyProduct);
@@ -142,6 +149,9 @@ supplierPortal.get('/revenue', supplierController.myRevenue);
 router.use('/supplier', requireRole('SUPPLIER'), supplierPortal);
 
 // ---------------- Admin: /api/admin/* ----------------
+// Cũng là router con như `operations` ở trên: toàn bộ ~40 route bên dưới chỉ thực sự bị
+// chặn quyền ADMIN tại dòng `router.use('/admin', requireRole('ADMIN'), adminRouter)` gần
+// cuối file — đọc router con thì nhớ luôn tìm dòng mount phía dưới để biết nó được bảo vệ thế nào.
 const adminRouter = Router();
 adminRouter.get('/dashboard', admin.dashboard);
 adminRouter.get('/complaints', misc.adminListComplaints);

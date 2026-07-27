@@ -10,8 +10,11 @@ function generateOrderNo() {
   return `DH${Date.now()}`;
 }
 
-// Phi van chuyen tinh phia server, giu dong logic voi checkout-page.jsx de tong tien
-// hien thi tren UI khop voi don hang thuc te luu trong DB.
+// Phí vận chuyển tính phía server, giữ đồng logic với checkout-page.jsx để tổng tiền
+// hiển thị trên UI khớp với đơn hàng thực tế lưu trong DB.
+// Bỏ dấu tiếng Việt (vd "Hà Nội" -> "ha noi") để so khớp CHUỖI ĐỊA CHỈ KHÁCH TỰ NHẬP với
+// danh sách tên tỉnh/thành không dấu bên dưới — khách có thể gõ thiếu dấu, sai dấu, viết
+// hoa/thường lẫn lộn, nên so khớp "không dấu" bao dung hơn nhiều so với so khớp chính xác.
 function normalizeVietnamese(value) {
   return String(value)
     .toLowerCase()
@@ -19,6 +22,8 @@ function normalizeVietnamese(value) {
     .replace(/đ/g, 'd')
     .replace(/[̀-ͯ]/g, '');
 }
+// Bảng phí nội bộ theo thứ tự ưu tiên: đơn đủ lớn thì freeship, không thì tính theo địa
+// bàn (Hà Nội rẻ nhất vì gần kho, các tỉnh miền Bắc khác giá trung bình, còn lại đồng giá).
 function calculateShippingFee(subtotal, shippingAddress) {
   if (subtotal >= 500000) return 0;
   const addr = normalizeVietnamese(shippingAddress);
@@ -30,7 +35,7 @@ function calculateShippingFee(subtotal, shippingAddress) {
   return 45000;
 }
 
-// Doc order + items + status_history + payment roi serialize theo dinh dang frontend.
+// Đọc order + items + status_history + payment rồi serialize theo định dạng frontend.
 async function loadOrderDetail(orderId, userId = null) {
   const params = userId ? [orderId, userId] : [orderId];
   const [order] = await query(
@@ -44,9 +49,9 @@ async function loadOrderDetail(orderId, userId = null) {
     [order.id]
   );
   const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
-  // Van don + don vi van chuyen that (UC "Theo doi trang thai don"): truoc day khong JOIN
-  // nen shipping_carrier/shipping_code luon null phia khach hang du admin da tao van don GHN
-  // that cho don nay. Cung logic voi admin/orders.controller.js#loadAdminOrderDetail.
+  // Vận đơn + đơn vị vận chuyển thật (UC "Theo dõi trạng thái đơn"): trước đây không JOIN
+  // nên shipping_carrier/shipping_code luôn null phía khách hàng dù admin đã tạo vận đơn GHN
+  // thật cho đơn này. Cùng logic với admin/orders.controller.js#loadAdminOrderDetail.
   const [shipment] = await query(
     `SELECT s.* , c.name AS carrier_name FROM order_shipments s
      LEFT JOIN shipping_carriers c ON c.id = s.shipping_carrier_id
@@ -76,9 +81,13 @@ export const checkout = asyncHandler(async (req, res) => {
     shipping_ward_code, shipping_ward_name,
   } = req.body;
   if (!recipient_name || !recipient_phone || !shipping_address) {
-    return res.status(422).json({ message: 'Thieu thong tin nguoi nhan hoac dia chi giao hang.' });
+    return res.status(422).json({ message: 'Thiếu thông tin người nhận hoặc địa chỉ giao hàng.' });
   }
 
+  // Toàn bộ checkout chạy trong 1 TRANSACTION: tạo đơn + trừ tồn kho + ghi payment + cập
+  // nhật voucher + xóa giỏ hàng phải cùng thành công hoặc cùng thất bại — nếu 1 bước lỗi
+  // giữa chừng (vd hết hàng ở bước thứ 3/5), rollback() sẽ hoàn tác MỌI thay đổi đã làm
+  // trước đó trong cùng transaction, tránh để lại dữ liệu nửa vời (đơn tạo nhưng không trừ kho...).
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -87,24 +96,24 @@ export const checkout = asyncHandler(async (req, res) => {
       "SELECT * FROM carts WHERE user_id = ? AND status = 'ACTIVE' LIMIT 1",
       [req.user.id]
     );
-    if (!cart) throw Object.assign(new Error('Gio hang dang trong.'), { status: 422 });
+    if (!cart) throw Object.assign(new Error('Giỏ hàng đang trống.'), { status: 422 });
 
     const [items] = await connection.query(
       `SELECT ci.*, p.name AS product_name, p.stock_quantity
        FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.cart_id = ?`,
       [cart.id]
     );
-    if (!items.length) throw Object.assign(new Error('Gio hang dang trong.'), { status: 422 });
+    if (!items.length) throw Object.assign(new Error('Giỏ hàng đang trống.'), { status: 422 });
 
     const subtotal = items.reduce((sum, i) => sum + Number(i.line_total), 0);
     const shipping_fee = calculateShippingFee(subtotal, shipping_address);
 
-    // UC 2.2.9a: ap dung voucher neu khach nhap ma hop le.
+    // UC 2.2.9a: áp dụng voucher nếu khách nhập mã hợp lệ.
     let discount_amount = 0;
     let appliedVoucher = null;
     if (voucher_code) {
       const [[voucher]] = await connection.query('SELECT * FROM vouchers WHERE code = ? LIMIT 1', [voucher_code]);
-      discount_amount = computeVoucherDiscount(voucher, subtotal); // nem 422 neu khong hop le
+      discount_amount = computeVoucherDiscount(voucher, subtotal); // ném 422 nếu không hợp lệ
       appliedVoucher = voucher;
     }
     const total_amount = subtotal + shipping_fee - discount_amount;
@@ -130,24 +139,24 @@ export const checkout = asyncHandler(async (req, res) => {
          VALUES (?, ?, ?, ?, ?, ?)`,
         [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total]
       );
-      // Tru ton kho + kiem tra du hang trong CUNG 1 cau UPDATE (dieu kien stock_quantity >= ?),
-      // dua vao row lock cua InnoDB de tranh race condition: neu chi SELECT roi so sanh truoc,
-      // 2 request checkout dong thoi cho cung san pham co the cung "thay" con du hang va cung
-      // duoc tao don, dan den ban vuot ton kho thuc te (oversell).
+      // Trừ tồn kho + kiểm tra đủ hàng trong CÙNG 1 câu UPDATE (điều kiện stock_quantity >= ?),
+      // dựa vào row lock của InnoDB để tránh race condition: nếu chỉ SELECT rồi so sánh trước,
+      // 2 request checkout đồng thời cho cùng sản phẩm có thể cùng "thấy" còn đủ hàng và cùng
+      // được tạo đơn, dẫn đến bán vượt tồn kho thực tế (oversell).
       const [stockResult] = await connection.query(
         'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?',
         [item.quantity, item.product_id, item.quantity]
       );
       if (stockResult.affectedRows === 0) {
         throw Object.assign(
-          new Error(`San pham "${item.product_name}" khong du ton kho (vua het hang hoac co nguoi khac mua truoc).`),
+          new Error(`Sản phẩm "${item.product_name}" không đủ tồn kho (vừa hết hàng hoặc có người khác mua trước).`),
           { status: 422 }
         );
       }
     }
 
-    // Tao ban ghi thanh toan. BANK_TRANSFER luu huong dan chuyen khoan vao raw_payload
-    // (checkout-page.jsx doc payment.raw_payload de hien modal QR + so tai khoan).
+    // Tạo bản ghi thanh toán. BANK_TRANSFER lưu hướng dẫn chuyển khoản vào raw_payload
+    // (checkout-page.jsx đọc payment.raw_payload để hiện modal QR + số tài khoản).
     let rawPayload = null;
     if (payment_method === 'BANK_TRANSFER') {
       rawPayload = JSON.stringify({
@@ -163,42 +172,42 @@ export const checkout = asyncHandler(async (req, res) => {
       [orderId, payment_method, payment_method, total_amount, payment_gateway || null, rawPayload]
     );
 
-    // Ghi nhan voucher da dung (UC 2.2.9a) + tang used_count.
+    // Ghi nhận voucher đã dùng (UC 2.2.9a) + tăng used_count.
     if (appliedVoucher && discount_amount > 0) {
       await connection.query(
         'INSERT INTO order_vouchers (order_id, voucher_id, discount_amount) VALUES (?, ?, ?)',
         [orderId, appliedVoucher.id, discount_amount]
       );
-      // Tang used_count co dieu kien lai usage_limit (giong logic tru ton kho o tren):
-      // computeVoucherDiscount() da kiem tra usage_limit tu ban ghi doc truoc do, neu 2 don
-      // dung chung 1 ma cung luc thi ca 2 co the cung "thay" con luot — kiem tra lai ngay
-      // luc UPDATE moi chan duoc vuot usage_limit thuc te.
+      // Tăng used_count có điều kiện lại usage_limit (giống logic trừ tồn kho ở trên):
+      // computeVoucherDiscount() đã kiểm tra usage_limit từ bản ghi đọc trước đó, nếu 2 đơn
+      // dùng chung 1 mã cùng lúc thì cả 2 có thể cùng "thấy" còn lượt — kiểm tra lại ngay
+      // lúc UPDATE mới chặn được vượt usage_limit thực tế.
       const [voucherResult] = await connection.query(
         'UPDATE vouchers SET used_count = used_count + 1 WHERE id = ? AND (usage_limit IS NULL OR used_count < usage_limit)',
         [appliedVoucher.id]
       );
       if (voucherResult.affectedRows === 0) {
-        throw Object.assign(new Error('Ma giam gia vua het luot su dung, vui long thu lai.'), { status: 422 });
+        throw Object.assign(new Error('Mã giảm giá vừa hết lượt sử dụng, vui lòng thử lại.'), { status: 422 });
       }
     }
 
     await connection.query('DELETE FROM cart_items WHERE cart_id = ?', [cart.id]);
     await connection.query("UPDATE carts SET status = 'CHECKED_OUT' WHERE id = ?", [cart.id]);
     await connection.query(
-      "INSERT INTO order_status_history (order_id, to_status, note) VALUES (?, 'PENDING', 'Khach hang dat hang')",
+      "INSERT INTO order_status_history (order_id, to_status, note) VALUES (?, 'PENDING', 'Khách hàng đặt hàng')",
       [orderId]
     );
 
     await connection.commit();
 
-    // Thong bao "Da dat hang" (UC 2.2.5a).
+    // Thông báo "Đã đặt hàng" (UC 2.2.5a).
     await notifyUser(
-      req.user.id, 'ORDER_PLACED', 'Dat hang thanh cong',
-      `Don hang ${orderNo} da duoc tao va dang cho xu ly.`, `/account/orders/${orderId}`
+      req.user.id, 'ORDER_PLACED', 'Đặt hàng thành công',
+      `Đơn hàng ${orderNo} đã được tạo và đang chờ xử lý.`, `/account/orders/${orderId}`
     );
 
-    // Voucher VNPay/MoMo van hoat dong neu frontend gui payment_method tuong ung (bonus,
-    // frontend hien tai chi dung COD + BANK_TRANSFER).
+    // Voucher VNPay/MoMo vẫn hoạt động nếu frontend gửi payment_method tương ứng (bonus,
+    // frontend hiện tại chỉ dùng COD + BANK_TRANSFER).
     let paymentRedirectUrl = null;
     if (payment_method === 'VNPAY') {
       paymentRedirectUrl = buildVnpayUrl({ orderId, amount: total_amount, ipAddr: req.ip });
@@ -209,9 +218,13 @@ export const checkout = asyncHandler(async (req, res) => {
     const detail = await loadOrderDetail(orderId, req.user.id);
     res.status(201).json({ data: { ...detail, payment_redirect_url: paymentRedirectUrl } });
   } catch (err) {
+    // Bất kỳ lỗi nào ở trên (kể cả lỗi 422 tự ném do hết hàng/voucher) đều rollback rồi
+    // ném lại lỗi gốc cho asyncHandler -> errorHandler xử lý response, KHÔNG tự trả res ở đây.
     await connection.rollback();
     throw err;
   } finally {
+    // Luôn trả connection về lại pool dù thành công hay lỗi — quên dòng này sẽ làm rò rỉ
+    // connection, dần dần hết connectionLimit (xem config/db.js) và app treo cứng.
     connection.release();
   }
 });
@@ -235,29 +248,29 @@ export const index = asyncHandler(async (req, res) => {
 
 export const show = asyncHandler(async (req, res) => {
   const detail = await loadOrderDetail(req.params.order, req.user.id);
-  if (!detail) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!detail) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   res.json({ data: detail });
 });
 
 export const cancel = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   await query("UPDATE orders SET status = 'CANCELLED', cancelled_at = NOW() WHERE id = ?", [order.id]);
   await query(
     "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
-    [order.id, order.status, req.body.reason || 'Khach hang huy don', req.user.id]
+    [order.id, order.status, req.body.reason || 'Khách hàng hủy đơn', req.user.id]
   );
-  await notifyUser(req.user.id, 'ORDER_CANCELLED', 'Da huy don hang', `Don hang ${order.order_no} da duoc huy.`, `/account/orders/${order.id}`);
+  await notifyUser(req.user.id, 'ORDER_CANCELLED', 'Đã hủy đơn hàng', `Đơn hàng ${order.order_no} đã được hủy.`, `/account/orders/${order.id}`);
   const detail = await loadOrderDetail(order.id, req.user.id);
   res.json({ data: detail });
 });
 
 export const confirmBankTransferSubmitted = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   await query("UPDATE orders SET status = 'AWAITING_PAYMENT_CONFIRMATION' WHERE id = ?", [order.id]);
   await query(
-    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'AWAITING_PAYMENT_CONFIRMATION', 'Khach bao da chuyen khoan', ?)",
+    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'AWAITING_PAYMENT_CONFIRMATION', 'Khách báo đã chuyển khoản', ?)",
     [order.id, order.status, req.user.id]
   );
   const detail = await loadOrderDetail(order.id, req.user.id);
@@ -266,10 +279,10 @@ export const confirmBankTransferSubmitted = asyncHandler(async (req, res) => {
 
 export const confirmDelivery = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
-  if (!order) return res.status(404).json({ message: 'Khong tim thay don hang.' });
+  if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
   await query("UPDATE orders SET status = 'DELIVERED', delivered_at = NOW() WHERE id = ?", [order.id]);
   await query(
-    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'DELIVERED', 'Khach xac nhan da nhan hang', ?)",
+    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'DELIVERED', 'Khách xác nhận đã nhận hàng', ?)",
     [order.id, order.status, req.user.id]
   );
   const detail = await loadOrderDetail(order.id, req.user.id);

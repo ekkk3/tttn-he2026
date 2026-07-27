@@ -1,8 +1,8 @@
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 
-// ---------------- Community (moi NCC + kiem duyet bai viet) ----------------
-// Frontend doc { data: { suppliers, customers, invitations } } (admin-community-page.jsx).
+// ---------------- Community (mời NCC + kiểm duyệt bài viết) ----------------
+// Frontend đọc { data: { suppliers, customers, invitations } } (admin-community-page.jsx).
 export const listCommunity = asyncHandler(async (req, res) => {
   const suppliers = await query(
     `SELECT s.id, s.name, s.contact_name, s.email, s.phone, s.address, s.status, s.is_active, s.is_deleted,
@@ -16,7 +16,7 @@ export const listCommunity = asyncHandler(async (req, res) => {
      FROM users u WHERE u.role = 'CUSTOMER' AND u.is_deleted = 0 ORDER BY u.id DESC`
   );
   const invitationRows = await query('SELECT * FROM supplier_invitations ORDER BY id DESC');
-  // supplier_invitations khong co cot status/categories -> bo sung mac dinh cho frontend.
+  // supplier_invitations không có cột status/categories -> bổ sung mặc định cho frontend.
   const invitations = invitationRows.map((inv) => ({
     ...inv, status: inv.status ?? 'PENDING', categories: [],
   }));

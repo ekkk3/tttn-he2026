@@ -2,14 +2,14 @@ import 'dotenv/config';
 import { reindexAllProducts } from '../utils/productIndex.js';
 import { pool } from '../config/db.js';
 
-// Script CLI: `npm run reindex` — index lai toan bo bang products vao Elasticsearch.
-// Chay sau khi nap seed.sql hoac khi muon dong bo lai index thu cong.
+// Script CLI: `npm run reindex` — index lại toàn bộ bảng products vào Elasticsearch.
+// Chạy sau khi nạp seed.sql hoặc khi muốn đồng bộ lại index thủ công.
 (async () => {
   try {
     const n = await reindexAllProducts();
-    console.log(`[reindex] Da index ${n} san pham vao Elasticsearch.`);
+    console.log(`[reindex] Đã index ${n} sản phẩm vào Elasticsearch.`);
   } catch (err) {
-    console.error('[reindex] Loi:', err.message);
+    console.error('[reindex] Lỗi:', err.message);
     process.exitCode = 1;
   } finally {
     await pool.end();

@@ -17,7 +17,7 @@ export const listAdmins = asyncHandler(async (req, res) => {
 });
 export const storeAdmin = asyncHandler(async (req, res) => {
   const { full_name, email, phone, password, admin_role_id } = req.body;
-  if (!full_name || !email || !password) return res.status(422).json({ message: 'full_name, email, password la bat buoc.' });
+  if (!full_name || !email || !password) return res.status(422).json({ message: 'full_name, email, password là bắt buộc.' });
   const password_hash = await bcrypt.hash(password, 10);
   const result = await query(
     `INSERT INTO users (full_name, email, phone, password_hash, role, admin_role_id, created_by_admin_id)

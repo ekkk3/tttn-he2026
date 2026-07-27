@@ -1,17 +1,18 @@
 import { createClient } from 'redis';
 import 'dotenv/config';
 
-let client = null;
-let connecting = null;
+let client = null; // Singleton: instance Redis đã kết nối thành công, tái dùng cho mọi lần gọi sau.
+let connecting = null; // Promise của lần kết nối đang chạy dở — tránh mở nhiều kết nối cùng lúc
+// nếu nhiều request gọi getRedis() gần như đồng thời trước khi kết nối đầu tiên xong.
 
-// Cache-aside cho gio hang (carts). Neu REDIS_URL khong duoc cau hinh hoac ket noi
-// that bai, moi noi goi getRedis() se tra ve null va code goi se tu fallback ve MySQL.
+// Cache-aside cho giỏ hàng (carts). Nếu REDIS_URL không được cấu hình hoặc kết nối
+// thất bại, mọi nơi gọi getRedis() sẽ trả về null và code gọi sẽ tự fallback về MySQL.
 export async function getRedis() {
-  if (!process.env.REDIS_URL) return null;
-  if (client) return client;
+  if (!process.env.REDIS_URL) return null; // Chưa cấu hình Redis -> luôn null, gọi code fallback MySQL.
+  if (client) return client; // Đã có kết nối sẵn -> trả về luôn, không kết nối lại.
   if (!connecting) {
-    // reconnectStrategy:false + connectTimeout ngan: neu Redis khong chay, connect()
-    // that bai NGAY thay vi retry vo han (tranh treo request path khi may khong co Redis).
+    // reconnectStrategy:false + connectTimeout ngắn: nếu Redis không chạy, connect()
+    // thất bại NGAY thay vì retry vô hạn (tránh treo request path khi máy không có Redis).
     const c = createClient({
       url: process.env.REDIS_URL,
       socket: { reconnectStrategy: false, connectTimeout: 1000 },
@@ -24,10 +25,11 @@ export async function getRedis() {
         return client;
       })
       .catch((err) => {
-        console.error('[redis] connection failed, cart se dung MySQL truc tiep:', err.message);
+        console.error('[redis] connection failed, cart sẽ dùng MySQL trực tiếp:', err.message);
         client = null;
         return null;
       });
   }
+  // Trả về Promise (dù đang kết nối dở hay đã xong) để nơi gọi luôn `await getRedis()` được.
   return connecting;
 }

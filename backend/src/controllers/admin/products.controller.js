@@ -4,12 +4,14 @@ import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../../utils
 import { indexProduct } from '../../utils/productIndex.js';
 
 // ---------------- Products (admin CRUD) ----------------
-// Frontend (use-admin-catalog-store.js) doc { data } va can quan he long
-// (product.category, product.supplier) de hien ten trong bang.
+// Frontend (use-admin-catalog-store.js) đọc { data } và cần quan hệ lồng
+// (product.category, product.supplier) để hiện tên trong bảng.
 async function loadAdminProduct(id) {
   const [product] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [id]);
   return product ? serializeProduct(product) : null;
 }
+// Chuyển tên có dấu thành slug URL-safe (cùng cách làm với supplierController.js#slugify):
+// tách dấu thanh bằng normalize('NFD') rồi xóa, xử lý riêng "đ", cuối cùng gom ký tự lạ thành "-".
 function slugify(input) {
   return String(input).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -20,7 +22,7 @@ export const listProducts = asyncHandler(async (req, res) => {
 });
 export const showProduct = asyncHandler(async (req, res) => {
   const product = await loadAdminProduct(req.params.id);
-  if (!product) return res.status(404).json({ message: 'Khong tim thay san pham.' });
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
   res.json({ data: product });
 });
 export const storeProduct = asyncHandler(async (req, res) => {
@@ -29,7 +31,7 @@ export const storeProduct = asyncHandler(async (req, res) => {
     origin, image_url, sale_price, stock_quantity = 0, is_active = true,
   } = req.body;
   let { slug } = req.body;
-  if (!name || !category_id) return res.status(422).json({ message: 'Ten va danh muc la bat buoc.' });
+  if (!name || !category_id) return res.status(422).json({ message: 'Tên và danh mục là bắt buộc.' });
   slug = slug || `${slugify(name)}-${Date.now()}`;
   const finalSku = (sku && String(sku).trim()) || `SP${Date.now().toString().slice(-6)}`;
   const result = await query(
@@ -40,7 +42,7 @@ export const storeProduct = asyncHandler(async (req, res) => {
       description || null, short_description || null, origin || null, image_url || null,
       sale_price || 0, stock_quantity, is_active ? 1 : 0]
   );
-  await indexProduct(result.insertId); // Dong bo Elasticsearch de fuzzy search cap nhat ngay.
+  await indexProduct(result.insertId); // Đồng bộ Elasticsearch để fuzzy search cập nhật ngay.
   res.status(201).json({ data: await loadAdminProduct(result.insertId) });
 });
 export const updateProduct = asyncHandler(async (req, res) => {
@@ -66,8 +68,8 @@ export const updateProductStatus = asyncHandler(async (req, res) => {
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 export const destroyProduct = asyncHandler(async (req, res) => {
-  // "Xoa" = an san pham (is_active=0) de van hien trong danh sach admin voi trang thai Tam dung.
+  // "Xóa" = ẩn sản phẩm (is_active=0) để vẫn hiện trong danh sách admin với trạng thái Tạm dừng.
   await query('UPDATE products SET is_active = 0 WHERE id = ?', [req.params.id]);
-  await indexProduct(req.params.id); // is_active=false -> search se loc ra khoi ket qua.
+  await indexProduct(req.params.id); // is_active=false -> search sẽ lọc ra khỏi kết quả.
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
