@@ -4,11 +4,11 @@ import { deliveryStatusLabels, paymentStatusLabels } from "@/shared/lib/labels";
 import { useOperationsDataStore } from "@/shared/lib/store/use-operations-data-store";
 import { AdminDrawer, AdminPageHeader, Badge, Button, DataTable, SurfaceCard } from "@/shared/ui";
 function deliveryTone(order) {
-    if (order.deliveryStatus === "delivered")
+    if (order.deliveryStatus === "DELIVERED")
         return "success";
-    if (order.deliveryStatus === "ready_to_ship" || order.deliveryStatus === "in_transit")
+    if (order.deliveryStatus === "PACKED" || order.deliveryStatus === "SHIPPED")
         return "warning";
-    if (order.deliveryStatus === "disputed")
+    if (order.deliveryStatus === "CANCELLED" || order.deliveryStatus === "DELIVERY_FAILED")
         return "danger";
     return "primary";
 }
@@ -76,37 +76,37 @@ export function WarehouseSupplierOrdersPage() {
 
             <SurfaceCard className="overflow-hidden p-0">
                 <div className="border-b border-outline-variant/15 px-6 py-5">
-                    <h3 className="font-headline text-xl font-semibold">Kho don supplier</h3>
+                    <h3 className="font-headline text-xl font-semibold">Kho đơn supplier</h3>
                 </div>
                 <div className="p-6">
-                    <DataTable rows={orders} columns={columns} getRowKey={(order) => order.id} minWidth="920px" pagination={{ pageSize: 6, itemLabel: "don hang" }} rowClassName={(order) => order.id === activeOrder?.id ? "border-l-4 border-primary bg-primary/5" : undefined} onRowClick={openOrder}/>
+                    <DataTable rows={orders} columns={columns} getRowKey={(order) => order.id} minWidth="920px" pagination={{ pageSize: 6, itemLabel: "đơn hàng" }} rowClassName={(order) => order.id === activeOrder?.id ? "border-l-4 border-primary bg-primary/5" : undefined} onRowClick={openOrder}/>
                 </div>
             </SurfaceCard>
 
             <AdminDrawer open={detailOpen && Boolean(activeOrder)} mode="view" title={activeOrder ? `Order #${activeOrder.id}` : "Order detail"} subtitle={activeOrder ? `${activeOrder.supplierName} / ${deliveryStatusLabels[activeOrder.deliveryStatus]}` : undefined} onClose={() => setDetailOpen(false)} footer={<div className="flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>
-                            Dong
+                            Đóng
                         </Button>
                         <Button variant="secondary" onClick={() => setActiveOrderId(orders[0]?.id ?? "")}>
-                            Dua ve dau danh sach
+                            Đưa về đầu danh sách
                         </Button>
                     </div>}>
                 {activeOrder ? (<div className="space-y-5">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Nha cung cap</p>
+                                <p className="text-on-surface-variant">Nhà cung cấp</p>
                                 <p className="mt-2 font-semibold">{activeOrder.supplierName}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Khach hang</p>
+                                <p className="text-on-surface-variant">Khách hàng</p>
                                 <p className="mt-2 font-semibold">{activeOrder.customerName}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Trang thai</p>
+                                <p className="text-on-surface-variant">Trạng thái</p>
                                 <p className="mt-2 font-semibold">{deliveryStatusLabels[activeOrder.deliveryStatus]}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Dia chi</p>
+                                <p className="text-on-surface-variant">Địa chỉ</p>
                                 <p className="mt-2 font-semibold">{activeOrder.address}</p>
                             </div>
                         </div>

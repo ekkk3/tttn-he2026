@@ -4,11 +4,12 @@ import { useFeedbackStore } from "@/shared/lib/store/use-feedback-store";
 import { useOperationsDataStore } from "@/shared/lib/store/use-operations-data-store";
 import { AdminPageHeader, Button, StatCard, SurfaceCard } from "@/shared/ui";
 import { FulfillmentQueue } from "@/widgets/fulfillment-queue";
+// task.status thật chỉ nhận 1 trong 3 giá trị CONFIRMED/PACKED/SHIPPED (xem
+// buildFulfillmentTask ở operationController.js) — key ở đây phải khớp đúng 3 giá trị đó.
 const nextStatusLabel = {
-    picking: "Chuyển sang đóng gói",
-    packing: "Chuyển sang chờ lấy hàng",
-    awaiting_pickup: "Xác nhận đã bàn giao vận chuyển",
-    shipped: "Đã hoàn tất luồng kho",
+    CONFIRMED: "Chuyển sang đóng gói",
+    PACKED: "Xác nhận đã bàn giao vận chuyển",
+    SHIPPED: "Đã hoàn tất luồng kho",
 };
 export function WarehouseFulfillmentPage() {
     const tasks = useOperationsDataStore((state) => state.fulfillmentTasks);
@@ -28,7 +29,7 @@ export function WarehouseFulfillmentPage() {
         {
             id: "fulfillment-pending",
             label: "Đơn đang xử lý",
-            value: `${tasks.filter((task) => task.status !== "shipped").length}`,
+            value: `${tasks.filter((task) => task.status !== "SHIPPED").length}`,
             tone: "primary",
             icon: "local_shipping",
             delta: `${tasks.filter((task) => task.priority === "rush").length} đơn gấp`,
@@ -45,10 +46,10 @@ export function WarehouseFulfillmentPage() {
         {
             id: "fulfillment-batch",
             label: "Đơn đã bàn giao",
-            value: `${tasks.filter((task) => task.status === "shipped").length}`,
+            value: `${tasks.filter((task) => task.status === "SHIPPED").length}`,
             tone: "tertiary",
             icon: "deployed_code",
-            helperText: "đã chuyển sang trạng thái in_transit",
+            helperText: "đã bàn giao cho đơn vị vận chuyển",
         },
     ], [tasks]);
     return (<div className="space-y-8">
@@ -77,20 +78,20 @@ export function WarehouseFulfillmentPage() {
                             <p>Trạng thái: {fulfillmentStatusLabels[activeTask.status]}</p>
                             {relatedOrder ? <p>Địa chỉ nhận: {relatedOrder.address}</p> : null}
                         </div>
-                        <Button disabled={activeTask.status === "shipped"} onClick={() => {
+                        <Button disabled={activeTask.status === "SHIPPED"} onClick={() => {
                 void (async () => {
                     const result = await advanceFulfillmentTask(activeTask.id, "Cập nhật từ màn hình fulfillment.");
                     if (!result.success || !result.data) {
                         pushToast({
                             tone: "warning",
-                            message: result.error ?? "Khong the cap nhat fulfillment.",
+                            message: result.error ?? "Không thể cập nhật fulfillment.",
                         });
                         return;
                     }
                     const nextTask = result.data;
                     pushToast({
                         tone: "success",
-                        message: nextTask.status === "shipped"
+                        message: nextTask.status === "SHIPPED"
                             ? `Đơn ${nextTask.orderId} đã được bàn giao cho đơn vị vận chuyển.`
                             : `Đơn ${nextTask.orderId} đã chuyển sang ${fulfillmentStatusLabels[nextTask.status]}.`,
                     });
@@ -121,7 +122,7 @@ export function WarehouseFulfillmentPage() {
                                     Nhãn vận đơn
                                 </p>
                                 <p className="mt-2 font-headline text-2xl font-bold">
-                                    {tasks.filter((task) => task.status !== "picking").length}
+                                    {tasks.filter((task) => task.status !== "CONFIRMED").length}
                                 </p>
                             </div>
                             <div className="rounded-3xl bg-surface-container-low p-5">

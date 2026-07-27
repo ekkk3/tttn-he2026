@@ -2,20 +2,18 @@ import { formatCurrency, formatDate } from "@/shared/lib/format";
 import { deliveryStatusLabels, paymentStatusLabels } from "@/shared/lib/labels";
 import { Badge, Button, DataTable } from "@/shared/ui";
 function paymentTone(order) {
-    if (order.paymentStatus === "paid")
+    if (order.paymentStatus === "SUCCESS")
         return "primary";
-    if (order.paymentStatus === "cod")
-        return "secondary";
-    if (order.paymentStatus === "refunded")
+    if (order.paymentStatus === "FAILED" || order.paymentStatus === "REFUNDED")
         return "danger";
     return "neutral";
 }
 function deliveryTone(order) {
-    if (order.deliveryStatus === "delivered")
+    if (order.deliveryStatus === "DELIVERED")
         return "success";
-    if (order.deliveryStatus === "in_transit")
+    if (order.deliveryStatus === "SHIPPED")
         return "warning";
-    if (order.deliveryStatus === "disputed")
+    if (order.deliveryStatus === "CANCELLED" || order.deliveryStatus === "DELIVERY_FAILED")
         return "danger";
     return "primary";
 }

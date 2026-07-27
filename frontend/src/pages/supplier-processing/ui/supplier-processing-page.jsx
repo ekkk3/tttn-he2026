@@ -5,11 +5,11 @@ import { useFeedbackStore } from "@/shared/lib/store/use-feedback-store";
 import { useOperationsDataStore } from "@/shared/lib/store/use-operations-data-store";
 import { AdminDrawer, AdminPageHeader, Badge, Button, DataTable, SurfaceCard } from "@/shared/ui";
 function deliveryTone(order) {
-    if (order.deliveryStatus === "delivered")
+    if (order.deliveryStatus === "DELIVERED")
         return "success";
-    if (order.deliveryStatus === "ready_to_ship" || order.deliveryStatus === "in_transit")
+    if (order.deliveryStatus === "PACKED" || order.deliveryStatus === "SHIPPED")
         return "warning";
-    if (order.deliveryStatus === "disputed")
+    if (order.deliveryStatus === "CANCELLED" || order.deliveryStatus === "DELIVERY_FAILED")
         return "danger";
     return "primary";
 }
@@ -76,68 +76,68 @@ export function SupplierProcessingPage() {
                     event.stopPropagation();
                     openOrder(order);
                 }}>
-                    Xu ly
+                    Xử lý
                 </Button>),
         },
     ];
-    // Gui dung gia tri status ma backend hieu (PENDING/CONFIRMED/PACKED/SHIPPED/DELIVERED/...),
-    // truoc day gui "ready_to_ship"/"delivered" (khong khop enum) khien orders.status bi ghi
-    // sai gia tri ma khong bao loi (cot status la VARCHAR nen DB khong chan duoc).
+    // Gửi đúng giá trị status mà backend hiểu (PENDING/CONFIRMED/PACKED/SHIPPED/DELIVERED/...),
+    // trước đây gửi "ready_to_ship"/"delivered" (không khớp enum) khiến orders.status bị ghi
+    // sai giá trị mà không báo lỗi (cột status là VARCHAR nên DB không chặn được).
     async function handleReadyForWarehouse() {
         if (!activeOrder)
             return;
         const result = await updateOrderDeliveryStatus(activeOrder.id, "PACKED", "Supplier marked order ready");
         pushToast(result.success
-            ? { tone: "success", message: `Da chuyen don ${activeOrder.id} sang trang thai san sang giao.` }
-            : { tone: "danger", message: result.error || `Khong the cap nhat don ${activeOrder.id}.` });
+            ? { tone: "success", message: `Đã chuyển đơn ${activeOrder.id} sang trạng thái sẵn sàng giao.` }
+            : { tone: "danger", message: result.error || `Không thể cập nhật đơn ${activeOrder.id}.` });
     }
     async function handleDelivered() {
         if (!activeOrder)
             return;
         const result = await updateOrderDeliveryStatus(activeOrder.id, "SHIPPED", "Supplier confirmed shipment");
         pushToast(result.success
-            ? { tone: "success", message: `Da xac nhan gui hang don ${activeOrder.id}.` }
-            : { tone: "danger", message: result.error || `Khong the cap nhat don ${activeOrder.id}.` });
+            ? { tone: "success", message: `Đã xác nhận gửi hàng đơn ${activeOrder.id}.` }
+            : { tone: "danger", message: result.error || `Không thể cập nhật đơn ${activeOrder.id}.` });
     }
     return (<div className="space-y-8">
             <AdminPageHeader title="Xử lý đơn nhà cung cấp" description="Kiểm tra đơn cần chuẩn bị, chuyển sang sẵn sàng giao và xác nhận hoàn tất."/>
 
             <SurfaceCard className="overflow-hidden p-0">
                 <div className="border-b border-outline-variant/15 px-6 py-5">
-                    <h3 className="font-headline text-xl font-semibold">Supplier xu ly don</h3>
+                    <h3 className="font-headline text-xl font-semibold">Supplier xử lý đơn</h3>
                 </div>
                 <div className="p-6">
-                    <DataTable rows={orders} columns={columns} getRowKey={(order) => order.id} minWidth="860px" pagination={{ pageSize: 6, itemLabel: "don hang" }} rowClassName={(order) => order.id === activeOrder?.id ? "border-l-4 border-primary bg-primary/5" : undefined} onRowClick={openOrder}/>
+                    <DataTable rows={orders} columns={columns} getRowKey={(order) => order.id} minWidth="860px" pagination={{ pageSize: 6, itemLabel: "đơn hàng" }} rowClassName={(order) => order.id === activeOrder?.id ? "border-l-4 border-primary bg-primary/5" : undefined} onRowClick={openOrder}/>
                 </div>
             </SurfaceCard>
 
-            <AdminDrawer open={detailOpen && Boolean(activeOrder)} mode="view" title={activeOrder ? `Order #${activeOrder.id}` : "Xu ly don"} subtitle={activeOrder ? `${activeOrder.customerName} / ${deliveryStatusLabels[activeOrder.deliveryStatus]}` : undefined} onClose={() => setDetailOpen(false)} footer={<div className="flex flex-wrap justify-end gap-3">
+            <AdminDrawer open={detailOpen && Boolean(activeOrder)} mode="view" title={activeOrder ? `Order #${activeOrder.id}` : "Xử lý đơn"} subtitle={activeOrder ? `${activeOrder.customerName} / ${deliveryStatusLabels[activeOrder.deliveryStatus]}` : undefined} onClose={() => setDetailOpen(false)} footer={<div className="flex flex-wrap justify-end gap-3">
                         <Button variant="outline" onClick={() => setDetailOpen(false)}>
-                            Dong
+                            Đóng
                         </Button>
                         <Button disabled={!activeOrder} onClick={handleReadyForWarehouse}>
-                            Chuyen sang san sang giao
+                            Chuyển sang sẵn sàng giao
                         </Button>
                         <Button variant="secondary" disabled={!activeOrder} onClick={handleDelivered}>
-                            Xac nhan da gui hang
+                            Xác nhận đã gửi hàng
                         </Button>
                     </div>}>
                 {activeOrder ? (<div className="space-y-5">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Khach hang</p>
+                                <p className="text-on-surface-variant">Khách hàng</p>
                                 <p className="mt-2 font-semibold">{activeOrder.customerName}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Nha cung cap</p>
+                                <p className="text-on-surface-variant">Nhà cung cấp</p>
                                 <p className="mt-2 font-semibold">{activeOrder.supplierName}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Tong tien</p>
+                                <p className="text-on-surface-variant">Tổng tiền</p>
                                 <p className="mt-2 font-semibold">{formatCurrency(activeOrder.total)}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Trang thai hien tai</p>
+                                <p className="text-on-surface-variant">Trạng thái hiện tại</p>
                                 <p className="mt-2 font-semibold">{deliveryStatusLabels[activeOrder.deliveryStatus]}</p>
                             </div>
                         </div>

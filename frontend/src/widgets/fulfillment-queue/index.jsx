@@ -1,9 +1,9 @@
 import { fulfillmentStatusLabels, shippingTierLabels } from "@/shared/lib/labels";
 import { Badge, Icon, SurfaceCard, cn } from "@/shared/ui";
 function statusTone(status) {
-    if (status === "shipped")
+    if (status === "SHIPPED")
         return "success";
-    if (status === "awaiting_pickup")
+    if (status === "PACKED")
         return "warning";
     return "primary";
 }

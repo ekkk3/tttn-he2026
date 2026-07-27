@@ -32,6 +32,8 @@ export function WarehouseInventoryPage() {
     ].some((value) => value.toLowerCase().includes(query.toLowerCase())));
     const activeItem = filteredInventory.find((item) => item.sku === selectedWarehouseSku) ?? filteredInventory[0];
     const totalInventoryValue = inventory.reduce((sum, item) => sum + item.onHand * item.purchasePrice, 0);
+    // Đổi sang SKU khác (hoặc dữ liệu SKU đang xem vừa được cập nhật) -> thoát chế độ sửa +
+    // nạp lại giá nháp từ dữ liệu mới nhất, tránh giữ giá đang gõ dở của SKU trước đó.
     useEffect(() => {
         setIsEditingPrice(false);
         setPriceDraft(activeItem?.purchasePrice != null ? String(activeItem.purchasePrice) : "");
@@ -39,6 +41,8 @@ export function WarehouseInventoryPage() {
     async function handleSavePurchasePrice() {
         if (!activeItem)
             return;
+        // Bỏ trống ô nhập = XÓA giá nhập (gửi null); có nhập số thì mới gửi số đó — phân biệt
+        // "chưa biết giá nhập" (null) với "giá nhập bằng 0" (0), 2 ý nghĩa khác nhau.
         const trimmed = priceDraft.trim();
         const value = trimmed === "" ? null : Number(trimmed);
         if (value !== null && (Number.isNaN(value) || value < 0)) {
@@ -111,7 +115,7 @@ export function WarehouseInventoryPage() {
         {
             id: "warehouse-alerts",
             label: "Cảnh báo tồn kho",
-            value: `${inventory.filter((item) => item.status !== "healthy").length}`,
+            value: `${inventory.filter((item) => item.status !== "in-stock").length}`,
             tone: "danger",
             icon: "warning",
             delta: "Cần xử lý",
@@ -144,7 +148,7 @@ export function WarehouseInventoryPage() {
                         <h3 className="font-headline text-xl font-semibold">Danh mục tồn kho</h3>
                     </div>
                     <div className="p-6">
-                        <DataTable rows={filteredInventory} columns={columns} getRowKey={(item) => item.sku} pagination={{ pageSize: 8, itemLabel: "mat hang" }} rowClassName={(item) => item.sku === activeItem?.sku
+                        <DataTable rows={filteredInventory} columns={columns} getRowKey={(item) => item.sku} pagination={{ pageSize: 8, itemLabel: "mặt hàng" }} rowClassName={(item) => item.sku === activeItem?.sku
             ? "border-l-4 border-primary bg-primary/5"
             : undefined} onRowClick={(item) => {
             setSelectedWarehouseSku(item.sku);
@@ -156,25 +160,25 @@ export function WarehouseInventoryPage() {
 
             <AdminDrawer open={detailDrawerOpen && Boolean(activeItem)} mode="view" title={activeItem
             ? (activeItem.productName ?? activeItem.sku)
-            : "Chi tiet ton kho"} subtitle={activeItem?.sku} onClose={() => setDetailDrawerOpen(false)} footer={<div className="flex justify-end gap-3">
+            : "Chi tiết tồn kho"} subtitle={activeItem?.sku} onClose={() => setDetailDrawerOpen(false)} footer={<div className="flex justify-end gap-3">
                         <Button variant="outline" onClick={() => setDetailDrawerOpen(false)}>
-                            Dong
+                            Đóng
                         </Button>
-                        <Button onClick={() => setDrawerOpen(true)}>Tao phieu nhap hang</Button>
+                        <Button onClick={() => setDrawerOpen(true)}>Tạo phiếu nhập hàng</Button>
                     </div>}>
                 {activeItem ? (<div className="space-y-5">
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Vi tri ke</p>
+                                <p className="text-on-surface-variant">Vị trí kệ</p>
                                 <p className="mt-2 font-semibold">{activeItem.aisle}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Nguong nhap lai</p>
+                                <p className="text-on-surface-variant">Ngưỡng nhập lại</p>
                                 <p className="mt-2 font-semibold">{activeItem.reorderPoint}</p>
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
                                 <div className="flex items-center justify-between gap-2">
-                                    <p className="text-on-surface-variant">Gia nhap hien tai</p>
+                                    <p className="text-on-surface-variant">Giá nhập hiện tại</p>
                                     {!isEditingPrice ? (<button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => setIsEditingPrice(true)}>
                                             Sửa
                                         </button>) : null}
@@ -195,14 +199,14 @@ export function WarehouseInventoryPage() {
                                     </div>) : (<p className="mt-2 font-semibold">{formatCurrency(activeItem.purchasePrice)}</p>)}
                             </div>
                             <div className="rounded-2xl bg-surface-container-low p-4 text-sm">
-                                <p className="text-on-surface-variant">Nha cung cap</p>
+                                <p className="text-on-surface-variant">Nhà cung cấp</p>
                                 <p className="mt-2 font-semibold">
                                     {activeItem.supplierName ?? activeItem.supplierId}
                                 </p>
                             </div>
                         </div>
                         <div>
-                            <h3 className="font-headline text-lg font-semibold">Phieu lien quan</h3>
+                            <h3 className="font-headline text-lg font-semibold">Phiếu liên quan</h3>
                             <div className="mt-3 space-y-3">
                                 {requisitions
                 .filter((requisition) => requisition.inventorySku === activeItem.sku)
@@ -229,7 +233,7 @@ export function WarehouseInventoryPage() {
             if (!result.success || !result.data) {
                 pushToast({
                     tone: "warning",
-                    message: result.error ?? "Khong the tao phieu nhap hang.",
+                    message: result.error ?? "Không thể tạo phiếu nhập hàng.",
                 });
                 return;
             }

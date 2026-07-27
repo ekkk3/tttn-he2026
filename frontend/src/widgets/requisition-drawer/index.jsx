@@ -54,7 +54,7 @@ export function RequisitionDrawer({ open, inventoryItem, suppliers, onClose, onS
                                 <h4 className="text-xs font-label uppercase tracking-widest text-on-surface-variant">
                                     Sản phẩm đang chọn
                                 </h4>
-                                <Badge tone={inventoryItem.status === "critical" ? "danger" : "warning"}>
+                                <Badge tone={inventoryItem.status === "out-of-stock" ? "danger" : "warning"}>
                                     {inventoryHealthLabels[inventoryItem.status]}
                                 </Badge>
                             </div>

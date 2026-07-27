@@ -505,12 +505,18 @@ CREATE TABLE IF NOT EXISTS `complaints` (
   `content` TEXT NULL,
   `image_url` VARCHAR(500) NULL,
   `status` VARCHAR(30) NOT NULL DEFAULT 'OPEN',
+  -- Admin xu ly khieu nai (miscController.js#adminResolveComplaint) - truoc day bi thieu
+  -- 3 cot nay trong schema du code da UPDATE/SELECT thang vao, gay loi "Unknown column".
+  `resolution_note` VARCHAR(500) NULL,
+  `resolved_by_user_id` BIGINT UNSIGNED NULL,
+  `resolved_at` DATETIME NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_complaints_user` (`user_id`),
   CONSTRAINT `fk_complaints_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_complaints_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_complaints_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_complaints_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_complaints_resolver` FOREIGN KEY (`resolved_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `support_tickets` (
