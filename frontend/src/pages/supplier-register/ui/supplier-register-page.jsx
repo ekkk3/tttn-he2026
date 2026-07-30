@@ -28,8 +28,8 @@ export function SupplierRegisterPage() {
     const [successMessage, setSuccessMessage] = useState("");
 
     useEffect(() => {
-        void apiRequest("/regions").then((response) => setRegions(response.regions ?? [])).catch(() => {});
-        void apiRequest("/categories").then((response) => setCategories(response.categories ?? [])).catch(() => {});
+        void apiRequest("/regions").then((response) => setRegions(response.data ?? [])).catch(() => {});
+        void apiRequest("/categories").then((response) => setCategories(response.data ?? [])).catch(() => {});
     }, []);
 
     function updateField(key, value) {

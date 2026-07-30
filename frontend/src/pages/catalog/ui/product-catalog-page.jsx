@@ -95,14 +95,15 @@ export function ProductCatalogPage() {
         selectedSuppliers,
         sort,
     ]);
+    // `products` đã được lọc THEO SERVER rồi (loadCatalog() ở trên gửi kèm search/
+    // categoryIds/supplierIds/maxPrice/sort qua API — xem network request keyword=...).
+    // Không lọc lại theo search/category/supplier/price ở client nữa: trước đây có lọc lại
+    // bằng so khớp chuỗi đơn giản (không hỗ trợ mờ dấu như Elasticsearch/slug phía server),
+    // khiến kết quả tìm kiếm mờ đúng ("nuoc mam" khớp "Nước mắm Phú Quốc" qua slug/ES) bị ẩn
+    // mất khỏi danh sách dù badge đếm số lượng (lấy từ pagination.total của server) vẫn đúng.
+    // Chỉ giữ lại sắp xếp phía client để phản hồi tức thời khi đổi dropdown, không cần đợi
+    // round-trip API mới (dù đổi sort cũng kích hoạt gọi lại loadCatalog).
     const visibleProducts = [...products]
-        .filter((product) => product.name.toLowerCase().includes(search.toLowerCase()) ||
-        product.shortDescription.toLowerCase().includes(search.toLowerCase()))
-        .filter((product) => selectedCategories.length === 0
-        ? true
-        : selectedCategories.includes(product.categoryId))
-        .filter((product) => selectedSuppliers.length === 0 ? true : selectedSuppliers.includes(product.supplierId))
-        .filter((product) => product.price <= priceLimit)
         .filter((product) => (ratingMin > 0 ? product.rating >= ratingMin : true))
         .sort((first, second) => {
         if (sort === "price-asc")
