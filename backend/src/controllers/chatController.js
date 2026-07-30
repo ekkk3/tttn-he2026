@@ -2,10 +2,46 @@ import axios from 'axios';
 import 'dotenv/config';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { query } from '../config/db.js';
+import { verifyToken } from '../utils/jwt.js';
 
 // POST /api/chat — AI Chatbot tư vấn đặc sản (UC 2.2.6a).
 // Ưu tiên OpenAI/Gemini nếu có API key; nếu chưa cấu hình key -> fallback trả lời
 // dựa trên dữ liệu sản phẩm thật trong DB (tìm theo từ khóa) để vẫn dùng được ngay.
+
+// Route /chat CỐ TÌNH đặt TRƯỚC router.use(auth) trong api.routes.js (UC cho phép khách
+// vãng lai chưa đăng nhập vẫn chat được) — nên không thể dùng middleware auth() thông
+// thường (báo lỗi 401 nếu thiếu token). Hàm này tự thử giải mã token NẾU CÓ, im lặng bỏ
+// qua nếu không có/token hỏng, để phân biệt "khách vãng lai" (userId null, không lưu lịch
+// sử) với "đã đăng nhập" (userId thật, lưu lại hội thoại vào chatbot_messages).
+function optionalUserId(req) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return null;
+  try {
+    return verifyToken(token).sub;
+  } catch {
+    return null;
+  }
+}
+
+async function saveMessage(userId, role, content, source) {
+  if (!userId) return;
+  await query(
+    'INSERT INTO chatbot_messages (user_id, role, content, source) VALUES (?, ?, ?, ?)',
+    [userId, role, content, source || null]
+  );
+}
+
+// GET /api/chat/history — nạp lại hội thoại cũ khi khách (đã đăng nhập) mở lại widget chat.
+// Route này nằm SAU router.use(auth) nên req.user luôn có sẵn (bắt buộc đăng nhập) — khách
+// vãng lai không có lịch sử để nạp nên không cần endpoint public riêng cho trường hợp đó.
+export const chatHistory = asyncHandler(async (req, res) => {
+  const rows = await query(
+    'SELECT role, content, source, created_at FROM chatbot_messages WHERE user_id = ? ORDER BY id ASC LIMIT 50',
+    [req.user.id]
+  );
+  res.json({ data: rows });
+});
 
 // Fallback "giả AI": không gọi model ngôn ngữ nào cả, chỉ LIKE-search từ khóa trong tên/mô
 // tả/nguồn gốc sản phẩm rồi dựng câu trả lời từ dữ liệu thật — dùng khi chưa có API key
@@ -37,11 +73,14 @@ export const chat = asyncHandler(async (req, res) => {
   const { message } = req.body;
   if (!message) return res.status(422).json({ message: 'Thiếu trường message.' });
 
+  const userId = optionalUserId(req);
   const provider = process.env.AI_PROVIDER || 'gemini';
+  let reply;
+  let source;
 
-  // Cả 2 nhánh if bên dưới đều return ngay khi gọi API thành công. Nếu provider không khớp,
-  // hoặc thiếu API key, hoặc lệnh gọi ném lỗi (bắt ở catch) — code sẽ "rơi" xuống hết khối
-  // try/catch này mà không return, tới thẳng fallback localProductReply() ở cuối hàm.
+  // Cả 2 nhánh if bên dưới đều gán reply/source rồi break ra khỏi try khi gọi API thành
+  // công. Nếu provider không khớp, hoặc thiếu API key, hoặc lệnh gọi ném lỗi (bắt ở catch)
+  // — reply vẫn undefined, rơi xuống fallback localProductReply() bên dưới khối try/catch.
   try {
     if (provider === 'openai' && process.env.OPENAI_API_KEY) {
       const { data } = await axios.post(
@@ -55,10 +94,9 @@ export const chat = asyncHandler(async (req, res) => {
         },
         { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` } }
       );
-      return res.json({ reply: data.choices[0].message.content, source: 'openai' });
-    }
-
-    if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
+      reply = data.choices[0].message.content;
+      source = 'openai';
+    } else if (provider === 'gemini' && process.env.GEMINI_API_KEY) {
       // gemini-1.5-flash đã bị Google ngừng hỗ trợ (trả về 404) — dùng alias
       // "gemini-flash-latest" để luôn trỏ tới model flash hiện hành, tránh phải
       // sửa code lại mỗi khi Google deprecate một phiên bản model cụ thể.
@@ -66,14 +104,23 @@ export const chat = asyncHandler(async (req, res) => {
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
         { contents: [{ parts: [{ text: message }] }] }
       );
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi chưa có câu trả lời.';
-      return res.json({ reply, source: 'gemini' });
+      reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi chưa có câu trả lời.';
+      source = 'gemini';
     }
   } catch (err) {
     console.warn('[chat] Gọi AI provider thất bại, fallback về tìm sản phẩm nội bộ:', err.message);
   }
 
   // Fallback: chưa cấu hình API key (hoặc gọi thất bại) -> trả lời dựa trên dữ liệu sản phẩm.
-  const reply = await localProductReply(message);
-  res.json({ reply, source: 'local' });
+  if (reply === undefined) {
+    reply = await localProductReply(message);
+    source = 'local';
+  }
+
+  // Chỉ lưu lại khi đã đăng nhập (UC 2.2.6a "hội thoại được lưu lại") — khách vãng lai vẫn
+  // chat bình thường nhưng không có phiên ổn định để gắn lịch sử (xem optionalUserId ở trên).
+  await saveMessage(userId, 'user', message, null);
+  await saveMessage(userId, 'assistant', reply, source);
+
+  res.json({ reply, source });
 });

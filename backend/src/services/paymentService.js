@@ -56,3 +56,39 @@ export async function applyPaymentResult({ orderId, success, transactionCode, ga
   // dựa vào `ok`/`reason` để quyết định trả 200 hay lỗi cho cổng thanh toán.
   return { ok: true, order, success };
 }
+
+// ==================================================================
+// Hoàn tiền do Admin xử lý khiếu nại chấp nhận hoàn tiền (UC 2.2.18 Quản lý khiếu nại)
+// — khác với applyPaymentResult() ở trên (được cổng thanh toán gọi tự động qua callback),
+// hàm này do CON NGƯỜI (Admin) chủ động kích hoạt. Chỉ cập nhật trạng thái/lịch sử thanh
+// toán nội bộ — KHÔNG gọi API hoàn tiền thật của VNPay/MoMo (dự án không có sandbox thật,
+// xem [[tmdt-3-integrations-completed]]); đây là ghi nhận quyết định hoàn tiền để vận hành
+// đối soát thủ công, giống cách "Chờ xác nhận chuyển khoản" đã xử lý cho COD/bank transfer.
+// ==================================================================
+export async function markOrderRefunded({ orderId, note, actorUserId }) {
+  const [order] = await query('SELECT * FROM orders WHERE id = ?', [orderId]);
+  if (!order) return { ok: false, reason: 'ORDER_NOT_FOUND' };
+  const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [orderId]);
+  if (!payment) return { ok: false, reason: 'PAYMENT_NOT_FOUND' };
+  // Theo PAYMENT_TRANSITIONS (orderTransitions.js): chỉ SUCCESS mới được chuyển REFUNDED —
+  // tránh hoàn tiền cho đơn chưa từng thanh toán thành công (vd COD chưa thu tiền).
+  if (payment.payment_status !== 'SUCCESS') {
+    return { ok: false, reason: 'PAYMENT_NOT_REFUNDABLE', paymentStatus: payment.payment_status };
+  }
+  if (payment.payment_status === 'REFUNDED') {
+    return { ok: true, alreadyProcessed: true, order };
+  }
+  await query('UPDATE payments SET payment_status = ? WHERE id = ?', ['REFUNDED', payment.id]);
+  await query(
+    'INSERT INTO payment_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
+    [orderId, payment.payment_status, 'REFUNDED', note || 'Hoàn tiền theo kết quả xử lý khiếu nại', actorUserId]
+  );
+  await notifyUser(
+    order.user_id,
+    'PAYMENT_REFUNDED',
+    'Đơn hàng đã được hoàn tiền',
+    `Đơn hàng ${order.order_no} đã được hoàn tiền theo kết quả xử lý khiếu nại.`,
+    `/account/orders/${orderId}`
+  );
+  return { ok: true, order };
+}

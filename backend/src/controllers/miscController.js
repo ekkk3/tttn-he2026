@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { markOrderRefunded } from '../services/paymentService.js';
 
 // File này gom các nhóm route nhỏ (không cần riêng 1 file/controller) để dễ đối chiếu
 // với routes/api.php của Laravel: Notifications, Complaints, Support tickets, Newsletter, Posts.
@@ -87,8 +88,38 @@ export const adminListComplaints = asyncHandler(async (req, res) => {
   const rows = await query(`${COMPLAINT_SELECT} ORDER BY c.id DESC`);
   res.json({ data: rows.map(serializeComplaint) });
 });
+// action: 'REFUND' (hoàn tiền) | 'REPLACE' (đổi sản phẩm mới) | 'REJECT' (từ chối) —
+// đúng 3 phương án xử lý khiếu nại đã chấp nhận theo UC 2.2.18. Giữ tương thích ngược:
+// nếu FE cũ gọi thẳng `status` (không có `action`) thì vẫn dùng như trước.
+const COMPLAINT_ACTION_STATUS = { REFUND: 'REFUNDED', REPLACE: 'REPLACED', REJECT: 'REJECTED' };
+const COMPLAINT_OUTCOME_MESSAGE = {
+  REFUNDED: 'Khiếu nại của bạn đã được xử lý: đơn hàng đã được hoàn tiền.',
+  REPLACED: 'Khiếu nại của bạn đã được xử lý: sản phẩm sẽ được đổi mới cho bạn.',
+  REJECTED: 'Rất tiếc, khiếu nại của bạn không được chấp nhận.',
+};
 export const adminResolveComplaint = asyncHandler(async (req, res) => {
-  const { resolution_note, status = 'RESOLVED' } = req.body;
+  const { resolution_note, action } = req.body;
+  const [complaint] = await query('SELECT * FROM complaints WHERE id = ?', [req.params.complaint]);
+  if (!complaint) return res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
+
+  const status = COMPLAINT_ACTION_STATUS[action] || req.body.status || 'RESOLVED';
+
+  // Chỉ nhánh "Hoàn tiền" mới đụng tới payments/payment_status_history — "Đổi sản phẩm" và
+  // "Từ chối" chỉ là đổi trạng thái khiếu nại (không có luồng tạo đơn đổi hàng mới, ngoài
+  // phạm vi UC hiện tại — xem ghi chú resolution_note để nhân viên tự phối hợp thủ công).
+  if (status === 'REFUNDED') {
+    if (!complaint.order_id) {
+      return res.status(422).json({ message: 'Khiếu nại này không gắn với đơn hàng nào để hoàn tiền.' });
+    }
+    const refunded = await markOrderRefunded({ orderId: complaint.order_id, note: resolution_note, actorUserId: req.user.id });
+    if (!refunded.ok) {
+      const message = refunded.reason === 'PAYMENT_NOT_REFUNDABLE'
+        ? `Không thể hoàn tiền: đơn hàng đang ở trạng thái thanh toán "${refunded.paymentStatus}", chỉ hoàn được đơn đã thanh toán thành công.`
+        : 'Không thể hoàn tiền cho đơn hàng này (không tìm thấy giao dịch thanh toán).';
+      return res.status(422).json({ message });
+    }
+  }
+
   await query(
     'UPDATE complaints SET status = ?, resolution_note = ?, resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ?',
     [status, resolution_note || null, req.user.id, req.params.complaint]
@@ -97,7 +128,7 @@ export const adminResolveComplaint = asyncHandler(async (req, res) => {
   if (row) {
     await query(
       "INSERT INTO notifications (user_id, type, title, message, link_url) VALUES (?, 'COMPLAINT_RESOLVED', 'Khiếu nại đã được xử lý', ?, '/account/disputes')",
-      [row.user_id, resolution_note || 'Khiếu nại của bạn đã được xử lý.']
+      [row.user_id, resolution_note || COMPLAINT_OUTCOME_MESSAGE[status] || 'Khiếu nại của bạn đã được xử lý.']
     );
   }
   res.json({ data: row ? serializeComplaint(row) : null });

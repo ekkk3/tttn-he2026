@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "@/shared/api/backend-client";
+import { useAuthStore } from "@/shared/lib/store/use-auth-store";
 import { Icon } from "@/shared/ui";
 
 // Widget AI Chatbot tư vấn đặc sản (UC 2.2.6a). Gọi POST /api/chat -> { reply }.
@@ -16,6 +17,28 @@ export function AiChatbot() {
     const [input, setInput] = useState("");
     const [isSending, setIsSending] = useState(false);
     const listRef = useRef(null);
+    // Đã đăng nhập bằng tài khoản backend thật -> gửi kèm token để BE lưu lại hội thoại
+    // (chatbot_messages) và nạp lại lịch sử cũ; khách vãng lai (token null) vẫn chat được,
+    // chỉ là không có gì để lưu/nạp lại (xem chatController.js#optionalUserId).
+    const accessToken = useAuthStore((state) => (state.authSource === "backend" ? state.accessToken : null));
+    const hasLoadedHistoryRef = useRef(false);
+
+    // Nạp lại hội thoại cũ MỘT LẦN khi user đăng nhập mở widget lần đầu trong phiên này —
+    // không nạp lại mỗi lần đóng/mở để khỏi ghi đè tin nhắn khách vừa gõ trong lúc đang chat.
+    useEffect(() => {
+        if (!open || !accessToken || hasLoadedHistoryRef.current) return;
+        hasLoadedHistoryRef.current = true;
+        apiRequest("/chat/history", { token: accessToken })
+            .then((response) => {
+                const history = (response.data ?? []).map((item) => ({ role: item.role, content: item.content }));
+                if (history.length > 0) {
+                    setMessages([...history]);
+                }
+            })
+            .catch(() => {
+                // Lỗi khi nạp lịch sử (mất mạng...) -> giữ nguyên tin nhắn chào mặc định, không chặn chat.
+            });
+    }, [open, accessToken]);
 
     // requestAnimationFrame: đợi trình duyệt VẼ XONG tin nhắn vừa thêm vào DOM rồi mới cuộn
     // xuống cuối — gọi scrollTop ngay lập tức (trước khi React commit DOM) sẽ dùng chiều cao
@@ -41,6 +64,7 @@ export function AiChatbot() {
         try {
             const response = await apiRequest("/chat", {
                 method: "POST",
+                token: accessToken || undefined,
                 body: { message: text },
             });
             setMessages((current) => [...current, { role: "assistant", content: response.reply }]);

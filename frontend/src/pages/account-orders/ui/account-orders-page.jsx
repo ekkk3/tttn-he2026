@@ -6,7 +6,9 @@ import { formatCurrency, formatDate, formatDateTime } from "@/shared/lib/format"
 import { useAccountStore } from "@/shared/lib/store/use-account-store";
 import { useCartStore } from "@/shared/lib/store/use-cart-store";
 import { useCustomerOrdersStore } from "@/shared/lib/store/use-customer-orders-store";
+import { findProvinceCoords, WAREHOUSE_ORIGIN } from "@/shared/lib/vn-provinces-geo";
 import { Icon } from "@/shared/ui";
+import { ShipmentMap } from "@/widgets/shipment-map";
 const ORDER_TIMELINE = [
     { id: "PENDING", label: "Chờ xác nhận" },
     { id: "CONFIRMED", label: "Đã xác nhận" },
@@ -117,6 +119,13 @@ export function AccountOrdersPage() {
     }, [orders, searchQuery, statusFilter]);
     const activeOrderSummary = filteredOrders.find((order) => order.id === activeOrderId) ?? filteredOrders[0];
     const activeOrder = activeOrderSummary ? orderDetails[activeOrderSummary.id] : undefined;
+    // Vị trí xấp xỉ trên bản đồ tuyến vận chuyển (UC 2.2.3) — tra theo tên tỉnh/thành GHN đã
+    // lưu ở đơn hàng; trả về destinationCoords = null nếu chưa có địa chỉ hoặc không nhận
+    // diện được tên tỉnh (ShipmentMap tự hiện thông báo phù hợp cho trường hợp này).
+    const destinationLabel = [activeOrder?.shippingWardName, activeOrder?.shippingDistrictName, activeOrder?.shippingProvinceName]
+        .filter(Boolean)
+        .join(", ") || "Địa chỉ nhận hàng";
+    const destinationCoords = activeOrder?.shippingProvinceName ? findProvinceCoords(activeOrder.shippingProvinceName) : null;
     useEffect(() => {
         if (filteredOrders.length === 0) {
             setActiveOrderId("");
@@ -459,6 +468,14 @@ export function AccountOrdersPage() {
                                                     </p>) : null}
                                                 {activeOrder.shipment.expectedDeliveryTime ? (<p>Dự kiến giao: {formatDateTime(activeOrder.shipment.expectedDeliveryTime)}</p>) : null}
                                             </div>) : null}
+                                        <div className="mt-4 border-t border-outline-variant/15 pt-4">
+                                            <ShipmentMap
+                                                origin={WAREHOUSE_ORIGIN}
+                                                destination={destinationCoords}
+                                                destinationLabel={destinationLabel}
+                                                isDelivered={activeOrder.status === "DELIVERED"}
+                                            />
+                                        </div>
                                     </div>
 
                                     <div className="rounded-[1.5rem] bg-surface-container-low p-5">

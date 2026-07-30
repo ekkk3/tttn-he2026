@@ -7,9 +7,16 @@ import { useFeedbackStore } from "@/shared/lib/store/use-feedback-store";
 import { AdminPageHeader, Badge, Button, StatCard, SurfaceCard } from "@/shared/ui";
 
 const statusTone = (status) =>
-    status === "RESOLVED" ? "success" : status === "REJECTED" ? "danger" : "warning";
+    ["RESOLVED", "REFUNDED", "REPLACED"].includes(status) ? "success" : status === "REJECTED" ? "danger" : "warning";
 const statusLabel = (status) =>
-    ({ OPEN: "Đang chờ", IN_PROGRESS: "Đang xử lý", RESOLVED: "Đã xử lý", REJECTED: "Từ chối" }[status] ?? status);
+    ({
+        OPEN: "Đang chờ",
+        IN_PROGRESS: "Đang xử lý",
+        RESOLVED: "Đã xử lý",
+        REFUNDED: "Đã hoàn tiền",
+        REPLACED: "Đã đổi sản phẩm",
+        REJECTED: "Từ chối",
+    }[status] ?? status);
 
 export function AdminComplaintsPage() {
     const accessToken = useAuthStore((state) => state.accessToken);
@@ -42,14 +49,14 @@ export function AdminComplaintsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accessToken]);
 
-    async function resolve(complaint, status) {
+    async function resolve(complaint, action) {
         if (!accessToken) return;
         setProcessingId(complaint.id);
         try {
             await apiRequest(`/admin/complaints/${complaint.id}/resolve`, {
                 method: "PATCH",
                 token: accessToken,
-                body: { status, resolution_note: notes[complaint.id]?.trim() || undefined },
+                body: { action, resolution_note: notes[complaint.id]?.trim() || undefined },
             });
             pushToast({ tone: "success", message: `Đã cập nhật khiếu nại #${complaint.id}.` });
             await loadComplaints();
@@ -125,16 +132,25 @@ export function AdminComplaintsPage() {
                                     <div className="flex flex-wrap gap-2">
                                         <Button
                                             size="sm"
-                                            disabled={!canManage || processingId === complaint.id}
-                                            onClick={() => void resolve(complaint, "RESOLVED")}
+                                            disabled={!canManage || processingId === complaint.id || !complaint.order}
+                                            title={!complaint.order ? "Khiếu nại này không gắn với đơn hàng nào." : undefined}
+                                            onClick={() => void resolve(complaint, "REFUND")}
                                         >
-                                            Đánh dấu đã xử lý
+                                            Hoàn tiền
                                         </Button>
                                         <Button
                                             size="sm"
                                             variant="outline"
                                             disabled={!canManage || processingId === complaint.id}
-                                            onClick={() => void resolve(complaint, "REJECTED")}
+                                            onClick={() => void resolve(complaint, "REPLACE")}
+                                        >
+                                            Đổi sản phẩm
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={!canManage || processingId === complaint.id}
+                                            onClick={() => void resolve(complaint, "REJECT")}
                                         >
                                             Từ chối
                                         </Button>
