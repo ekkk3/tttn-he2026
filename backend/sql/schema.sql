@@ -639,4 +639,46 @@ CREATE TABLE IF NOT EXISTS `order_vouchers` (
   CONSTRAINT `fk_order_vouchers_voucher` FOREIGN KEY (`voucher_id`) REFERENCES `vouchers` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---------------------------------------------------------------------
+-- 13. LICH SU GIA NHAP SAN PHAM (UC 2.2.24 Quan ly gia nhap san pham) —
+--     nhieu dong theo (san pham x nha cung cap x ngay ap dung), khac voi cot
+--     scalar products.purchase_price (chi luu "gia hien hanh" de tinh gia tri
+--     ton kho). Ban ghi moi nhat theo effective_date se dong bo nguoc lai
+--     vao products.purchase_price (xem recomputeCurrentPurchasePrice()).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `purchase_prices` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `product_id` BIGINT UNSIGNED NOT NULL,
+  `supplier_id` BIGINT UNSIGNED NULL,
+  `price` DECIMAL(15,2) NOT NULL,
+  `effective_date` DATE NOT NULL,
+  `note` VARCHAR(255) NULL,
+  `created_by_user_id` BIGINT UNSIGNED NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_purchase_prices_product` (`product_id`, `effective_date`),
+  CONSTRAINT `fk_purchase_prices_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_purchase_prices_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_purchase_prices_creator` FOREIGN KEY (`created_by_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------------
+-- 14. LICH SU HOI THOAI AI CHATBOT (UC 2.2.6a Tu van qua AI Chatbot) — chi
+--     luu khi nguoi hoi DA DANG NHAP (user_id NOT NULL); khach vang lai van
+--     chat binh thuong nhung khong luu lai (khong co khai niem phien khach
+--     on dinh de gan lich su vao).
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `chatbot_messages` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT UNSIGNED NOT NULL,
+  `role` ENUM('user','assistant') NOT NULL,
+  `content` TEXT NOT NULL,
+  `source` VARCHAR(20) NULL COMMENT 'gemini/openai/local - chi co o tin nhan assistant',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_chatbot_messages_user` (`user_id`, `created_at`),
+  CONSTRAINT `fk_chatbot_messages_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { formatCurrency } from "@/shared/lib/format";
+import { useEffect, useMemo, useState } from "react";
+import { formatCurrency, formatDate } from "@/shared/lib/format";
 import { inventoryHealthLabels, requisitionStatusLabels } from "@/shared/lib/labels";
 import { useFeedbackStore } from "@/shared/lib/store/use-feedback-store";
 import { useOperationsDataStore } from "@/shared/lib/store/use-operations-data-store";
 import { useUiStore } from "@/shared/lib/store/use-ui-store";
-import { AdminDrawer, AdminPageHeader, AdminToolbar, Button, DataTable, StatCard, SurfaceCard } from "@/shared/ui";
+import { AdminDrawer, AdminPageHeader, AdminToolbar, Button, DataTable, Input, StatCard, SurfaceCard } from "@/shared/ui";
+import { PurchasePriceDrawer } from "@/widgets/purchase-price-drawer";
 import { RequisitionDrawer } from "@/widgets/requisition-drawer";
 export function WarehouseInventoryPage() {
     const [query, setQuery] = useState("");
@@ -15,13 +16,29 @@ export function WarehouseInventoryPage() {
     const setSelectedWarehouseSku = useUiStore((state) => state.setSelectedWarehouseSku);
     const inventory = useOperationsDataStore((state) => state.inventory);
     const requisitions = useOperationsDataStore((state) => state.requisitions);
+    const purchasePrices = useOperationsDataStore((state) => state.purchasePrices);
     const supplierRecords = useOperationsDataStore((state) => state.suppliers);
     const loadOperations = useOperationsDataStore((state) => state.loadOperations);
     const createRequisition = useOperationsDataStore((state) => state.createRequisition);
     const updatePurchasePrice = useOperationsDataStore((state) => state.updatePurchasePrice);
+    const createPurchasePriceRecord = useOperationsDataStore((state) => state.createPurchasePriceRecord);
+    const updatePurchasePriceRecord = useOperationsDataStore((state) => state.updatePurchasePriceRecord);
+    const deletePurchasePriceRecord = useOperationsDataStore((state) => state.deletePurchasePriceRecord);
     const pushToast = useFeedbackStore((state) => state.pushToast);
     const [isEditingPrice, setIsEditingPrice] = useState(false);
     const [priceDraft, setPriceDraft] = useState("");
+    const [priceHistoryQuery, setPriceHistoryQuery] = useState("");
+    const [priceDrawerOpen, setPriceDrawerOpen] = useState(false);
+    const [priceDrawerMode, setPriceDrawerMode] = useState("create");
+    const [editingPriceRecord, setEditingPriceRecord] = useState(null);
+    const productOptions = useMemo(() => [
+        ...new Map(inventory.map((item) => [item.productId, { id: item.productId, sku: item.sku, name: item.productName ?? item.sku }])).values(),
+    ], [inventory]);
+    const filteredPurchasePrices = useMemo(() => purchasePrices.filter((record) => [
+        record.sku ?? "",
+        record.productName ?? "",
+        record.supplierName ?? "",
+    ].some((value) => value.toLowerCase().includes(priceHistoryQuery.toLowerCase()))), [purchasePrices, priceHistoryQuery]);
     useEffect(() => {
         void loadOperations();
     }, [loadOperations]);
@@ -57,6 +74,70 @@ export function WarehouseInventoryPage() {
         setIsEditingPrice(false);
         pushToast({ tone: "success", message: `Đã cập nhật giá nhập cho ${activeItem.sku}.` });
     }
+    async function handleSubmitPriceRecord(draft) {
+        const result = priceDrawerMode === "edit" && editingPriceRecord
+            ? await updatePurchasePriceRecord(editingPriceRecord.id, draft)
+            : await createPurchasePriceRecord(draft);
+        if (result.success) {
+            pushToast({ tone: "success", message: priceDrawerMode === "edit" ? "Đã cập nhật giá nhập." : "Đã thêm giá nhập mới." });
+        }
+        return result;
+    }
+    async function handleDeletePriceRecord(record) {
+        const result = await deletePurchasePriceRecord(record.id);
+        if (!result.success) {
+            pushToast({ tone: "warning", message: result.error ?? "Không thể xóa giá nhập." });
+            return;
+        }
+        pushToast({ tone: "success", message: `Đã xóa giá nhập #${record.id}.` });
+    }
+    const purchasePriceColumns = [
+        {
+            key: "product",
+            title: "Sản phẩm",
+            render: (record) => (<div>
+                <span className="font-semibold">{record.sku}</span>
+                <p className="text-xs text-on-surface-variant">{record.productName}</p>
+            </div>),
+        },
+        {
+            key: "supplier",
+            title: "Nhà cung cấp",
+            render: (record) => record.supplierName ?? "—",
+        },
+        {
+            key: "price",
+            title: "Giá nhập",
+            render: (record) => formatCurrency(record.price),
+        },
+        {
+            key: "effectiveDate",
+            title: "Ngày áp dụng",
+            render: (record) => formatDate(record.effectiveDate),
+        },
+        {
+            key: "note",
+            title: "Ghi chú",
+            render: (record) => record.note ?? "—",
+        },
+        {
+            key: "action",
+            title: "Thao tác",
+            align: "right",
+            render: (record) => (<div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => {
+                    setEditingPriceRecord(record);
+                    setPriceDrawerMode("edit");
+                    setPriceDrawerOpen(true);
+                }}>
+                    Sửa
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => void handleDeletePriceRecord(record)}>
+                    Xóa
+                </Button>
+            </div>),
+        },
+    ];
     const columns = [
         {
             key: "sku",
@@ -157,6 +238,45 @@ export function WarehouseInventoryPage() {
                     </div>
                 </SurfaceCard>
             </section>
+
+            <section>
+                <SurfaceCard className="overflow-hidden p-0">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/15 px-6 py-5">
+                        <h3 className="font-headline text-xl font-semibold">Lịch sử giá nhập sản phẩm</h3>
+                        <Button size="sm" onClick={() => {
+                            setEditingPriceRecord(null);
+                            setPriceDrawerMode("create");
+                            setPriceDrawerOpen(true);
+                        }}>
+                            Thêm giá nhập
+                        </Button>
+                    </div>
+                    <div className="space-y-4 p-6">
+                        <Input
+                            placeholder="Tìm theo SKU, tên sản phẩm hoặc nhà cung cấp..."
+                            value={priceHistoryQuery}
+                            onChange={(event) => setPriceHistoryQuery(event.target.value)}
+                        />
+                        <DataTable
+                            rows={filteredPurchasePrices}
+                            columns={purchasePriceColumns}
+                            getRowKey={(record) => record.id}
+                            pagination={{ pageSize: 8, itemLabel: "bản ghi" }}
+                            emptyMessage="Chưa có lịch sử giá nhập nào."
+                        />
+                    </div>
+                </SurfaceCard>
+            </section>
+
+            <PurchasePriceDrawer
+                open={priceDrawerOpen}
+                mode={priceDrawerMode}
+                record={editingPriceRecord}
+                products={productOptions}
+                suppliers={supplierRecords}
+                onClose={() => setPriceDrawerOpen(false)}
+                onSubmit={handleSubmitPriceRecord}
+            />
 
             <AdminDrawer open={detailDrawerOpen && Boolean(activeItem)} mode="view" title={activeItem
             ? (activeItem.productName ?? activeItem.sku)

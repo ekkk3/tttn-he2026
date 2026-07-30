@@ -4,6 +4,7 @@ import { useAuthStore } from "@/shared/lib/store/use-auth-store";
 const initialState = {
     inventory: [],
     requisitions: [],
+    purchasePrices: [],
     supplierOrders: [],
     fulfillmentTasks: [],
     supportTickets: [],
@@ -124,6 +125,20 @@ function adaptFulfillmentTask(item) {
         })),
     };
 }
+function adaptPurchasePrice(item) {
+    return {
+        id: item.id,
+        productId: String(item.product_id),
+        productName: item.product_name,
+        sku: item.sku,
+        supplierId: item.supplier_id ? String(item.supplier_id) : "",
+        supplierName: item.supplier_name ?? undefined,
+        price: Number(item.price),
+        effectiveDate: item.effective_date,
+        note: item.note ?? undefined,
+        createdAt: item.created_at,
+    };
+}
 function adaptTicket(item) {
     return {
         id: String(item.id),
@@ -184,9 +199,10 @@ export const useOperationsDataStore = create()((set, get) => ({
         }
         set({ status: "loading", error: null });
         try {
-            const [inventoryResponse, requisitionsResponse, ordersResponse, tasksResponse, ticketsResponse] = await Promise.all([
+            const [inventoryResponse, requisitionsResponse, purchasePricesResponse, ordersResponse, tasksResponse, ticketsResponse] = await Promise.all([
                 apiRequest("/operations/inventory", { token: currentToken }),
                 apiRequest("/operations/requisitions", { token: currentToken }),
+                apiRequest("/operations/purchase-prices", { token: currentToken }),
                 apiRequest("/operations/supplier-orders", { token: currentToken }),
                 apiRequest("/operations/fulfillment-tasks", { token: currentToken }),
                 apiRequest("/support-tickets", { token: currentToken }),
@@ -194,6 +210,7 @@ export const useOperationsDataStore = create()((set, get) => ({
             set({
                 inventory: inventoryResponse.data.map(adaptInventoryItem),
                 requisitions: requisitionsResponse.data.map(adaptRequisition),
+                purchasePrices: purchasePricesResponse.data.map(adaptPurchasePrice),
                 supplierOrders: ordersResponse.data.map(adaptOperationOrder),
                 fulfillmentTasks: tasksResponse.data.map(adaptFulfillmentTask),
                 supportTickets: ticketsResponse.data.map(adaptTicket),
@@ -269,6 +286,75 @@ export const useOperationsDataStore = create()((set, get) => ({
                 inventory: state.inventory.map((row) => (row.productId === item.productId ? item : row)),
             }));
             return { success: true, data: item };
+        }
+        catch (error) {
+            return { success: false, error: handleError(error) };
+        }
+    },
+    createPurchasePriceRecord: async (input) => {
+        const currentToken = token();
+        if (!currentToken)
+            return { success: false, error: authError() };
+        try {
+            const response = await apiRequest("/operations/purchase-prices", {
+                method: "POST",
+                token: currentToken,
+                body: {
+                    product_id: Number(input.productId),
+                    supplier_id: input.supplierId ? Number(input.supplierId) : null,
+                    price: input.price,
+                    effective_date: input.effectiveDate,
+                    note: input.note || null,
+                },
+            });
+            const record = adaptPurchasePrice(response.data);
+            set((state) => ({ purchasePrices: [record, ...state.purchasePrices] }));
+            // Thêm/sửa/xóa 1 dòng lịch sử giá nhập có thể làm đổi products.purchase_price
+            // (cột scalar "giá hiện hành", đồng bộ lại phía backend — xem
+            // recomputeCurrentPurchasePrice() ở operationController.js) -> nạp lại inventory
+            // để cột "Giá nhập" trong bảng Danh mục tồn kho không hiện giá trị cũ.
+            await get().loadOperations(true);
+            return { success: true, data: record };
+        }
+        catch (error) {
+            return { success: false, error: handleError(error) };
+        }
+    },
+    updatePurchasePriceRecord: async (id, input) => {
+        const currentToken = token();
+        if (!currentToken)
+            return { success: false, error: authError() };
+        try {
+            const response = await apiRequest(`/operations/purchase-prices/${id}`, {
+                method: "PUT",
+                token: currentToken,
+                body: {
+                    supplier_id: input.supplierId ? Number(input.supplierId) : null,
+                    price: input.price,
+                    effective_date: input.effectiveDate,
+                    note: input.note ?? null,
+                },
+            });
+            const record = adaptPurchasePrice(response.data);
+            set((state) => ({
+                purchasePrices: state.purchasePrices.map((row) => (row.id === record.id ? record : row)),
+            }));
+            await get().loadOperations(true);
+            return { success: true, data: record };
+        }
+        catch (error) {
+            return { success: false, error: handleError(error) };
+        }
+    },
+    deletePurchasePriceRecord: async (id) => {
+        const currentToken = token();
+        if (!currentToken)
+            return { success: false, error: authError() };
+        try {
+            await apiRequest(`/operations/purchase-prices/${id}`, { method: "DELETE", token: currentToken });
+            set((state) => ({ purchasePrices: state.purchasePrices.filter((row) => row.id !== id) }));
+            await get().loadOperations(true);
+            return { success: true };
         }
         catch (error) {
             return { success: false, error: handleError(error) };

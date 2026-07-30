@@ -17,6 +17,8 @@ const statusLabels = {
     OPEN: "Đang chờ xử lý",
     IN_PROGRESS: "Đang xử lý",
     RESOLVED: "Đã xử lý",
+    REFUNDED: "Đã hoàn tiền",
+    REPLACED: "Đã đổi sản phẩm",
     REJECTED: "Từ chối",
 };
 

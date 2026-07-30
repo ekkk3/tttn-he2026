@@ -95,6 +95,10 @@ router.delete('/account/wishlist/items/:product', accountController.destroyWishl
 router.get('/notifications', misc.listNotifications);
 router.patch('/notifications/:notification/read', misc.markNotificationRead);
 
+// Lịch sử hội thoại AI Chatbot (UC 2.2.6a) — chỉ nạp được khi đã đăng nhập; route POST
+// /chat gửi tin nhắn nằm ở nhóm Public phía trên (cho phép khách vãng lai chat).
+router.get('/chat/history', chatController.chatHistory);
+
 router.get('/complaints', misc.listComplaints);
 router.post('/complaints', misc.storeComplaint);
 
@@ -131,6 +135,10 @@ router.patch('/support-tickets/:ticket/resolve', misc.resolveSupportTicket);
 const operations = Router();
 operations.get('/inventory', operationController.inventory);
 operations.patch('/inventory/:productId/purchase-price', operationController.updatePurchasePrice);
+operations.get('/purchase-prices', operationController.purchasePrices);
+operations.post('/purchase-prices', operationController.storePurchasePrice);
+operations.put('/purchase-prices/:id', operationController.updatePurchasePriceRecord);
+operations.delete('/purchase-prices/:id', operationController.destroyPurchasePrice);
 operations.get('/requisitions', operationController.requisitions);
 operations.post('/requisitions', operationController.storeRequisition);
 operations.patch('/requisitions/:id/status', operationController.updateRequisitionStatus);

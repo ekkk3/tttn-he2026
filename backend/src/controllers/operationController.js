@@ -106,6 +106,138 @@ export const updatePurchasePrice = asyncHandler(async (req, res) => {
   res.json({ data: serializeInventoryRow(row, reserved) });
 });
 
+// --- Lịch sử giá nhập sản phẩm (purchase_prices) — UC 2.2.24, nhiều dòng theo
+// (sản phẩm x nhà cung cấp x ngày áp dụng), khác với cột scalar products.purchase_price
+// ở trên (chỉ 1 giá "hiện hành" dùng để tính giá trị tồn kho). ---
+const PURCHASE_PRICE_SELECT = `
+  SELECT pp.*, p.name AS product_name, p.sku, s.name AS supplier_name
+  FROM purchase_prices pp
+  JOIN products p ON p.id = pp.product_id
+  LEFT JOIN suppliers s ON s.id = pp.supplier_id
+`;
+function serializePurchasePrice(r) {
+  return {
+    id: r.id,
+    product_id: r.product_id,
+    product_name: r.product_name,
+    sku: r.sku,
+    supplier_id: r.supplier_id,
+    supplier_name: r.supplier_name,
+    price: Number(r.price),
+    effective_date: r.effective_date,
+    note: r.note,
+    created_at: r.created_at,
+  };
+}
+// Sau khi thêm/sửa/xóa 1 bản ghi lịch sử giá — đồng bộ lại products.purchase_price
+// theo bản ghi có effective_date MỚI NHẤT (ties: id lớn nhất) của sản phẩm đó, hoặc
+// NULL nếu sản phẩm không còn bản ghi lịch sử nào. Giữ cột scalar luôn phản ánh đúng
+// "giá nhập hiện hành" để không phải sửa lại phần tính "Giá trị tồn kho" ở nơi khác.
+async function recomputeCurrentPurchasePrice(productId) {
+  const [latest] = await query(
+    'SELECT price FROM purchase_prices WHERE product_id = ? ORDER BY effective_date DESC, id DESC LIMIT 1',
+    [productId]
+  );
+  await query('UPDATE products SET purchase_price = ? WHERE id = ?', [latest ? latest.price : null, productId]);
+}
+export const purchasePrices = asyncHandler(async (req, res) => {
+  const scopeId = await supplierScopeId(req);
+  const { product, supplier_id, min_price, max_price, date_from, date_to } = req.query;
+  const conditions = [];
+  const params = [];
+  // SUPPLIER chỉ được XEM lịch sử giá của sản phẩm CỦA MÌNH (đọc thôi, không sửa —
+  // chặn ghi ở 3 hàm store/update/destroy bên dưới), giống quy tắc ở updatePurchasePrice().
+  if (scopeId !== null) {
+    conditions.push('p.supplier_id = ?');
+    params.push(scopeId);
+  }
+  if (product) {
+    conditions.push('(p.name LIKE ? OR p.sku LIKE ?)');
+    params.push(`%${product}%`, `%${product}%`);
+  }
+  if (supplier_id) {
+    conditions.push('pp.supplier_id = ?');
+    params.push(supplier_id);
+  }
+  if (min_price) {
+    conditions.push('pp.price >= ?');
+    params.push(Number(min_price));
+  }
+  if (max_price) {
+    conditions.push('pp.price <= ?');
+    params.push(Number(max_price));
+  }
+  if (date_from) {
+    conditions.push('pp.effective_date >= ?');
+    params.push(date_from);
+  }
+  if (date_to) {
+    conditions.push('pp.effective_date <= ?');
+    params.push(date_to);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = await query(
+    `${PURCHASE_PRICE_SELECT} ${where} ORDER BY pp.effective_date DESC, pp.id DESC`,
+    params
+  );
+  res.json({ data: rows.map(serializePurchasePrice) });
+});
+export const storePurchasePrice = asyncHandler(async (req, res) => {
+  if (req.user.role === 'SUPPLIER') {
+    return res.status(403).json({ message: 'Bạn không có quyền thêm giá nhập sản phẩm.' });
+  }
+  const { product_id, supplier_id, price, effective_date, note } = req.body;
+  if (!product_id || price === undefined || price === null || !effective_date) {
+    return res.status(422).json({ message: 'product_id, price và effective_date là bắt buộc.' });
+  }
+  if (Number.isNaN(Number(price)) || Number(price) < 0) {
+    return res.status(422).json({ message: 'Giá nhập không hợp lệ.' });
+  }
+  const [product] = await query('SELECT id, supplier_id FROM products WHERE id = ? AND is_deleted = 0', [product_id]);
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
+  const [existing] = await query(
+    'SELECT id FROM purchase_prices WHERE product_id = ? AND effective_date = ? AND supplier_id <=> ?',
+    [product_id, effective_date, supplier_id || product.supplier_id || null]
+  );
+  if (existing) return res.status(409).json({ message: 'Giá nhập sản phẩm đã tồn tại cho nhà cung cấp và ngày áp dụng này.' });
+  const result = await query(
+    'INSERT INTO purchase_prices (product_id, supplier_id, price, effective_date, note, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)',
+    [product_id, supplier_id || product.supplier_id || null, Number(price), effective_date, note || null, req.user.id]
+  );
+  await recomputeCurrentPurchasePrice(product_id);
+  const [row] = await query(`${PURCHASE_PRICE_SELECT} WHERE pp.id = ?`, [result.insertId]);
+  res.status(201).json({ data: serializePurchasePrice(row) });
+});
+export const updatePurchasePriceRecord = asyncHandler(async (req, res) => {
+  if (req.user.role === 'SUPPLIER') {
+    return res.status(403).json({ message: 'Bạn không có quyền sửa giá nhập sản phẩm.' });
+  }
+  const [current] = await query('SELECT * FROM purchase_prices WHERE id = ?', [req.params.id]);
+  if (!current) return res.status(404).json({ message: 'Không tìm thấy giá nhập.' });
+  const { supplier_id, price, effective_date, note } = req.body;
+  if (price !== undefined && price !== null && (Number.isNaN(Number(price)) || Number(price) < 0)) {
+    return res.status(422).json({ message: 'Giá nhập không hợp lệ.' });
+  }
+  await query(
+    `UPDATE purchase_prices SET supplier_id = COALESCE(?, supplier_id), price = COALESCE(?, price),
+       effective_date = COALESCE(?, effective_date), note = COALESCE(?, note) WHERE id = ?`,
+    [supplier_id ?? null, price !== undefined && price !== null ? Number(price) : null, effective_date || null, note ?? null, req.params.id]
+  );
+  await recomputeCurrentPurchasePrice(current.product_id);
+  const [row] = await query(`${PURCHASE_PRICE_SELECT} WHERE pp.id = ?`, [req.params.id]);
+  res.json({ data: serializePurchasePrice(row) });
+});
+export const destroyPurchasePrice = asyncHandler(async (req, res) => {
+  if (req.user.role === 'SUPPLIER') {
+    return res.status(403).json({ message: 'Bạn không có quyền xóa giá nhập sản phẩm.' });
+  }
+  const [current] = await query('SELECT * FROM purchase_prices WHERE id = ?', [req.params.id]);
+  if (!current) return res.status(404).json({ message: 'Không tìm thấy giá nhập.' });
+  await query('DELETE FROM purchase_prices WHERE id = ?', [req.params.id]);
+  await recomputeCurrentPurchasePrice(current.product_id);
+  res.json({ data: { id: current.id } });
+});
+
 // --- Yêu cầu nhập hàng / phiếu nhập (delivery_requests) ---
 function serializeRequisition(r) {
   return {
