@@ -27,7 +27,20 @@ export function serializeProduct(row) {
   // Row từ PRODUCT_SELECT là 1 hàng "phẳng" (JOIN ra thêm category_name/supplier_name/...).
   // Tách riêng các cột JOIN đó ra khỏi object, để dựng lại bên dưới thành quan hệ lồng nhau
   // { category: { id, name }, supplier: {...} } đúng hình dạng frontend cần.
-  const { category_name, supplier_name, region_name, avg_rating, review_count, ...product } = row;
+  //
+  // `SELECT p.*` kéo về CẢ các cột nội bộ của kho, mà /api/products lại là endpoint CÔNG KHAI
+  // (không cần đăng nhập) — trước đây khách vãng lai đọc được luôn:
+  //   - purchase_price : giá nhập, tức là để lộ biên lợi nhuận (nhập 80k, bán 120k)
+  //   - reorder_level  : ngưỡng tái nhập kho
+  //   - aisle          : vị trí kệ hàng trong kho
+  // Bỏ hẳn 3 cột này ở đây (không làm tùy chọn) vì không màn hình nào đọc chúng qua
+  // serializeProduct: trang tồn kho của Kho/Admin lấy số liệu từ /api/operations/inventory,
+  // vốn có SELECT và serializer riêng (operationController.js#serializeInventoryRow).
+  const {
+    category_name, supplier_name, region_name, avg_rating, review_count,
+    purchase_price, reorder_level, aisle,
+    ...product
+  } = row;
   return {
     ...product,
     rating: avg_rating != null ? Number(avg_rating) : null,
