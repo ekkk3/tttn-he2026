@@ -120,7 +120,20 @@ export const storeAddress = asyncHandler(async (req, res) => {
 });
 
 // Cùng kiểu "build UPDATE động" như updateProfile() ở trên, áp dụng cho bảng user_addresses.
+// Mọi câu lệnh trên user_addresses đều kèm `AND user_id = ?` nên dữ liệu của người khác
+// KHÔNG bao giờ bị đụng tới. Nhưng trước đây khi id không thuộc về mình thì câu lệnh chỉ
+// đơn giản là không khớp dòng nào và API vẫn trả 200 "thành công" — người dùng (và cả
+// lập trình viên khi tích hợp) tưởng là đã sửa/xóa được. Hàm này xác nhận địa chỉ có thật
+// và thuộc về người đang đăng nhập, để các thao tác dưới trả 404 cho đúng.
+async function findOwnAddress(addressId, userId) {
+  const [row] = await query('SELECT id FROM user_addresses WHERE id = ? AND user_id = ?', [addressId, userId]);
+  return row || null;
+}
+
 export const updateAddress = asyncHandler(async (req, res) => {
+  if (!(await findOwnAddress(req.params.address, req.user.id))) {
+    return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
+  }
   const fields = ['label', 'recipient', 'phone', 'line1', 'city', 'note'];
   const updates = [];
   const params = [];
@@ -135,11 +148,17 @@ export const updateAddress = asyncHandler(async (req, res) => {
 });
 
 export const destroyAddress = asyncHandler(async (req, res) => {
+  if (!(await findOwnAddress(req.params.address, req.user.id))) {
+    return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
+  }
   await query('DELETE FROM user_addresses WHERE id = ? AND user_id = ?', [req.params.address, req.user.id]);
   res.json({ data: await loadProfilePayload(req.user.id) });
 });
 
 export const setDefaultAddress = asyncHandler(async (req, res) => {
+  if (!(await findOwnAddress(req.params.address, req.user.id))) {
+    return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
+  }
   await query('UPDATE user_addresses SET is_default = (id = ?) WHERE user_id = ?', [req.params.address, req.user.id]);
   res.json({ data: await loadProfilePayload(req.user.id) });
 });
@@ -148,12 +167,32 @@ export const setDefaultAddress = asyncHandler(async (req, res) => {
 export const redeemReward = asyncHandler(async (req, res) => {
   const { title, points_cost, points_used } = req.body;
   const cost = Number(points_cost ?? points_used ?? 0);
+  // Số điểm đổi phải là số nguyên DƯƠNG — phải kiểm tra TRƯỚC khi so với số dư.
+  // Nếu không: với cost = -500000 thì điều kiện "không đủ điểm" bên dưới (0 < -500000) là
+  // FALSE nên lọt qua, rồi `reward_points - (-500000)` lại CỘNG thêm 500.000 điểm cho khách.
+  // Kiểm chứng lúc phát hiện: tài khoản 100 điểm tự nâng lên 600.100 điểm chỉ bằng 2 lần gọi.
+  if (!Number.isInteger(cost) || cost <= 0) {
+    return res.status(422).json({ message: 'Số điểm đổi thưởng phải là số nguyên lớn hơn 0.' });
+  }
+  if (!title || !String(title).trim()) {
+    return res.status(422).json({ message: 'Vui lòng chọn ưu đãi muốn đổi.' });
+  }
   const [user] = await query('SELECT reward_points FROM users WHERE id = ?', [req.user.id]);
   // Chặn đổi vượt quá số điểm đang có (kiểm tra ở server, không chỉ tin phía frontend).
   if (!user || user.reward_points < cost) {
     return res.status(422).json({ message: 'Không đủ điểm thưởng.' });
   }
-  await query('UPDATE users SET reward_points = reward_points - ? WHERE id = ?', [cost, req.user.id]);
+  // Trừ điểm kèm điều kiện `reward_points >= ?` ngay trong câu UPDATE (cùng cách chống
+  // race condition với lúc trừ tồn kho ở orderController#checkout): 2 request đổi thưởng
+  // đồng thời có thể cùng "thấy" đủ điểm ở bước SELECT bên trên, chỉ kiểm tra lại lúc ghi
+  // mới chặn được việc tiêu quá số điểm đang có.
+  const result = await query(
+    'UPDATE users SET reward_points = reward_points - ? WHERE id = ? AND reward_points >= ?',
+    [cost, req.user.id, cost]
+  );
+  if (result.affectedRows === 0) {
+    return res.status(422).json({ message: 'Không đủ điểm thưởng.' });
+  }
   await query(
     "INSERT INTO reward_redemptions (user_id, title, points_used, status) VALUES (?, ?, ?, 'COMPLETED')",
     [req.user.id, title, cost]
@@ -180,6 +219,11 @@ export const wishlist = asyncHandler(async (req, res) => {
 
 export const storeWishlistItem = asyncHandler(async (req, res) => {
   const { product_id } = req.body;
+  // INSERT IGNORE bỏ qua lỗi trùng (thích lại sản phẩm đã thích) — đó là chủ đích. Nhưng nó
+  // cũng nuốt luôn lỗi khóa ngoại, nên trước đây thích một sản phẩm không tồn tại vẫn trả
+  // 201 "đã thêm" dù chẳng ghi được gì. Kiểm tra sản phẩm trước để báo đúng sự thật.
+  const [product] = await query('SELECT id FROM products WHERE id = ? AND is_deleted = 0', [product_id]);
+  if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
   await query('INSERT IGNORE INTO wishlist_items (user_id, product_id) VALUES (?, ?)', [req.user.id, product_id]);
   res.status(201).json({ data: await loadWishlistPayload(req.user.id) });
 });

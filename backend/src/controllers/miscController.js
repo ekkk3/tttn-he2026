@@ -1,6 +1,7 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { markOrderRefunded } from '../services/paymentService.js';
+import { validateEmail } from '../utils/validators.js';
 
 // File này gom các nhóm route nhỏ (không cần riêng 1 file/controller) để dễ đối chiếu
 // với routes/api.php của Laravel: Notifications, Complaints, Support tickets, Newsletter, Posts.
@@ -119,10 +120,21 @@ const COMPLAINT_OUTCOME_MESSAGE = {
   REPLACED: 'Khiếu nại của bạn đã được xử lý: sản phẩm sẽ được đổi mới cho bạn.',
   REJECTED: 'Rất tiếc, khiếu nại của bạn không được chấp nhận.',
 };
+// Các trạng thái KẾT THÚC của khiếu nại: đã chốt phương án xử lý, không được đổi nữa.
+const COMPLAINT_FINAL_STATUSES = ['REFUNDED', 'REPLACED', 'REJECTED', 'RESOLVED'];
+
 export const adminResolveComplaint = asyncHandler(async (req, res) => {
   const { resolution_note, action } = req.body;
   const [complaint] = await query('SELECT * FROM complaints WHERE id = ?', [req.params.complaint]);
   if (!complaint) return res.status(404).json({ message: 'Không tìm thấy khiếu nại.' });
+
+  // UC 2.2.18 luồng phụ A4: "Khiếu nại đã được xử lý trước đó". Trước đây thiếu kiểm tra này
+  // nên một khiếu nại đã hoàn tiền (REFUNDED) vẫn bị lật sang REJECTED, và khách nhận 2 thông
+  // báo mâu thuẫn nhau. Đặt guard TRƯỚC nhánh hoàn tiền bên dưới để không kịp đụng vào
+  // payments. (Cùng cách bảo vệ mà supplierController#approve/reject đã làm từ trước.)
+  if (COMPLAINT_FINAL_STATUSES.includes(complaint.status)) {
+    return res.status(422).json({ message: 'Khiếu nại này đã được xử lý trước đó.' });
+  }
 
   const status = COMPLAINT_ACTION_STATUS[action] || req.body.status || 'RESOLVED';
 
@@ -142,10 +154,16 @@ export const adminResolveComplaint = asyncHandler(async (req, res) => {
     }
   }
 
-  await query(
-    'UPDATE complaints SET status = ?, resolution_note = ?, resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ?',
-    [status, resolution_note || null, req.user.id, req.params.complaint]
+  // Kèm điều kiện `status = ?` (trạng thái vừa đọc được) để 2 admin bấm xử lý gần như cùng
+  // lúc thì chỉ 1 người ghi được — người còn lại thấy affectedRows = 0 và nhận thông báo
+  // "đã được xử lý trước đó" thay vì ghi đè kết quả của người kia.
+  const updated = await query(
+    'UPDATE complaints SET status = ?, resolution_note = ?, resolved_by_user_id = ?, resolved_at = NOW() WHERE id = ? AND status = ?',
+    [status, resolution_note || null, req.user.id, req.params.complaint, complaint.status]
   );
+  if (updated.affectedRows === 0) {
+    return res.status(422).json({ message: 'Khiếu nại này đã được xử lý trước đó.' });
+  }
   const [row] = await query(`${COMPLAINT_SELECT} WHERE c.id = ?`, [req.params.complaint]);
   if (row) {
     await query(
@@ -197,7 +215,11 @@ export const resolveSupportTicket = asyncHandler(async (req, res) => {
 // --- Newsletter ---
 export const subscribeNewsletter = asyncHandler(async (req, res) => {
   const { email, source = 'storefront' } = req.body;
-  await query('INSERT IGNORE INTO newsletter_subscriptions (email, source) VALUES (?, ?)', [email, source]);
+  // Trước đây nhận mọi chuỗi, kể cả "khong-phai-email" — danh sách gửi tin sẽ đầy địa chỉ rác.
+  const invalid = validateEmail(email);
+  if (invalid) return res.status(422).json({ message: invalid });
+  // INSERT IGNORE để đăng ký lại cùng email không báo lỗi (đã có trong danh sách rồi).
+  await query('INSERT IGNORE INTO newsletter_subscriptions (email, source) VALUES (?, ?)', [String(email).trim(), source]);
   res.status(201).json({ message: 'Đã đăng ký nhận tin.' });
 });
 

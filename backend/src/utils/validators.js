@@ -27,6 +27,15 @@ export function validateProductPricing(body, { requireSalePrice = false } = {}) 
   return null;
 }
 
+// Định dạng email dùng chung. Cùng biểu thức với authController để 1 email hợp lệ ở màn
+// đăng ký thì cũng hợp lệ ở mọi form khác, không có chỗ chặt chỗ lỏng.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateEmail(value, label = 'Email') {
+  if (!value || !EMAIL_REGEX.test(String(value).trim())) return `${label} không hợp lệ.`;
+  return null;
+}
+
 // UC "Yêu cầu nhập hàng" bước 7: "Số lượng nhập phải lớn hơn 0".
 // Số lượng ÂM khiến phiếu NHẬP hàng lại TRỪ tồn kho khi được đánh dấu đã nhận
 // (operationController#updateRequisitionStatus cộng thẳng approved_qty vào stock_quantity).
