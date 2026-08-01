@@ -76,12 +76,17 @@ export const myRevenue = asyncHandler(async (req, res) => {
     'SELECT COUNT(*) AS product_count FROM products WHERE supplier_id = ? AND is_deleted = 0', [supplierId]
   );
 
+  // Cùng lỗi và cùng cách sửa với bảng "sản phẩm bán chạy" ở Dashboard Admin
+  // (admin/dashboard.controller.js) — xem ghi chú chi tiết bên đó: điều kiện lọc trạng thái
+  // đặt trong ON của LEFT JOIN thì không lọc gì, phải lọc ngay trong hàm tổng hợp để vẫn
+  // giữ được các sản phẩm chưa bán được dòng nào trong danh sách.
   const topProducts = await query(
-    `SELECT p.id, p.name, p.sku, COALESCE(SUM(oi.quantity),0) AS sold_quantity,
-            COALESCE(SUM(oi.line_total),0) AS revenue
+    `SELECT p.id, p.name, p.sku,
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.quantity   ELSE 0 END),0) AS sold_quantity,
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.line_total ELSE 0 END),0) AS revenue
      FROM products p
      LEFT JOIN order_items oi ON oi.product_id = p.id
-     LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+     LEFT JOIN orders o ON o.id = oi.order_id
      WHERE p.supplier_id = ? AND p.is_deleted = 0
      GROUP BY p.id ORDER BY revenue DESC LIMIT 10`,
     [supplierId]

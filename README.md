@@ -138,12 +138,19 @@ npm run lint        # kiểm tra lint
 ## 8. Chức năng chính
 
 - **Khách hàng**: đăng ký/đăng nhập (+ quên mật khẩu), tìm/xem sản phẩm, giỏ hàng, đặt hàng,
-  thanh toán, voucher, wishlist, đánh giá sản phẩm, theo dõi đơn, thông báo, khiếu nại, AI chatbot.
+  thanh toán, voucher, wishlist, đánh giá sản phẩm *(chỉ đánh giá được sản phẩm đã mua và đã
+  nhận, mỗi sản phẩm 1 lần)*, theo dõi đơn, thông báo, khiếu nại *(chỉ với đơn đã giao thành
+  công)*, AI chatbot.
 - **Admin**: dashboard doanh thu, quản lý người dùng/sản phẩm/danh mục/NCC/đơn hàng, xử lý
   khiếu nại, kiểm duyệt đánh giá, quản lý voucher, duyệt đăng ký NCC.
-- **Nhân viên kho**: tồn kho, phiếu nhập, xử lý đơn, quản lý giá nhập.
-- **Nhà cung cấp**: đăng ký, quản lý sản phẩm của mình, xem đơn/tồn kho, xác nhận phiếu nhập,
-  báo cáo doanh thu.
+- **Nhân viên kho**: tồn kho, phiếu yêu cầu nhập hàng, xử lý đơn, quản lý giá nhập.
+- **Nhà cung cấp**: đăng ký, quản lý sản phẩm của mình, xem đơn hàng có sản phẩm của mình,
+  xem tồn kho, duyệt/xác nhận phiếu yêu cầu nhập hàng, báo cáo doanh thu.
+
+> **Lưu ý về "phiếu nhập"**: hệ thống dùng bảng `delivery_requests` — Nhân viên kho tạo yêu
+> cầu nhập hàng, Nhà cung cấp duyệt và xác nhận hoàn tất, khi đó tồn kho được cộng tự động.
+> Bảng `supply_orders` trong `schema.sql` là thiết kế cũ, hiện **chưa được sử dụng** ở bất kỳ
+> đâu trong mã nguồn.
 
 ---
 

@@ -116,12 +116,25 @@ export const dashboard = asyncHandler(async (req, res) => {
     [lowStockThreshold]
   );
 
+  // "Sản phẩm bán chạy": chỉ tính đơn ĐÃ GIAO, cùng bộ lọc trạng thái với metrics.revenue.
+  // (Lưu ý: tổng cột revenue ở bảng này KHÔNG bằng đúng metrics.revenue, vì metrics.revenue
+  // cộng orders.total_amount — đã gồm phí vận chuyển và trừ giảm giá — còn ở đây cộng
+  // order_items.line_total tức chỉ tiền hàng. Phí ship không quy được về từng sản phẩm nên
+  // chênh lệch này là đúng bản chất, không phải lỗi.)
+  // Trước đây điều kiện lọc nằm trong mệnh đề ON của LEFT JOIN:
+  //     LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+  // LEFT JOIN không loại dòng nào cả — dòng order_items thuộc đơn PENDING/CANCELLED vẫn còn
+  // (chỉ là cột o.* thành NULL) và vẫn được SUM, nên bảng này cộng cả hàng chưa giao. Kết quả:
+  // cùng 1 màn hình báo tổng doanh thu 640.000đ nhưng liệt kê 1 sản phẩm 2.520.000đ.
+  // Không chuyển điều kiện xuống WHERE được, vì làm vậy sẽ loại luôn sản phẩm CHƯA bán được
+  // dòng nào (mất ý nghĩa của LEFT JOIN). Cách đúng là lọc ngay trong hàm tổng hợp:
   const featured = await query(
     `SELECT p.id, p.sku, p.name, p.stock_quantity,
-            COALESCE(SUM(oi.quantity),0) AS sold_quantity, COALESCE(SUM(oi.line_total),0) AS revenue
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.quantity   ELSE 0 END),0) AS sold_quantity,
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.line_total ELSE 0 END),0) AS revenue
      FROM products p
      LEFT JOIN order_items oi ON oi.product_id = p.id
-     LEFT JOIN orders o ON o.id = oi.order_id AND o.status = 'DELIVERED'
+     LEFT JOIN orders o ON o.id = oi.order_id
      WHERE p.is_deleted = 0
      GROUP BY p.id ORDER BY sold_quantity DESC, p.id DESC LIMIT 5`
   );
