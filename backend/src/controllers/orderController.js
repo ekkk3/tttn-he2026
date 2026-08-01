@@ -5,6 +5,7 @@ import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
 import { computeVoucherDiscount } from './voucherController.js';
 import { notifyUser } from '../services/notificationService.js';
+import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 
 function generateOrderNo() {
   return `DH${Date.now()}`;
@@ -252,14 +253,59 @@ export const show = asyncHandler(async (req, res) => {
   res.json({ data: detail });
 });
 
+// Các endpoint dưới đây để KHÁCH HÀNG tự đổi trạng thái đơn của mình. Trước đây chúng ghi
+// thẳng trạng thái mới mà không xét trạng thái hiện tại, nên khách có thể làm những việc
+// mà chính Admin bị state machine chặn (vd đơn đã hủy vẫn bấm "đã nhận hàng" thành DELIVERED,
+// hay bấm hủy nhiều lần sinh trùng lịch sử + trùng thông báo). Nay cả 2 phía dùng CHUNG
+// bảng ORDER_TRANSITIONS trong services/orderTransitions.js.
+function assertTransition(order, next) {
+  const allowed = ORDER_TRANSITIONS[order.status] || [];
+  if (!allowed.includes(next)) {
+    throw Object.assign(
+      new Error(`Không thể chuyển đơn từ trạng thái ${order.status} sang ${next}.`),
+      { status: 422 }
+    );
+  }
+}
+
 export const cancel = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
   if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
-  await query("UPDATE orders SET status = 'CANCELLED', cancelled_at = NOW() WHERE id = ?", [order.id]);
-  await query(
-    "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
-    [order.id, order.status, req.body.reason || 'Khách hàng hủy đơn', req.user.id]
-  );
+  assertTransition(order, 'CANCELLED');
+
+  // Hủy đơn phải HOÀN LẠI tồn kho đã bị trừ lúc checkout (UC 2.2.22 bước 9: hệ thống tự động
+  // cập nhật tồn kho khi hoàn trả hàng hóa). Thiếu bước này thì mỗi lần khách hủy đơn, số
+  // hàng trong đơn biến mất khỏi kho vĩnh viễn.
+  // Bọc transaction để đổi trạng thái + cộng kho luôn đi cùng nhau; đồng thời UPDATE có kèm
+  // điều kiện `status = ?` (trạng thái vừa đọc được) nên 2 request hủy đồng thời chỉ 1 cái
+  // đi tiếp — cái còn lại thấy affectedRows = 0 và bị từ chối, tránh cộng kho 2 lần.
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.query(
+      "UPDATE orders SET status = 'CANCELLED', cancelled_at = NOW() WHERE id = ? AND status = ?",
+      [order.id, order.status]
+    );
+    if (result.affectedRows === 0) {
+      throw Object.assign(new Error('Đơn hàng vừa được cập nhật bởi thao tác khác, vui lòng tải lại.'), { status: 409 });
+    }
+    const [items] = await connection.query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
+    for (const item of items) {
+      if (!item.product_id) continue; // Sản phẩm đã bị xóa hẳn -> không còn dòng kho để cộng lại.
+      await connection.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.product_id]);
+    }
+    await connection.query(
+      "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
+      [order.id, order.status, req.body.reason || 'Khách hàng hủy đơn', req.user.id]
+    );
+    await connection.commit();
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+
   await notifyUser(req.user.id, 'ORDER_CANCELLED', 'Đã hủy đơn hàng', `Đơn hàng ${order.order_no} đã được hủy.`, `/account/orders/${order.id}`);
   const detail = await loadOrderDetail(order.id, req.user.id);
   res.json({ data: detail });
@@ -268,7 +314,17 @@ export const cancel = asyncHandler(async (req, res) => {
 export const confirmBankTransferSubmitted = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
   if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
-  await query("UPDATE orders SET status = 'AWAITING_PAYMENT_CONFIRMATION' WHERE id = ?", [order.id]);
+  // Không dùng ORDER_TRANSITIONS ở đây: AWAITING_PAYMENT_CONFIRMATION là bước riêng của luồng
+  // chuyển khoản (khách tự báo "đã chuyển tiền"), không phải một bước trong luồng xử lý đơn
+  // mà Admin/Kho điều khiển. Chỉ cho báo đúng 1 lần, khi đơn còn đang chờ và đúng là đơn
+  // chuyển khoản — tránh khách bấm nhầm ở đơn COD hoặc bấm lại khi đơn đã được xác nhận.
+  if (order.payment_method !== 'BANK_TRANSFER') {
+    return res.status(422).json({ message: 'Đơn hàng này không thanh toán bằng chuyển khoản.' });
+  }
+  if (order.status !== 'PENDING') {
+    return res.status(422).json({ message: 'Đơn hàng không còn ở trạng thái chờ chuyển khoản.' });
+  }
+  await query("UPDATE orders SET status = 'AWAITING_PAYMENT_CONFIRMATION' WHERE id = ? AND status = 'PENDING'", [order.id]);
   await query(
     "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'AWAITING_PAYMENT_CONFIRMATION', 'Khách báo đã chuyển khoản', ?)",
     [order.id, order.status, req.user.id]
@@ -280,7 +336,11 @@ export const confirmBankTransferSubmitted = asyncHandler(async (req, res) => {
 export const confirmDelivery = asyncHandler(async (req, res) => {
   const [order] = await query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [req.params.order, req.user.id]);
   if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
-  await query("UPDATE orders SET status = 'DELIVERED', delivered_at = NOW() WHERE id = ?", [order.id]);
+  // Chỉ đơn ĐANG GIAO (SHIPPED) mới xác nhận đã nhận được — theo đúng ORDER_TRANSITIONS.
+  // Trước đây thiếu kiểm tra này nên khách bấm được trên cả đơn vừa đặt lẫn đơn đã hủy,
+  // khiến đơn chưa từng giao vẫn được tính vào doanh thu trên Dashboard.
+  assertTransition(order, 'DELIVERED');
+  await query("UPDATE orders SET status = 'DELIVERED', delivered_at = NOW() WHERE id = ? AND status = ?", [order.id, order.status]);
   await query(
     "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'DELIVERED', 'Khách xác nhận đã nhận hàng', ?)",
     [order.id, order.status, req.user.id]

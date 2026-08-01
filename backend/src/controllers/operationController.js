@@ -1,6 +1,7 @@
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
+import { validatePositiveQuantity } from '../utils/validators.js';
 
 // Dành cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yêu cầu nhập hàng, 2.2.21 Quản lý kho,
 // 2.2.22 Cập nhật trạng thái đơn, 2.2.23 Xử lý đơn, 2.2.24 Quản lý giá nhập).
@@ -272,6 +273,10 @@ export const requisitions = asyncHandler(async (req, res) => {
 export const storeRequisition = asyncHandler(async (req, res) => {
   const { product_id, requested_qty, reason, eta_days } = req.body;
   if (!product_id || !requested_qty) return res.status(422).json({ message: 'product_id và requested_qty là bắt buộc.' });
+  // UC "Yêu cầu nhập hàng" bước 7: số lượng nhập phải > 0. Trước đây chỉ có kiểm tra falsy ở
+  // trên nên số ÂM lọt qua, và tới bước "đã nhập kho" thì phiếu NHẬP hàng lại TRỪ tồn kho.
+  const invalidQty = validatePositiveQuantity(requested_qty, 'Số lượng cần nhập');
+  if (invalidQty) return res.status(422).json({ message: invalidQty });
   // Frontend dùng status lowercase (submitted/approved/received/cancelled) - xem labels.js.
   const result = await query(
     "INSERT INTO delivery_requests (requested_by_user_id, product_id, requested_qty, reason, eta_days, status) VALUES (?, ?, ?, ?, ?, 'submitted')",
@@ -284,23 +289,36 @@ export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   const { status, approved_qty } = req.body;
   const [current] = await query('SELECT * FROM delivery_requests WHERE id = ?', [req.params.id]);
   if (!current) return res.status(404).json({ message: 'Không tìm thấy phiếu nhập.' });
+  // Số lượng duyệt cũng phải > 0 vì nó là số thực cộng vào tồn kho ở bước "received" bên dưới.
+  if (approved_qty !== undefined && approved_qty !== null) {
+    const invalidQty = validatePositiveQuantity(approved_qty, 'Số lượng duyệt nhập');
+    if (invalidQty) return res.status(422).json({ message: invalidQty });
+  }
   // Bảo vệ: NCC chỉ được thao tác phiếu nhập cho sản phẩm CỦA MÌNH (UC 2.2.13).
   const scopeId = await supplierScopeId(req);
   if (scopeId !== null) {
     const [owned] = await query('SELECT id FROM products WHERE id = ? AND supplier_id = ?', [current.product_id, scopeId]);
     if (!owned) return res.status(403).json({ message: 'Bạn chỉ có thể thao tác phiếu nhập của mình.' });
   }
+  // Khi phiếu nhập "received" (đã nhập kho) -> cộng tồn kho sản phẩm (UC 2.2.21).
+  // Số lượng thực nhập ưu tiên theo thứ tự: giá trị vừa duyệt trong request này -> giá trị
+  // đã duyệt từ trước (nếu bước "approved" làm trước "received") -> số lượng yêu cầu ban đầu
+  // (nếu chưa ai duyệt số khác thì coi như nhập đúng số đã xin).
+  const isReceiving = String(status).toLowerCase() === 'received';
+  const receivedQty = approved_qty ?? current.approved_qty ?? current.requested_qty;
+  // Kiểm tra TRƯỚC khi ghi status: phiếu cũ trong DB (tạo trước khi có validate ở trên) vẫn
+  // có thể mang số âm — nếu để đổi status xong mới phát hiện thì phiếu đã bị đánh dấu "đã
+  // nhập kho" trong khi tồn kho chưa hề được cộng.
+  if (isReceiving) {
+    const invalidQty = validatePositiveQuantity(receivedQty, 'Số lượng thực nhập');
+    if (invalidQty) return res.status(422).json({ message: invalidQty });
+  }
   await query(
     'UPDATE delivery_requests SET status = ?, approved_qty = COALESCE(?, approved_qty), approved_by_user_id = ? WHERE id = ?',
     [status, approved_qty ?? null, req.user.id, req.params.id]
   );
-  // Khi phiếu nhập "received" (đã nhập kho) -> cộng tồn kho sản phẩm (UC 2.2.21).
-  if (String(status).toLowerCase() === 'received') {
-    // Số lượng thực nhập ưu tiên theo thứ tự: giá trị vừa duyệt trong request này -> giá trị
-    // đã duyệt từ trước (nếu bước "approved" làm trước "received") -> số lượng yêu cầu ban đầu
-    // (nếu chưa ai duyệt số khác thì coi như nhập đúng số đã xin).
-    const qty = approved_qty ?? current.approved_qty ?? current.requested_qty;
-    await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [qty, current.product_id]);
+  if (isReceiving) {
+    await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [receivedQty, current.product_id]);
   }
   const [row] = await query(`${REQUISITION_SELECT} WHERE dr.id = ?`, [req.params.id]);
   res.json({ data: serializeRequisition(row) });
