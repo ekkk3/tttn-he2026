@@ -124,11 +124,17 @@ export const updateItem = asyncHandler(async (req, res) => {
 
 export const destroyItem = asyncHandler(async (req, res) => {
   // Bảo vệ IDOR: chỉ xóa nếu item thuộc giỏ hàng của chính user này.
-  await query(
+  // Điều kiện `c.user_id = ?` đã đủ để dữ liệu người khác an toàn; kiểm tra affectedRows chỉ
+  // để trả 404 cho đúng thay vì báo "xóa thành công" trong khi chẳng xóa được gì
+  // (updateItem ở trên vốn đã trả 404 — làm cho 2 endpoint nhất quán với nhau).
+  const result = await query(
     `DELETE ci FROM cart_items ci JOIN carts c ON c.id = ci.cart_id
      WHERE ci.id = ? AND c.user_id = ?`,
     [req.params.cartItem, req.user.id]
   );
+  if (result.affectedRows === 0) {
+    return res.status(404).json({ message: 'Không tìm thấy sản phẩm trong giỏ hàng.' });
+  }
   await invalidateCartCache(req.user.id);
   await respondCart(req.user.id, res);
 });
