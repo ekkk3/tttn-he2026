@@ -67,6 +67,28 @@ export const listComplaints = asyncHandler(async (req, res) => {
 export const storeComplaint = asyncHandler(async (req, res) => {
   const { order_id, product_id, reason, content, image_url } = req.body;
   if (!reason || !content) return res.status(422).json({ message: 'Lý do và nội dung là bắt buộc.' });
+
+  // UC 2.2.11 điều kiện tiên quyết 2 & 3: khiếu nại phải gắn với đơn CỦA CHÍNH khách hàng
+  // và đơn đó đã giao thành công.
+  // Trước đây `order_id` được lấy thẳng từ body và ghi vào DB không kiểm tra gì, nên:
+  //   - khách A gửi được khiếu nại lên đơn của khách B (IDOR), và response còn trả về luôn
+  //     mã đơn + tổng tiền của nạn nhân qua COMPLAINT_SELECT bên dưới;
+  //   - khiếu nại được nhận cả trên đơn vừa đặt xong, chưa hề giao (trái luồng phụ A4).
+  if (order_id) {
+    const [order] = await query('SELECT id, status FROM orders WHERE id = ? AND user_id = ?', [order_id, req.user.id]);
+    // Trả 404 (không phải 403) khi đơn không thuộc về mình: không xác nhận cho người gọi
+    // biết mã đơn đó có tồn tại trong hệ thống hay không.
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+    if (order.status !== 'DELIVERED') {
+      return res.status(422).json({ message: 'Đơn hàng không đủ điều kiện để gửi khiếu nại (chỉ khiếu nại đơn đã giao thành công).' });
+    }
+    // Sản phẩm bị khiếu nại (nếu có chọn) phải nằm trong chính đơn hàng đó.
+    if (product_id) {
+      const [line] = await query('SELECT id FROM order_items WHERE order_id = ? AND product_id = ?', [order_id, product_id]);
+      if (!line) return res.status(422).json({ message: 'Sản phẩm không có trong đơn hàng này.' });
+    }
+  }
+
   const result = await query(
     "INSERT INTO complaints (order_id, user_id, product_id, reason, content, image_url, status) VALUES (?, ?, ?, ?, ?, ?, 'OPEN')",
     [order_id || null, req.user.id, product_id || null, reason, content, image_url || null]

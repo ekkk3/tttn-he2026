@@ -72,14 +72,26 @@ export function SupplierProductsPage() {
             pushToast({ tone: "warning", message: "Cần nhập tên và chọn danh mục." });
             return;
         }
+        // Cùng quy tắc với backend (utils/validators.js#validateProductPricing): báo lỗi ngay
+        // tại form thay vì đợi 422 quay về, nhưng backend vẫn là chốt chặn cuối.
+        const salePrice = Number(form.salePrice);
+        if (!Number.isFinite(salePrice) || salePrice <= 0) {
+            pushToast({ tone: "warning", message: "Giá bán phải lớn hơn 0." });
+            return;
+        }
+        const stockQuantity = Number(form.stockQuantity);
+        if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
+            pushToast({ tone: "warning", message: "Số lượng tồn kho phải là số nguyên không âm." });
+            return;
+        }
         setIsSaving(true);
         const body = {
             name: form.name.trim(),
             sku: form.sku.trim() || null,
             category_id: Number(form.categoryId),
             region_id: form.regionId ? Number(form.regionId) : null,
-            sale_price: Number(form.salePrice) || 0,
-            stock_quantity: Number(form.stockQuantity) || 0,
+            sale_price: salePrice,
+            stock_quantity: stockQuantity,
             origin: form.origin.trim() || null,
             short_description: form.shortDescription.trim() || null,
         };

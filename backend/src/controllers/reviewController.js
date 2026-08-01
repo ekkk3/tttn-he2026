@@ -48,9 +48,36 @@ export const store = asyncHandler(async (req, res) => {
   const [product] = await query('SELECT id FROM products WHERE id = ? AND is_deleted = 0', [req.params.id]);
   if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
 
+  // UC 2.2.10 điều kiện tiên quyết: "Khách hàng đã mua và nhận sản phẩm từ đơn hàng đã mua
+  // trước đó". Trước đây không hề kiểm tra, nên một tài khoản vừa đăng ký xong (chưa có đơn
+  // nào) vẫn gửi được đánh giá 5 sao — mở đường cho spam và thổi/dìm điểm sản phẩm.
+  // Lấy luôn đơn ĐÃ GIAO gần nhất có chứa sản phẩm này để ghi vào cột order_id: cột này có
+  // sẵn trong schema từ đầu nhưng chưa bao giờ được ghi, chính nó là bằng chứng "đánh giá
+  // này gắn với một lần mua thật" (và là căn cứ để sau này hiện nhãn "Đã mua hàng").
+  const [purchased] = await query(
+    `SELECT o.id FROM orders o
+     JOIN order_items oi ON oi.order_id = o.id
+     WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'DELIVERED'
+     ORDER BY o.id DESC LIMIT 1`,
+    [req.user.id, req.params.id]
+  );
+  if (!purchased) {
+    return res.status(422).json({ message: 'Bạn cần mua và nhận sản phẩm này trước khi đánh giá.' });
+  }
+
+  // Mỗi khách chỉ đánh giá 1 lần cho 1 sản phẩm — trước đây gửi bao nhiêu lần cũng được,
+  // 1 người có thể tự kéo điểm trung bình của sản phẩm đi bất kỳ đâu.
+  const [existing] = await query(
+    'SELECT id FROM product_reviews WHERE product_id = ? AND user_id = ? LIMIT 1',
+    [req.params.id, req.user.id]
+  );
+  if (existing) {
+    return res.status(422).json({ message: 'Bạn đã đánh giá sản phẩm này rồi.' });
+  }
+
   const result = await query(
-    "INSERT INTO product_reviews (product_id, user_id, rating, comment, status) VALUES (?, ?, ?, ?, 'VISIBLE')",
-    [req.params.id, req.user.id, numRating, comment || null]
+    "INSERT INTO product_reviews (product_id, user_id, order_id, rating, comment, status) VALUES (?, ?, ?, ?, ?, 'VISIBLE')",
+    [req.params.id, req.user.id, purchased.id, numRating, comment || null]
   );
   const [row] = await query(`${REVIEW_SELECT} WHERE rv.id = ?`, [result.insertId]);
   res.status(201).json({ data: serializeReview(row) });

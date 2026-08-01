@@ -55,10 +55,56 @@ export const adminList = asyncHandler(async (req, res) => {
   const rows = await query('SELECT * FROM vouchers ORDER BY id DESC');
   res.json({ data: rows.map(serializeVoucher) });
 });
+
+// Kiểm tra tính hợp lệ của voucher THEO GIÁ TRỊ CUỐI CÙNG sẽ lưu vào DB (UC 2.2.20 bước 4:
+// "mã không trùng, ngày kết thúc sau ngày bắt đầu, giá trị lớn hơn 0").
+// Nhận `v` là bản ghi đã gộp (giá trị cũ + giá trị client vừa gửi) chứ không phải riêng req.body —
+// vì adminUpdate là cập nhật MỘT PHẦN: đổi mỗi discount_type từ FIXED sang PERCENT trong khi
+// discount_value cũ là 500000 sẽ tạo ra voucher giảm 500000% nếu chỉ soi các field vừa gửi.
+// Trả về chuỗi thông báo lỗi đầu tiên tìm được, hoặc null nếu hợp lệ.
+function validateVoucher(v) {
+  if (!['PERCENT', 'FIXED'].includes(v.discount_type)) {
+    return 'Loại giảm giá phải là PERCENT hoặc FIXED.';
+  }
+  const value = Number(v.discount_value);
+  // Voucher giá trị âm sẽ làm TĂNG tổng tiền khách phải trả (total = subtotal + ship - discount),
+  // giá trị 0 thì vô nghĩa — chặn cả hai ngay từ khâu tạo.
+  if (!Number.isFinite(value) || value <= 0) {
+    return 'Giá trị giảm phải lớn hơn 0.';
+  }
+  // Giảm quá 100% khiến đơn hàng về 0đ (computeVoucherDiscount kẹp trần bằng subtotal).
+  if (v.discount_type === 'PERCENT' && value > 100) {
+    return 'Giảm theo phần trăm không được vượt quá 100%.';
+  }
+  const minOrder = Number(v.min_order_amount ?? 0);
+  if (!Number.isFinite(minOrder) || minOrder < 0) {
+    return 'Giá trị đơn hàng tối thiểu không được âm.';
+  }
+  // Hai trường tùy chọn: coi null/chuỗi rỗng là "không đặt giới hạn", chỉ kiểm tra khi có giá trị.
+  if (v.max_discount_amount != null && v.max_discount_amount !== '' && !(Number(v.max_discount_amount) > 0)) {
+    return 'Mức giảm tối đa phải lớn hơn 0.';
+  }
+  if (v.usage_limit != null && v.usage_limit !== '' && !(Number(v.usage_limit) > 0)) {
+    return 'Số lượng phát hành phải lớn hơn 0.';
+  }
+  if (v.starts_at && v.expires_at && new Date(v.expires_at) <= new Date(v.starts_at)) {
+    return 'Ngày kết thúc phải sau ngày bắt đầu.';
+  }
+  return null;
+}
+
 export const adminStore = asyncHandler(async (req, res) => {
   const { code, description, discount_type = 'PERCENT', discount_value, min_order_amount = 0,
     max_discount_amount, usage_limit, starts_at, expires_at, is_active = true } = req.body;
-  if (!code || !discount_value) return res.status(422).json({ message: 'Mã và giá trị giảm là bắt buộc.' });
+  if (!code || discount_value === undefined || discount_value === null || discount_value === '') {
+    return res.status(422).json({ message: 'Mã và giá trị giảm là bắt buộc.' });
+  }
+  const invalid = validateVoucher({
+    discount_type, discount_value, min_order_amount,
+    max_discount_amount: max_discount_amount ?? null, usage_limit: usage_limit ?? null,
+    starts_at: starts_at || null, expires_at: expires_at || null,
+  });
+  if (invalid) return res.status(422).json({ message: invalid });
   const [existing] = await query('SELECT id FROM vouchers WHERE code = ?', [code]);
   if (existing) return res.status(422).json({ message: 'Mã giảm giá đã tồn tại.' });
   const result = await query(
@@ -76,6 +122,13 @@ export const adminStore = asyncHandler(async (req, res) => {
 export const adminUpdate = asyncHandler(async (req, res) => {
   const fields = ['description', 'discount_type', 'discount_value', 'min_order_amount',
     'max_discount_amount', 'usage_limit', 'starts_at', 'expires_at'];
+  const [current] = await query('SELECT * FROM vouchers WHERE id = ?', [req.params.voucher]);
+  if (!current) return res.status(404).json({ message: 'Không tìm thấy mã giảm giá.' });
+  // Gộp bản ghi hiện tại với các field client vừa gửi rồi mới kiểm tra — xem ghi chú ở validateVoucher().
+  const invalid = validateVoucher({ ...current, ...Object.fromEntries(
+    fields.filter((f) => req.body[f] !== undefined).map((f) => [f, req.body[f]])
+  ) });
+  if (invalid) return res.status(422).json({ message: invalid });
   const updates = [];
   const params = [];
   for (const f of fields) {

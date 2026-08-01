@@ -3,6 +3,7 @@ import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
 import { indexProduct } from '../utils/productIndex.js';
+import { validateProductPricing } from '../utils/validators.js';
 
 // --- UC 2.2.15 (phần NCC): NCC quản lý sản phẩm CỦA MÌNH ---
 async function currentSupplierId(req) {
@@ -33,6 +34,10 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
   const { category_id, region_id, sku, name, description, short_description, origin, image_url,
     sale_price, stock_quantity = 0 } = req.body;
   if (!name || !category_id) return res.status(422).json({ message: 'Tên và danh mục là bắt buộc.' });
+  // Cùng quy tắc giá/tồn kho với đường Admin (UC 2.2.16) — NCC cũng tạo được sản phẩm nên
+  // phải chặn ở cả 2 đường, nếu không thì bịt cửa này vẫn còn cửa kia.
+  const invalid = validateProductPricing({ sale_price, stock_quantity }, { requireSalePrice: true });
+  if (invalid) return res.status(422).json({ message: invalid });
   const slug = `${slugify(name)}-${Date.now()}`;
   // Tự sinh SKU nếu NCC không nhập (tránh sku null -> lỗi khi lọc/hiển thị).
   const finalSku = (sku && sku.trim()) || `SP${Date.now().toString().slice(-6)}`;
@@ -41,7 +46,7 @@ export const storeMyProduct = asyncHandler(async (req, res) => {
        short_description, origin, image_url, sale_price, stock_quantity, is_active)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
     [category_id, supplierId, region_id || null, finalSku, slug, name, description || null,
-      short_description || null, origin || null, image_url || null, sale_price || 0, stock_quantity]
+      short_description || null, origin || null, image_url || null, sale_price, stock_quantity]
   );
   await indexProduct(result.insertId);
   const [row] = await query(`${PRODUCT_SELECT} WHERE p.id = ?`, [result.insertId]);
@@ -123,6 +128,8 @@ export const updateMyProduct = asyncHandler(async (req, res) => {
   if (!owned) return res.status(403).json({ message: 'Bạn chỉ có thể sửa sản phẩm của mình.' });
   const fields = ['category_id', 'region_id', 'sku', 'name', 'description', 'short_description',
     'origin', 'image_url', 'sale_price', 'stock_quantity'];
+  const invalid = validateProductPricing(req.body);
+  if (invalid) return res.status(422).json({ message: invalid });
   const updates = [];
   const params = [];
   for (const f of fields) {

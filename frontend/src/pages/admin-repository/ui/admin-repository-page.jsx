@@ -270,6 +270,18 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     function closeDrawer() {
         setDrawer(null);
     }
+    // Kiểm tra giá bán/tồn kho ngay tại form để báo lỗi ngay, KHÔNG thay cho kiểm tra phía
+    // backend (utils/validators.js#validateProductPricing) — backend vẫn là chốt chặn cuối
+    // vì API có thể bị gọi thẳng, không qua giao diện này.
+    function productPricingError() {
+        const salePrice = Number(productForm.salePrice);
+        if (!Number.isFinite(salePrice) || salePrice <= 0)
+            return "Giá bán phải lớn hơn 0.";
+        const stockQuantity = Number(productForm.stockQuantity);
+        if (!Number.isInteger(stockQuantity) || stockQuantity < 0)
+            return "Số lượng tồn kho phải là số nguyên không âm.";
+        return null;
+    }
     // Build payload từ FORM (dùng cho tạo mới/lưu chỉnh sửa — người dùng có thể đã đổi giá trị).
     function productPayloadFromForm() {
         const salePrice = Number(productForm.salePrice);
@@ -309,6 +321,11 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
             pushToast({ tone: "warning", message: "Cần nhập tên, SKU và danh mục cho sản phẩm." });
             return;
         }
+        const pricingError = productPricingError();
+        if (pricingError) {
+            pushToast({ tone: "warning", message: pricingError });
+            return;
+        }
         const result = await createProduct(productPayloadFromForm());
         if (!result.success || !result.data) {
             pushToast({ tone: "warning", message: result.error ?? "Không thể tạo sản phẩm." });
@@ -320,6 +337,11 @@ export function AdminRepositoryPage({ initialTab = "products", lockedTab, } = {}
     async function handleUpdateProduct() {
         if (!activeProduct)
             return;
+        const pricingError = productPricingError();
+        if (pricingError) {
+            pushToast({ tone: "warning", message: pricingError });
+            return;
+        }
         const result = await updateProduct(activeProduct.id, productPayloadFromForm());
         if (!result.success || !result.data) {
             pushToast({ tone: "warning", message: result.error ?? "Không thể cập nhật sản phẩm." });

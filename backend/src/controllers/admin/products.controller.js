@@ -2,6 +2,7 @@ import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../../utils/serializers.js';
 import { indexProduct } from '../../utils/productIndex.js';
+import { validateProductPricing } from '../../utils/validators.js';
 
 // ---------------- Products (admin CRUD) ----------------
 // Frontend (use-admin-catalog-store.js) đọc { data } và cần quan hệ lồng
@@ -32,6 +33,9 @@ export const storeProduct = asyncHandler(async (req, res) => {
   } = req.body;
   let { slug } = req.body;
   if (!name || !category_id) return res.status(422).json({ message: 'Tên và danh mục là bắt buộc.' });
+  // Bắt buộc có giá bán: trước đây `sale_price || 0` cho phép tạo sản phẩm 0đ khi bỏ trống.
+  const invalid = validateProductPricing({ sale_price, stock_quantity }, { requireSalePrice: true });
+  if (invalid) return res.status(422).json({ message: invalid });
   slug = slug || `${slugify(name)}-${Date.now()}`;
   const finalSku = (sku && String(sku).trim()) || `SP${Date.now().toString().slice(-6)}`;
   const result = await query(
@@ -40,7 +44,7 @@ export const storeProduct = asyncHandler(async (req, res) => {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [category_id, supplier_id || null, region_id || null, finalSku, slug, name,
       description || null, short_description || null, origin || null, image_url || null,
-      sale_price || 0, stock_quantity, is_active ? 1 : 0]
+      sale_price, stock_quantity, is_active ? 1 : 0]
   );
   await indexProduct(result.insertId); // Đồng bộ Elasticsearch để fuzzy search cập nhật ngay.
   res.status(201).json({ data: await loadAdminProduct(result.insertId) });
@@ -48,6 +52,8 @@ export const storeProduct = asyncHandler(async (req, res) => {
 export const updateProduct = asyncHandler(async (req, res) => {
   const fields = ['category_id', 'supplier_id', 'region_id', 'sku', 'name', 'description',
     'short_description', 'origin', 'image_url', 'sale_price', 'stock_quantity'];
+  const invalid = validateProductPricing(req.body);
+  if (invalid) return res.status(422).json({ message: invalid });
   const updates = [];
   const params = [];
   for (const f of fields) {
