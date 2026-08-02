@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProducts } from '../utils/serializers.js';
-import { validatePhone, validateOptionalPhone } from '../utils/validators.js';
+import { validatePhone, validateOptionalPhone, validateNewPassword } from '../utils/validators.js';
 
 // Frontend (use-account-store.js) đọc { data } với các field: name, avatar,
 // reward_snapshot{tier,points,next_tier_points,perks}, addresses[], reward_history[].
@@ -94,9 +94,22 @@ export const updateProfile = asyncHandler(async (req, res) => {
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
-  const { current_password, new_password } = req.body;
+  const { current_password, new_password, new_password_confirmation } = req.body;
+  // UC 2.2.3 luồng phụ A2 ("Mật khẩu quá ngắn" -> báo lỗi, yêu cầu nhập lại).
+  // Kiểm tra TRƯỚC khi so mật khẩu hiện tại để không tốn 1 lần bcrypt.compare cho request
+  // chắc chắn sẽ bị từ chối. Trước đây hàm này băm thẳng new_password nên:
+  //   - đặt được mật khẩu rỗng / 1 ký tự (lỏng hơn hẳn form đăng ký vốn bắt buộc >= 8);
+  //   - không gửi new_password thì bcrypt.hash(undefined) ném lỗi -> HTTP 500;
+  //   - ô "nhập lại mật khẩu" ở giao diện (new_password_confirmation) bị bỏ qua hoàn toàn,
+  //     gõ nhầm vẫn đổi thành công rồi người dùng không đăng nhập lại được.
+  const invalidPassword = validateNewPassword(new_password, new_password_confirmation, 'Mật khẩu mới');
+  if (invalidPassword) return res.status(422).json({ message: invalidPassword });
+
   const [user] = await query('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
-  if (!user.password_hash || !(await bcrypt.compare(current_password, user.password_hash))) {
+  // Token còn hạn nhưng tài khoản đã bị xóa khỏi DB -> `user` là undefined, đọc thẳng
+  // user.password_hash sẽ ném TypeError thành lỗi 500.
+  if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+  if (!user.password_hash || !(await bcrypt.compare(String(current_password ?? ''), user.password_hash))) {
     return res.status(422).json({ message: 'Mật khẩu hiện tại không đúng.' });
   }
   const hash = await bcrypt.hash(new_password, 10);

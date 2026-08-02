@@ -1,4 +1,4 @@
-import { query } from '../config/db.js';
+import { query, pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 import { validatePositiveQuantity } from '../utils/validators.js';
@@ -240,6 +240,10 @@ export const destroyPurchasePrice = asyncHandler(async (req, res) => {
 });
 
 // --- Yêu cầu nhập hàng / phiếu nhập (delivery_requests) ---
+// Đúng 5 trạng thái mà frontend biết hiển thị (requisitionStatusLabels trong labels.js).
+// storeRequisition() luôn tạo phiếu ở 'submitted'; 'draft' giữ lại cho luồng lưu nháp.
+const REQUISITION_STATUSES = ['draft', 'submitted', 'approved', 'received', 'cancelled'];
+
 function serializeRequisition(r) {
   return {
     id: r.id,
@@ -287,6 +291,15 @@ export const storeRequisition = asyncHandler(async (req, res) => {
 });
 export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   const { status, approved_qty } = req.body;
+  // Cột delivery_requests.status là VARCHAR chứ không phải ENUM, nên nếu không tự kiểm tra
+  // thì client gửi chuỗi gì cũng lưu được (vd "BUA_BAI_XYZ"). Phiếu khi đó rơi vào trạng
+  // thái không có trong requisitionStatusLabels của frontend -> UI hiện chuỗi thô và phiếu
+  // kẹt vĩnh viễn vì không nút thao tác nào khớp. Danh sách dưới đây khớp đúng 5 khóa của
+  // requisitionStatusLabels (frontend/src/shared/lib/labels.js).
+  const nextStatus = String(status ?? '').toLowerCase();
+  if (!REQUISITION_STATUSES.includes(nextStatus)) {
+    return res.status(422).json({ message: `Trạng thái phiếu nhập không hợp lệ (chỉ nhận: ${REQUISITION_STATUSES.join(', ')}).` });
+  }
   const [current] = await query('SELECT * FROM delivery_requests WHERE id = ?', [req.params.id]);
   if (!current) return res.status(404).json({ message: 'Không tìm thấy phiếu nhập.' });
   // Số lượng duyệt cũng phải > 0 vì nó là số thực cộng vào tồn kho ở bước "received" bên dưới.
@@ -304,7 +317,7 @@ export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   // Số lượng thực nhập ưu tiên theo thứ tự: giá trị vừa duyệt trong request này -> giá trị
   // đã duyệt từ trước (nếu bước "approved" làm trước "received") -> số lượng yêu cầu ban đầu
   // (nếu chưa ai duyệt số khác thì coi như nhập đúng số đã xin).
-  const isReceiving = String(status).toLowerCase() === 'received';
+  const isReceiving = nextStatus === 'received';
   const receivedQty = approved_qty ?? current.approved_qty ?? current.requested_qty;
   // Kiểm tra TRƯỚC khi ghi status: phiếu cũ trong DB (tạo trước khi có validate ở trên) vẫn
   // có thể mang số âm — nếu để đổi status xong mới phát hiện thì phiếu đã bị đánh dấu "đã
@@ -312,14 +325,51 @@ export const updateRequisitionStatus = asyncHandler(async (req, res) => {
   if (isReceiving) {
     const invalidQty = validatePositiveQuantity(receivedQty, 'Số lượng thực nhập');
     if (invalidQty) return res.status(422).json({ message: invalidQty });
+    // Một phiếu chỉ được nhập kho ĐÚNG MỘT LẦN. Trước đây không có chốt chặn này nên bấm
+    // "Đã nhận" lần thứ hai (hoặc F5 lại trang) sẽ cộng thêm approved_qty vào tồn kho lần
+    // nữa — kho phình lên không có hàng thật, kéo theo bán hàng ảo và sai giá trị tồn kho.
+    if (String(current.status).toLowerCase() === 'received') {
+      return res.status(422).json({ message: 'Phiếu nhập này đã được ghi nhận nhập kho trước đó.' });
+    }
   }
-  await query(
-    'UPDATE delivery_requests SET status = ?, approved_qty = COALESCE(?, approved_qty), approved_by_user_id = ? WHERE id = ?',
-    [status, approved_qty ?? null, req.user.id, req.params.id]
-  );
-  if (isReceiving) {
-    await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [receivedQty, current.product_id]);
+
+  if (!isReceiving) {
+    // Các bước không đụng tới tồn kho (duyệt/hủy) chỉ cần 1 câu UPDATE, không cần transaction.
+    await query(
+      'UPDATE delivery_requests SET status = ?, approved_qty = COALESCE(?, approved_qty), approved_by_user_id = ? WHERE id = ?',
+      [nextStatus, approved_qty ?? null, req.user.id, req.params.id]
+    );
+  } else {
+    // Đổi trạng thái + cộng tồn kho phải đi CÙNG NHAU: nếu cộng kho xong mà ghi status lỗi
+    // (hoặc ngược lại) thì số liệu kho và phiếu nhập lệch nhau vĩnh viễn.
+    // Điều kiện `status <> 'received'` ngay trong câu UPDATE là chốt chặn thứ hai cho tình
+    // huống 2 request bấm "Đã nhận" gần như đồng thời: cả hai cùng đọc được status cũ ở
+    // kiểm tra phía trên, nhưng chỉ request nào UPDATE trúng dòng (affectedRows = 1) mới
+    // được đi tiếp cộng kho, request còn lại bị từ chối.
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [result] = await connection.query(
+        `UPDATE delivery_requests SET status = 'received', approved_qty = COALESCE(?, approved_qty),
+           approved_by_user_id = ? WHERE id = ? AND status <> 'received'`,
+        [approved_qty ?? null, req.user.id, req.params.id]
+      );
+      if (result.affectedRows === 0) {
+        throw Object.assign(new Error('Phiếu nhập này đã được ghi nhận nhập kho trước đó.'), { status: 422 });
+      }
+      await connection.query(
+        'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+        [receivedQty, current.product_id]
+      );
+      await connection.commit();
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
   }
+
   const [row] = await query(`${REQUISITION_SELECT} WHERE dr.id = ?`, [req.params.id]);
   res.json({ data: serializeRequisition(row) });
 });

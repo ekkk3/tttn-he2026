@@ -67,12 +67,22 @@ function badgeClassForPayment(status) {
             return "bg-slate-100 text-slate-700";
     }
 }
+// "YYYY-MM-DD" theo giờ ĐỊA PHƯƠNG của trình duyệt.
+// Không dùng toISOString(): hàm đó đổi sang UTC nên ở Việt Nam (UTC+7) ngày 01/08 lúc 00:00
+// sẽ ra "2026-07-31" — ô "từ ngày" hiện sai 1 ngày và kỳ báo cáo gửi lên backend bị lệch
+// sang tháng trước. Backend cũng dùng đúng quy ước giờ địa phương này (dashboard.controller.js).
+function toLocalDateIso(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 function todayIso() {
-    return new Date().toISOString().slice(0, 10);
+    return toLocalDateIso(new Date());
 }
 function firstDayOfMonthIso() {
     const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
+    return toLocalDateIso(new Date(date.getFullYear(), date.getMonth(), 1));
 }
 function formatCompactCurrency(value) {
     if (value >= 1_000_000_000) {

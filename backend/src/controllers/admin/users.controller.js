@@ -88,6 +88,19 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (role !== undefined && role !== null && !USER_ROLES.includes(role)) {
     return res.status(422).json({ message: `Vai trò không hợp lệ (chỉ nhận: ${USER_ROLES.join(', ')}).` });
   }
+  // Không cho Admin tự khóa / tự hạ quyền chính mình.
+  // Từ khi middleware auth() đọc lại is_active + role từ CSDL ở MỖI request (xem
+  // middleware/auth.js), thao tác này có hiệu lực NGAY LẬP TỨC: chính request tiếp theo của
+  // họ đã bị chặn, nên không còn cách tự mở khóa lại cho mình. Nếu đó là admin duy nhất thì
+  // cả hệ thống mất luôn người quản trị. Việc khóa/hạ quyền một admin phải do admin KHÁC làm.
+  if (String(req.params.user) === String(req.user.id)) {
+    if (is_active !== undefined && is_active !== null && !is_active) {
+      return res.status(422).json({ message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+    }
+    if (role !== undefined && role !== null && role !== 'ADMIN') {
+      return res.status(422).json({ message: 'Bạn không thể tự thay đổi vai trò của chính mình.' });
+    }
+  }
   await query(
     `UPDATE users SET full_name = COALESCE(?, full_name), phone = COALESCE(?, phone),
        role = COALESCE(?, role), is_active = COALESCE(?, is_active),
@@ -106,6 +119,11 @@ export const updateUser = asyncHandler(async (req, res) => {
   res.json({ data: stripPasswordHash(user) });
 });
 export const destroyUser = asyncHandler(async (req, res) => {
+  // Cùng lý do với updateUser ở trên: "xóa" ở đây là is_active = 0, tự xóa chính mình là
+  // tự khóa mình ra khỏi hệ thống ngay lập tức.
+  if (String(req.params.user) === String(req.user.id)) {
+    return res.status(422).json({ message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+  }
   await query('UPDATE users SET is_active = 0 WHERE id = ?', [req.params.user]);
   const [user] = await query(`${USER_LIST_SELECT} WHERE u.id = ?`, [req.params.user]);
   res.json({ data: stripPasswordHash(user) });
