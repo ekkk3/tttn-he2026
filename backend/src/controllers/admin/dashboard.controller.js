@@ -1,22 +1,11 @@
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { localDateIso } from '../../utils/dates.js';
 
 // ---------------- Dashboard ----------------
 // Frontend (admin-dashboard-page.jsx) đọc một response giàu: metrics, revenue_chart,
 // top_customers, work_queue, low_stock_products, featured_products, recent_orders, filters.
 // "Doanh thu thực thu" = đơn đã giao (DELIVERED). Xem UC 2.2.19 Báo cáo thống kê.
-// "YYYY-MM-DD" theo GIỜ ĐỊA PHƯƠNG của máy chủ.
-// KHÔNG dùng toISOString() cho việc này: hàm đó đổi sang UTC, nên ở múi giờ Việt Nam (UTC+7)
-// mọi thời điểm từ 00:00 đến 07:00 sẽ bị lùi về ngày hôm trước. Trong khi đó phía SQL lại
-// nhóm doanh thu bằng DATE(delivered_at) — tức giờ máy chủ. Trộn 2 hệ quy chiếu này khiến
-// doanh thu trong ngày không khớp cột nào trên biểu đồ, và ô "từ ngày" mặc định hiện 31/07
-// trong khi ý định là 01/08.
-function localDateIso(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export const dashboard = asyncHandler(async (req, res) => {

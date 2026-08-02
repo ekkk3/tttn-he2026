@@ -4,7 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
-import { computeVoucherDiscount } from './voucherController.js';
+import { computeVoucherDiscount, releaseOrderVoucher } from './voucherController.js';
 import { notifyUser } from '../services/notificationService.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 import { validatePhone } from '../utils/validators.js';
@@ -350,6 +350,13 @@ export const cancel = asyncHandler(async (req, res) => {
       if (!item.product_id) continue; // Sản phẩm đã bị xóa hẳn -> không còn dòng kho để cộng lại.
       await connection.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.product_id]);
     }
+    // Trả lại lượt dùng voucher (nếu đơn có áp mã) — nằm CÙNG transaction với hoàn kho vì
+    // cả hai đều là việc "hoàn tác những gì checkout đã tiêu tốn".
+    // connection.query trả về [rows, fields] còn helper mong đợi trực tiếp rows, nên bọc lại.
+    await releaseOrderVoucher(order.id, async (sql, params) => {
+      const [rows] = await connection.query(sql, params);
+      return rows;
+    });
     await connection.query(
       "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
       [order.id, order.status, req.body.reason || 'Khách hàng hủy đơn', req.user.id]

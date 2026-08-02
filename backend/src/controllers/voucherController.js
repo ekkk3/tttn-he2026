@@ -25,6 +25,27 @@ export function computeVoucherDiscount(voucher, subtotal) {
   return Math.min(discount, subtotal);
 }
 
+// Trả lại lượt sử dụng voucher khi một đơn hàng bị HỦY.
+//
+// Vì sao cần: checkout tăng vouchers.used_count ngay lúc tạo đơn, nhưng lúc hủy đơn thì
+// trước đây chỉ hoàn tồn kho mà bỏ quên con số này. Hậu quả với voucher có usage_limit: mã
+// giới hạn 100 lượt mà khách đặt rồi hủy 100 lần là mã "cháy" hoàn toàn dù chưa ai thực sự
+// dùng — và với mã giới hạn 1 lượt thì chính khách vừa hủy cũng không đặt lại được nữa.
+//
+// GIỮ LẠI dòng order_vouchers để không mất dấu vết "đơn này từng áp mã nào, giảm bao nhiêu"
+// (cần cho đối soát và cho báo cáo khuyến mãi sau này) — chỉ trả lại lượt đếm.
+// `exec` là hàm chạy truy vấn: truyền `query` khi gọi ngoài transaction, hoặc một hàm bọc
+// connection.query khi cần chạy TRONG transaction hủy đơn (xem orderController#cancel).
+export async function releaseOrderVoucher(orderId, exec = query) {
+  const rows = await exec('SELECT voucher_id FROM order_vouchers WHERE order_id = ?', [orderId]);
+  for (const row of rows) {
+    // GREATEST(...,0): phòng trường hợp dữ liệu cũ có used_count = 0 mà vẫn còn dòng
+    // order_vouchers — cột used_count là INT UNSIGNED nên trừ xuống dưới 0 sẽ lỗi tràn số.
+    await exec('UPDATE vouchers SET used_count = GREATEST(CAST(used_count AS SIGNED) - 1, 0) WHERE id = ?', [row.voucher_id]);
+  }
+  return rows.length;
+}
+
 // POST /api/vouchers/apply { code, subtotal } (auth) — kiểm tra + trả số tiền giảm.
 export const apply = asyncHandler(async (req, res) => {
   const { code, subtotal = 0 } = req.body;

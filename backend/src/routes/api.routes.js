@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { auth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
+import { loginRateLimit, registerRateLimit, forgotPasswordRateLimit } from '../middleware/rateLimit.js';
 
 import * as authController from '../controllers/authController.js';
 import * as accountController from '../controllers/accountController.js';
@@ -28,11 +29,14 @@ const router = Router();
 // ==================================================================
 
 // ---------------- Public ----------------
-router.post('/register', authController.register);
-router.post('/login', authController.login);
+// 3 endpoint dưới đây có giới hạn tần suất theo IP (xem middleware/rateLimit.js): chúng là
+// những cửa duy nhất cho phép người CHƯA đăng nhập tác động tới tài khoản/hòm thư người khác,
+// nên là đích ngắm của dò mật khẩu và tạo tài khoản rác.
+router.post('/register', registerRateLimit, authController.register);
+router.post('/login', loginRateLimit, authController.login);
 
 // Bổ sung Tuần 1: quên mật khẩu + đăng nhập Google/Facebook (ngoài phạm vi UC gốc).
-router.post('/password/forgot', authController.forgotPassword);
+router.post('/password/forgot', forgotPasswordRateLimit, authController.forgotPassword);
 router.post('/password/reset', authController.resetPassword);
 router.post('/auth/google', authController.loginWithGoogle);
 router.post('/auth/facebook', authController.loginWithFacebook);

@@ -6,6 +6,7 @@ import {
 } from '../../utils/ghn.js';
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from '../../services/orderTransitions.js';
 import { notifyUser } from '../../services/notificationService.js';
+import { releaseOrderVoucher } from '../voucherController.js';
 
 // ---------------- Orders (admin) — UC 2.2.17 Quản lý đơn hàng ----------------
 // Frontend (admin-logistics-page.jsx + use-admin-orders-store.js) đọc { data } với
@@ -146,6 +147,12 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
       if (it.product_id) await query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [it.quantity, it.product_id]);
     }
   }
+  // Trả lại lượt dùng voucher — LUÔN làm khi hủy đơn, không phụ thuộc restock_inventory.
+  // Hoàn kho là lựa chọn nghiệp vụ của Admin (hàng có thể đã hỏng, không nhập lại được),
+  // còn lượt voucher thì chắc chắn chưa được tiêu vì đơn đã không thành.
+  if (status === 'CANCELLED') {
+    await releaseOrderVoucher(order.id);
+  }
   await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${status}.`);
   res.json({ data: await loadAdminOrderDetail(order.id) });
 });
@@ -195,6 +202,8 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
       'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
       [id, order.status, targetStatus, req.body.note || null, req.user.id]
     );
+    // Hủy hàng loạt cũng phải trả lại lượt voucher, giống nhánh hủy từng đơn ở updateOrderStatus.
+    if (targetStatus === 'CANCELLED') await releaseOrderVoucher(id);
     await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang ${targetStatus}.`);
     results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Đã chuyển sang ${targetStatus}.` });
   }
@@ -242,6 +251,20 @@ export const storeShipment = asyncHandler(async (req, res) => {
   } = req.body;
   const [order] = await query('SELECT * FROM orders WHERE id = ?', [req.params.order]);
   if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' });
+  // Mỗi đơn chỉ được có 1 vận đơn đang hiệu lực. Trước đây bấm "Tạo vận đơn" 2 lần là có 2
+  // dòng order_shipments: phía hiển thị chỉ lấy dòng mới nhất (ORDER BY id DESC LIMIT 1) nên
+  // trông vẫn bình thường, nhưng khi GHN được cấu hình thật thì đã có 2 vận đơn được đăng ký
+  // với hãng vận chuyển — phát sinh phí và có nguy cơ giao trùng đơn cho khách.
+  // Muốn tạo lại thì hủy vận đơn cũ trước (DELETE /api/admin/orders/:order/shipment).
+  const [existingShipment] = await query(
+    'SELECT id, tracking_code FROM order_shipments WHERE order_id = ? AND cancelled_at IS NULL ORDER BY id DESC LIMIT 1',
+    [order.id]
+  );
+  if (existingShipment) {
+    return res.status(409).json({
+      message: `Đơn hàng đã có vận đơn ${existingShipment.tracking_code || ''} . Vui lòng hủy vận đơn hiện tại trước khi tạo mới.`.replace(' . ', '. '),
+    });
+  }
   const [carrier] = await query('SELECT * FROM shipping_carriers WHERE id = ?', [shipping_carrier_id]);
 
   const provider = carrier?.provider || 'MANUAL';

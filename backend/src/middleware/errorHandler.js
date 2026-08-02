@@ -84,6 +84,14 @@ function translateDatabaseError(err) {
       return { status: 422, message: 'Thiếu thông tin bắt buộc, vui lòng kiểm tra lại các trường đã nhập.' };
     case 'ER_DATA_TOO_LONG':
       return { status: 422, message: 'Nội dung nhập vào quá dài, vui lòng rút ngắn lại.' };
+    // Các mã dưới đây chỉ xuất hiện SAU KHI bật STRICT_TRANS_TABLES (xem config/db.js): ở chế
+    // độ lỏng chúng chỉ là cảnh báo và dữ liệu bị ép âm thầm. Gom chung 1 thông báo vì với
+    // người dùng cuối thì bản chất giống nhau: giá trị vừa nhập không hợp lệ cho trường đó.
+    case 'ER_TRUNCATED_WRONG_VALUE':
+    case 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD':
+    case 'WARN_DATA_TRUNCATED':
+    case 'ER_WARN_DATA_OUT_OF_RANGE':
+      return { status: 422, message: 'Giá trị nhập vào không đúng định dạng cho trường này, vui lòng kiểm tra lại.' };
     default:
       return null;
   }

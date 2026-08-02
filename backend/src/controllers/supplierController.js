@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
 import { indexProduct } from '../utils/productIndex.js';
 import { validateProductPricing, validateEmail, validatePhone, validateOptionalPhone } from '../utils/validators.js';
+import { localDateIso } from '../utils/dates.js';
 
 // --- UC 2.2.15 (phần NCC): NCC quản lý sản phẩm CỦA MÌNH ---
 async function currentSupplierId(req) {
@@ -103,12 +104,16 @@ export const myRevenue = asyncHandler(async (req, res) => {
   // Query trên chỉ trả về NGÀY CÓ DOANH THU (GROUP BY), nên phải tự dựng đủ 30 ngày liên
   // tiếp ở đây và tra revenueMap — ngày nào không bán được gì thì mặc định revenue = 0,
   // để biểu đồ trên frontend không bị "gãy khúc" ở những ngày không có đơn.
+  // Khóa tra cứu phải dựng theo GIỜ ĐỊA PHƯƠNG (localDateIso) chứ không phải toISOString():
+  // key phía SQL là DATE(o.delivered_at) tính theo giờ máy chủ, còn toISOString() cho ra ngày
+  // theo UTC — lệch đúng 1 ngày trong khung 00:00–07:00 giờ Việt Nam nên doanh thu hôm đó
+  // không khớp cột nào. Cùng lỗi và cùng cách sửa với biểu đồ ở Dashboard Admin.
   const revenueMap = new Map(revenueRows.map((r) => [r.d, Number(r.revenue)]));
   const revenue_chart = [];
   for (let i = 29; i >= 0; i -= 1) {
     const date = new Date();
     date.setDate(date.getDate() - i);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateIso(date);
     revenue_chart.push({ label: `${date.getDate()}/${date.getMonth() + 1}`, revenue: revenueMap.get(key) || 0 });
   }
 

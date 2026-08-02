@@ -188,9 +188,19 @@ export const listSupportTickets = asyncHandler(async (req, res) => {
 });
 export const storeSupportTicket = asyncHandler(async (req, res) => {
   const { subject, message, channel = 'WEB' } = req.body;
+  // Trước đây không kiểm tra gì: gửi chuỗi rỗng thì tạo được ticket trắng (cột NOT NULL vẫn
+  // nhận được '' vì chuỗi rỗng khác NULL), làm hàng đợi hỗ trợ đầy ticket không nội dung mà
+  // người xử lý không biết phải làm gì. Thiếu hẳn trường thì rơi xuống lỗi NOT NULL của CSDL
+  // và trả về thông báo chung chung — cũng không giúp người dùng biết cần sửa ở đâu.
+  if (!subject || !String(subject).trim()) {
+    return res.status(422).json({ message: 'Vui lòng nhập chủ đề yêu cầu hỗ trợ.' });
+  }
+  if (!message || !String(message).trim()) {
+    return res.status(422).json({ message: 'Vui lòng nhập nội dung yêu cầu hỗ trợ.' });
+  }
   const result = await query(
     'INSERT INTO support_tickets (user_id, subject, message, channel) VALUES (?, ?, ?, ?)',
-    [req.user.id, subject, message, channel]
+    [req.user.id, String(subject).trim(), String(message).trim(), channel]
   );
   const [row] = await query('SELECT * FROM support_tickets WHERE id = ?', [result.insertId]);
   res.status(201).json({ data: serializeTicket(row) });

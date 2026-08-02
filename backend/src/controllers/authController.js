@@ -52,6 +52,13 @@ export const register = asyncHandler(async (req, res) => {
 // không so plaintext) -> chặn tài khoản bị khóa -> ký token mới.
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  // bcrypt.compare() ném "Illegal arguments" nếu tham số không phải chuỗi, và lỗi đó rơi vào
+  // nhánh 500 của errorHandler. Nghĩa là chỉ cần gửi request đăng nhập THIẾU mật khẩu (hoặc
+  // password là object/số) là server trả 500 — vừa lộ ra endpoint xử lý input không an toàn,
+  // vừa làm bẩn log lỗi. Kiểm tra kiểu ngay đầu hàm và trả 401 như mọi lần đăng nhập sai khác.
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
+  }
   const [user] = await query('SELECT * FROM users WHERE email = ? AND is_deleted = 0 LIMIT 1', [email]);
   // Tài khoản tạo qua Google/Facebook không có password_hash — tránh gọi bcrypt.compare
   // với hash rỗng (có thể ném lỗi thay vì trả 401 gọn gàng).

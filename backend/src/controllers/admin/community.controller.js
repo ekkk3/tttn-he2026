@@ -1,5 +1,6 @@
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { validateEmail } from '../../utils/validators.js';
 
 // ---------------- Community (mời NCC + kiểm duyệt bài viết) ----------------
 // Frontend đọc { data: { suppliers, customers, invitations } } (admin-community-page.jsx).
@@ -24,6 +25,14 @@ export const listCommunity = asyncHandler(async (req, res) => {
 });
 export const storeInvitation = asyncHandler(async (req, res) => {
   const { supplier_name, contact_name, email, note } = req.body;
+  // Email ở đây chính là địa chỉ hệ thống dùng để gửi lời mời hợp tác, nên sai định dạng là
+  // lời mời không bao giờ tới nơi mà Admin vẫn thấy "đã gửi". Kiểm tra cùng bộ quy tắc với
+  // đăng ký NCC (supplierController#apply) và đăng ký nhận bản tin.
+  if (!supplier_name || !String(supplier_name).trim()) {
+    return res.status(422).json({ message: 'Tên nhà cung cấp là bắt buộc.' });
+  }
+  const invalidEmail = validateEmail(email, 'Email nhận lời mời');
+  if (invalidEmail) return res.status(422).json({ message: invalidEmail });
   const result = await query(
     'INSERT INTO supplier_invitations (supplier_name, contact_name, email, note, created_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [supplier_name, contact_name, email, note || null, req.user.id]
