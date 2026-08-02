@@ -5,6 +5,7 @@ import { signToken, tokenExpiresAtIso } from '../utils/jwt.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendMail } from '../utils/mailer.js';
 import { verifyGoogleIdToken, verifyFacebookAccessToken } from '../utils/oauth.js';
+import { validatePhone } from '../utils/validators.js';
 
 // Frontend (use-auth-store.js) đọc "access_token" + "expires_at", không phải "token".
 // Giữ cả "token" để tương thích ngược với công cụ/test khác có thể đang đọc trường này.
@@ -25,6 +26,9 @@ export const register = asyncHandler(async (req, res) => {
   if (!EMAIL_REGEX.test(email)) {
     return res.status(422).json({ message: 'Email không hợp lệ.' });
   }
+  // Trước đây chỉ kiểm tra "có nhập hay không", nên đăng ký được với phone = "abcxyz".
+  const invalidPhone = validatePhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   if (String(password).length < 8) {
     return res.status(422).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
   }

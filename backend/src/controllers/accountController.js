@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProducts } from '../utils/serializers.js';
+import { validatePhone, validateOptionalPhone } from '../utils/validators.js';
 
 // Frontend (use-account-store.js) đọc { data } với các field: name, avatar,
 // reward_snapshot{tier,points,next_tier_points,perks}, addresses[], reward_history[].
@@ -67,6 +68,11 @@ export const updateProfile = asyncHandler(async (req, res) => {
     favorite_region: 'favorite_region', avatar: 'avatar_url',
     newsletter: 'newsletter', sms_alerts: 'sms_alerts', order_email: 'order_email', security_alerts: 'security_alerts',
   };
+  // UC 2.2.3 bước 7: "Số điện thoại đúng định dạng". Đây là cập nhật MỘT PHẦN nên chỉ kiểm
+  // khi client có gửi trường phone; bỏ trống được coi là xóa số nên vẫn cho qua.
+  const invalidPhone = validateOptionalPhone(req.body.phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+
   const updates = []; // Mảng chuỗi "cot = ?", nối lại thành "SET cot1 = ?, cot2 = ?, ...".
   const params = []; // Giá trị tương ứng, PHẢI cùng thứ tự với updates để khớp dấu ? .
   for (const [key, column] of Object.entries(map)) {
@@ -105,6 +111,12 @@ export const listAddresses = asyncHandler(async (req, res) => {
 
 export const storeAddress = asyncHandler(async (req, res) => {
   const { label, recipient, phone, line1, city, note, is_default } = req.body;
+  // 3 cột này NOT NULL trong schema — thiếu thì trước đây rơi xuống lỗi SQL.
+  if (!recipient || !String(recipient).trim() || !line1 || !String(line1).trim()) {
+    return res.status(422).json({ message: 'Vui lòng nhập tên người nhận và địa chỉ.' });
+  }
+  const invalidPhone = validatePhone(phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   const result = await query(
     `INSERT INTO user_addresses (user_id, label, recipient, phone, line1, city, note, is_default)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -134,6 +146,8 @@ export const updateAddress = asyncHandler(async (req, res) => {
   if (!(await findOwnAddress(req.params.address, req.user.id))) {
     return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
   }
+  const invalidPhone = validateOptionalPhone(req.body.phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   const fields = ['label', 'recipient', 'phone', 'line1', 'city', 'note'];
   const updates = [];
   const params = [];

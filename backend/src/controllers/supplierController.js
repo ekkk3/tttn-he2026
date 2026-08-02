@@ -3,7 +3,7 @@ import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts } from '../utils/serializers.js';
 import { indexProduct } from '../utils/productIndex.js';
-import { validateProductPricing } from '../utils/validators.js';
+import { validateProductPricing, validateEmail, validatePhone, validateOptionalPhone } from '../utils/validators.js';
 
 // --- UC 2.2.15 (phần NCC): NCC quản lý sản phẩm CỦA MÌNH ---
 async function currentSupplierId(req) {
@@ -178,9 +178,24 @@ export const adminIndex = asyncHandler(async (req, res) => {
   res.json({ data: rows });
 });
 
+// UC 2.2.11 bước 7: "Email đúng định dạng, Số điện thoại hợp lệ".
+// Cả 2 trường đều TÙY CHỌN với nhà cung cấp do Admin tự thêm tay (có thể chưa có đủ thông
+// tin liên hệ), nhưng đã nhập thì phải đúng định dạng. Trước đây không kiểm gì, nên lưu
+// được email "khong-phai-email" và số điện thoại toàn chữ cái — số này còn bị cột
+// VARCHAR(20) cắt cụt âm thầm thành "chu-cai-khong-phai-s".
+function validateSupplierContact(body) {
+  if (body.email !== undefined && body.email !== null && String(body.email).trim() !== '') {
+    const invalid = validateEmail(body.email, 'Email nhà cung cấp');
+    if (invalid) return invalid;
+  }
+  return validateOptionalPhone(body.phone, 'Số điện thoại nhà cung cấp');
+}
+
 export const store = asyncHandler(async (req, res) => {
   const { supplier_code, name, contact_name, phone, email, address } = req.body;
   if (!name) return res.status(422).json({ message: 'Tên nhà cung cấp là bắt buộc.' });
+  const invalidContact = validateSupplierContact(req.body);
+  if (invalidContact) return res.status(422).json({ message: invalidContact });
   const result = await query(
     `INSERT INTO suppliers (supplier_code, name, contact_name, phone, email, address, status, approved_at)
      VALUES (?, ?, ?, ?, ?, ?, 'APPROVED', NOW())`,
@@ -192,6 +207,8 @@ export const store = asyncHandler(async (req, res) => {
 
 export const update = asyncHandler(async (req, res) => {
   const { supplier_code, name, contact_name, phone, email, address, is_active, is_deleted } = req.body;
+  const invalidContact = validateSupplierContact(req.body);
+  if (invalidContact) return res.status(422).json({ message: invalidContact });
   await query(
     `UPDATE suppliers SET supplier_code = COALESCE(?, supplier_code), name = COALESCE(?, name),
        contact_name = COALESCE(?, contact_name), phone = COALESCE(?, phone), email = COALESCE(?, email),
@@ -226,8 +243,17 @@ export const apply = asyncHandler(async (req, res) => {
   if (!name || !contact_name || !phone || !email || !address || !password) {
     return res.status(422).json({ message: 'Vui lòng nhập đầy đủ thông tin bắt buộc.' });
   }
+  // Ở form tự đăng ký thì email/SĐT là BẮT BUỘC (đây là thông tin Admin dùng để liên hệ xét
+  // duyệt, và email chính là tài khoản đăng nhập khi được duyệt) nên kiểm chặt hơn store().
+  const invalidEmail = validateEmail(email);
+  if (invalidEmail) return res.status(422).json({ message: invalidEmail });
+  const invalidPhone = validatePhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   if (password !== password_confirmation) {
     return res.status(422).json({ message: 'Mật khẩu xác nhận chưa khớp.' });
+  }
+  if (String(password).length < 8) {
+    return res.status(422).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
   }
 
   const [existingSupplier] = await query(

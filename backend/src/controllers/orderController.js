@@ -6,6 +6,7 @@ import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination
 import { computeVoucherDiscount } from './voucherController.js';
 import { notifyUser } from '../services/notificationService.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
+import { validatePhone } from '../utils/validators.js';
 
 function generateOrderNo() {
   return `DH${Date.now()}`;
@@ -84,6 +85,11 @@ export const checkout = asyncHandler(async (req, res) => {
   if (!recipient_name || !recipient_phone || !shipping_address) {
     return res.status(422).json({ message: 'Thiếu thông tin người nhận hoặc địa chỉ giao hàng.' });
   }
+  // UC 2.2.8 luồng phụ A1: "nhập thiếu hoặc SAI thông tin giao hàng -> yêu cầu nhập lại".
+  // Số điện thoại sai định dạng chỉ lộ ra khi đơn vị vận chuyển gọi giao không được, nên
+  // phải chặn ngay lúc đặt hàng.
+  const invalidPhone = validatePhone(recipient_phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
 
   // Toàn bộ checkout chạy trong 1 TRANSACTION: tạo đơn + trừ tồn kho + ghi payment + cập
   // nhật voucher + xóa giỏ hàng phải cùng thành công hoặc cùng thất bại — nếu 1 bước lỗi

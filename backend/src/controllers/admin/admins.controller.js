@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { validateEmail, validateOptionalPhone } from '../../utils/validators.js';
 
 // ---------------- Admin accounts ----------------
 const ADMIN_SELECT = `
@@ -18,6 +19,14 @@ export const listAdmins = asyncHandler(async (req, res) => {
 export const storeAdmin = asyncHandler(async (req, res) => {
   const { full_name, email, phone, password, admin_role_id } = req.body;
   if (!full_name || !email || !password) return res.status(422).json({ message: 'full_name, email, password là bắt buộc.' });
+  const invalidEmail = validateEmail(email);
+  if (invalidEmail) return res.status(422).json({ message: invalidEmail });
+  // Tài khoản quản trị thì SĐT là tùy chọn, nhưng đã nhập phải đúng định dạng.
+  const invalidPhone = validateOptionalPhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+  if (String(password).length < 8) {
+    return res.status(422).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
+  }
   const password_hash = await bcrypt.hash(password, 10);
   const result = await query(
     `INSERT INTO users (full_name, email, phone, password_hash, role, admin_role_id, created_by_admin_id)

@@ -36,6 +36,29 @@ export function validateEmail(value, label = 'Email') {
   return null;
 }
 
+// Số điện thoại Việt Nam. Chấp nhận cách viết quen thuộc của người dùng — có khoảng trắng,
+// dấu chấm, gạch ngang hay ngoặc đơn ("093 123 4567", "(024) 3825 1234") — nên bỏ hết ký tự
+// phân cách trước khi so khớp, thay vì bắt người dùng gõ liền một mạch.
+// Dạng hợp lệ sau khi bỏ phân cách: bắt đầu bằng 0 hoặc +84/84, tổng 10-11 chữ số
+// (10 số cho di động và phần lớn số cố định, 11 số cho một vài đầu số cố định cũ).
+const PHONE_SEPARATORS = /[\s.\-()]/g;
+const PHONE_REGEX = /^(0\d{9,10}|(\+?84)\d{9,10})$/;
+
+export function validatePhone(value, label = 'Số điện thoại') {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return `${label} là bắt buộc.`;
+  }
+  const digits = String(value).replace(PHONE_SEPARATORS, '');
+  if (!PHONE_REGEX.test(digits)) return `${label} không hợp lệ (ví dụ: 0912345678).`;
+  return null;
+}
+
+// Dùng cho các form mà số điện thoại là TÙY CHỌN: bỏ trống thì bỏ qua, đã nhập thì phải đúng.
+export function validateOptionalPhone(value, label = 'Số điện thoại') {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  return validatePhone(value, label);
+}
+
 // UC "Yêu cầu nhập hàng" bước 7: "Số lượng nhập phải lớn hơn 0".
 // Số lượng ÂM khiến phiếu NHẬP hàng lại TRỪ tồn kho khi được đánh dấu đã nhận
 // (operationController#updateRequisitionStatus cộng thẳng approved_qty vào stock_quantity).
