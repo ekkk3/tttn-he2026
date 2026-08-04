@@ -1,6 +1,12 @@
 import bcrypt from 'bcryptjs';
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { validateEmail, validatePhone, validateOptionalPhone } from '../../utils/validators.js';
+
+// Đúng 4 giá trị của cột users.role (ENUM trong schema.sql). Phải tự kiểm ở tầng ứng dụng vì
+// MariaDB không bật strict mode sẽ âm thầm ép giá trị lạ thành CHUỖI RỖNG thay vì báo lỗi —
+// kết quả là tài khoản có role = '' không thuộc vai trò nào.
+const USER_ROLES = ['CUSTOMER', 'ADMIN', 'WAREHOUSE_STAFF', 'SUPPLIER'];
 
 // ---------------- Users ----------------
 // Ghi chú: frontend (use-admin-user-store.js, đã có sẵn từ trước) đọc { data: [...] }
@@ -52,6 +58,18 @@ export const storeUser = asyncHandler(async (req, res) => {
   if (!full_name || !email || !phone || !password) {
     return res.status(422).json({ message: 'full_name, email, phone, password là bắt buộc.' });
   }
+  // Cùng bộ quy tắc với form đăng ký công khai (authController#register) — tài khoản do
+  // Admin tạo cũng là tài khoản đăng nhập thật, không có lý do gì lỏng hơn.
+  const invalidEmail = validateEmail(email);
+  if (invalidEmail) return res.status(422).json({ message: invalidEmail });
+  const invalidPhone = validatePhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+  if (String(password).length < 8) {
+    return res.status(422).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
+  }
+  if (!USER_ROLES.includes(role)) {
+    return res.status(422).json({ message: `Vai trò không hợp lệ (chỉ nhận: ${USER_ROLES.join(', ')}).` });
+  }
   const password_hash = await bcrypt.hash(password, 10);
   const result = await query(
     'INSERT INTO users (full_name, email, phone, password_hash, role, created_by_admin_id) VALUES (?, ?, ?, ?, ?, ?)',
@@ -65,6 +83,24 @@ export const updateUser = asyncHandler(async (req, res) => {
     full_name, phone, role, is_active, address, city, favorite_region, avatar_url,
     newsletter, sms_alerts, order_email, security_alerts, reward_points, reward_tier, next_tier_points,
   } = req.body;
+  const invalidPhone = validateOptionalPhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+  if (role !== undefined && role !== null && !USER_ROLES.includes(role)) {
+    return res.status(422).json({ message: `Vai trò không hợp lệ (chỉ nhận: ${USER_ROLES.join(', ')}).` });
+  }
+  // Không cho Admin tự khóa / tự hạ quyền chính mình.
+  // Từ khi middleware auth() đọc lại is_active + role từ CSDL ở MỖI request (xem
+  // middleware/auth.js), thao tác này có hiệu lực NGAY LẬP TỨC: chính request tiếp theo của
+  // họ đã bị chặn, nên không còn cách tự mở khóa lại cho mình. Nếu đó là admin duy nhất thì
+  // cả hệ thống mất luôn người quản trị. Việc khóa/hạ quyền một admin phải do admin KHÁC làm.
+  if (String(req.params.user) === String(req.user.id)) {
+    if (is_active !== undefined && is_active !== null && !is_active) {
+      return res.status(422).json({ message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+    }
+    if (role !== undefined && role !== null && role !== 'ADMIN') {
+      return res.status(422).json({ message: 'Bạn không thể tự thay đổi vai trò của chính mình.' });
+    }
+  }
   await query(
     `UPDATE users SET full_name = COALESCE(?, full_name), phone = COALESCE(?, phone),
        role = COALESCE(?, role), is_active = COALESCE(?, is_active),
@@ -83,6 +119,11 @@ export const updateUser = asyncHandler(async (req, res) => {
   res.json({ data: stripPasswordHash(user) });
 });
 export const destroyUser = asyncHandler(async (req, res) => {
+  // Cùng lý do với updateUser ở trên: "xóa" ở đây là is_active = 0, tự xóa chính mình là
+  // tự khóa mình ra khỏi hệ thống ngay lập tức.
+  if (String(req.params.user) === String(req.user.id)) {
+    return res.status(422).json({ message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
+  }
   await query('UPDATE users SET is_active = 0 WHERE id = ?', [req.params.user]);
   const [user] = await query(`${USER_LIST_SELECT} WHERE u.id = ?`, [req.params.user]);
   res.json({ data: stripPasswordHash(user) });

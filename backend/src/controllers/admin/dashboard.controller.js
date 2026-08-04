@@ -1,15 +1,36 @@
 import { query } from '../../config/db.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
+import { localDateIso } from '../../utils/dates.js';
 
 // ---------------- Dashboard ----------------
 // Frontend (admin-dashboard-page.jsx) đọc một response giàu: metrics, revenue_chart,
 // top_customers, work_queue, low_stock_products, featured_products, recent_orders, filters.
 // "Doanh thu thực thu" = đơn đã giao (DELIVERED). Xem UC 2.2.19 Báo cáo thống kê.
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export const dashboard = asyncHandler(async (req, res) => {
   const chartRange = req.query.chart_range || '30d';
-  const dateTo = req.query.date_to || new Date().toISOString().slice(0, 10);
-  const dateFrom = req.query.date_from ||
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const today = new Date();
+  const dateTo = req.query.date_to || localDateIso(today);
+  const dateFrom = req.query.date_from || localDateIso(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  // UC 2.2.19 luồng phụ A2: "Khoảng thời gian không hợp lệ -> hiển thị thông báo".
+  // Ngày sai định dạng cũng phải chặn: MySQL nhận chuỗi rác sẽ lặng lẽ trả về 0 dòng, Admin
+  // tưởng kỳ đó không bán được gì thay vì biết mình nhập sai.
+  if (!DATE_PATTERN.test(dateFrom) || !DATE_PATTERN.test(dateTo)) {
+    return res.status(422).json({ message: 'Ngày lọc phải theo định dạng YYYY-MM-DD.' });
+  }
+  if (dateFrom > dateTo) {
+    return res.status(422).json({ message: 'Khoảng thời gian không hợp lệ: ngày bắt đầu phải trước ngày kết thúc.' });
+  }
+  // Áp cho các số liệu mang tính BÁO CÁO THEO KỲ (doanh thu, khách hàng, sản phẩm bán chạy).
+  // Mốc thời gian dùng để quy kỳ là delivered_at — ngày đơn thực sự giao xong, cũng chính là
+  // ngày ghi nhận doanh thu, thống nhất với định nghĩa "doanh thu thực thu = đơn DELIVERED".
+  // Trước đây 2 tham số này chỉ được echo lại trong `filters` mà KHÔNG vào truy vấn nào, nên
+  // bộ chọn ngày trên giao diện /admin hoàn toàn vô tác dụng: chọn kỳ nào cũng ra doanh thu
+  // toàn thời gian.
+  const periodSql = 'AND DATE(delivered_at) BETWEEN ? AND ?';
+  const periodParams = [dateFrom, dateTo];
 
   const [settings] = await query('SELECT low_stock_threshold FROM admin_settings ORDER BY id ASC LIMIT 1');
   const lowStockThreshold = settings?.low_stock_threshold ?? 10;
@@ -22,7 +43,9 @@ export const dashboard = asyncHandler(async (req, res) => {
   };
 
   const [{ revenue, successful_orders }] = await query(
-    "SELECT COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS successful_orders FROM orders WHERE status = 'DELIVERED'"
+    `SELECT COALESCE(SUM(total_amount),0) AS revenue, COUNT(*) AS successful_orders
+     FROM orders WHERE status = 'DELIVERED' ${periodSql}`,
+    periodParams
   );
   const [{ today_revenue }] = await query(
     "SELECT COALESCE(SUM(total_amount),0) AS today_revenue FROM orders WHERE status = 'DELIVERED' AND DATE(delivered_at) = CURDATE()"
@@ -61,12 +84,16 @@ export const dashboard = asyncHandler(async (req, res) => {
   );
   // Cùng kỹ thuật với supplierController.myRevenue: SQL chỉ trả về NGÀY CÓ dữ liệu, nên phải
   // tự dựng đủ chuỗi ngày liên tiếp ở đây, ngày nào thiếu thì mặc định revenue = 0.
+  // Khóa tra cứu phải dựng bằng localDateIso() chứ không phải toISOString(): key phía SQL là
+  // DATE(delivered_at) tính theo giờ máy chủ, còn toISOString() cho ra ngày theo giờ UTC —
+  // lệch nhau đúng 1 ngày trong khung 00:00–07:00 giờ Việt Nam, khiến doanh thu hôm đó không
+  // khớp cột nào và cột cuối biểu đồ luôn bằng 0.
   const revenueMap = new Map(revenueRows.map((r) => [r.d, r]));
   const revenue_chart = [];
   for (let i = days - 1; i >= 0; i -= 1) {
     const date = new Date();
     date.setDate(date.getDate() - i);
-    const key = date.toISOString().slice(0, 10);
+    const key = localDateIso(date);
     const row = revenueMap.get(key);
     revenue_chart.push({
       label: `${date.getDate()}/${date.getMonth() + 1}`,
@@ -79,7 +106,9 @@ export const dashboard = asyncHandler(async (req, res) => {
     `SELECT u.id, u.full_name, u.email, COUNT(o.id) AS successful_orders,
             COALESCE(SUM(o.total_amount),0) AS total_revenue, MAX(o.delivered_at) AS last_delivered_at
      FROM users u JOIN orders o ON o.user_id = u.id AND o.status = 'DELIVERED'
-     GROUP BY u.id ORDER BY total_revenue DESC LIMIT 5`
+     WHERE DATE(o.delivered_at) BETWEEN ? AND ?
+     GROUP BY u.id ORDER BY total_revenue DESC LIMIT 5`,
+    periodParams
   );
 
   const recentOrders = await query(
@@ -128,15 +157,18 @@ export const dashboard = asyncHandler(async (req, res) => {
   // cùng 1 màn hình báo tổng doanh thu 640.000đ nhưng liệt kê 1 sản phẩm 2.520.000đ.
   // Không chuyển điều kiện xuống WHERE được, vì làm vậy sẽ loại luôn sản phẩm CHƯA bán được
   // dòng nào (mất ý nghĩa của LEFT JOIN). Cách đúng là lọc ngay trong hàm tổng hợp:
+  // Điều kiện kỳ báo cáo cũng phải nằm TRONG hàm tổng hợp (cùng lý do với điều kiện trạng
+  // thái ở trên), không đưa xuống WHERE — nếu không sẽ mất các sản phẩm chưa bán được dòng nào.
   const featured = await query(
     `SELECT p.id, p.sku, p.name, p.stock_quantity,
-            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.quantity   ELSE 0 END),0) AS sold_quantity,
-            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' THEN oi.line_total ELSE 0 END),0) AS revenue
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' AND DATE(o.delivered_at) BETWEEN ? AND ? THEN oi.quantity   ELSE 0 END),0) AS sold_quantity,
+            COALESCE(SUM(CASE WHEN o.status = 'DELIVERED' AND DATE(o.delivered_at) BETWEEN ? AND ? THEN oi.line_total ELSE 0 END),0) AS revenue
      FROM products p
      LEFT JOIN order_items oi ON oi.product_id = p.id
      LEFT JOIN orders o ON o.id = oi.order_id
      WHERE p.is_deleted = 0
-     GROUP BY p.id ORDER BY sold_quantity DESC, p.id DESC LIMIT 5`
+     GROUP BY p.id ORDER BY sold_quantity DESC, p.id DESC LIMIT 5`,
+    [...periodParams, ...periodParams]
   );
 
   res.json({

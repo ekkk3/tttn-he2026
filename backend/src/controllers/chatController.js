@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { query } from '../config/db.js';
 import { verifyToken } from '../utils/jwt.js';
+import { escapeLike } from '../utils/sql.js';
 
 // POST /api/chat — AI Chatbot tư vấn đặc sản (UC 2.2.6a).
 // Ưu tiên OpenAI/Gemini nếu có API key; nếu chưa cấu hình key -> fallback trả lời
@@ -48,13 +49,16 @@ export const chatHistory = asyncHandler(async (req, res) => {
 // OpenAI/Gemini, hoặc khi gọi provider thật bị lỗi (xem catch bên dưới).
 async function localProductReply(message) {
   const keyword = message.trim();
+  // escapeLike: khách gõ đúng 1 dấu "_"/"%" vào tin nhắn (message chính là từ khóa LIKE ở
+  // đây) sẽ khớp mọi sản phẩm thay vì không sản phẩm nào — cùng lỗi đã sửa ở productController.
+  const term = escapeLike(keyword);
   const rows = await query(
     `SELECT p.name, p.sale_price, p.origin, p.short_description, r.name AS region_name
      FROM products p LEFT JOIN regions r ON r.id = p.region_id
      WHERE p.is_active = 1 AND p.is_deleted = 0
        AND (p.name LIKE ? OR p.description LIKE ? OR p.origin LIKE ? OR r.name LIKE ?)
      ORDER BY p.stock_quantity DESC LIMIT 5`,
-    [`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
+    [`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`]
   );
   if (rows.length === 0) {
     const suggestions = await query(

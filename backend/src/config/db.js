@@ -17,6 +17,24 @@ export const pool = mysql.createPool({
   charset: 'utf8mb4', // Tiếng Việt có dấu: đảm bảo đọc/ghi đúng utf8mb4.
 });
 
+// Bật STRICT_TRANS_TABLES cho MỌI kết nối trong pool.
+//
+// Vì sao cần: MariaDB đi kèm XAMPP mặc định KHÔNG bật strict mode. Ở chế độ lỏng, dữ liệu
+// sai kiểu/quá dài không báo lỗi mà bị ÂM THẦM ép về giá trị gần đúng:
+//   - chuỗi dài hơn VARCHAR(n) bị cắt cụt (tên sản phẩm 500 ký tự -> lưu 200, mất phần đuôi);
+//   - giá trị ENUM lạ thành chuỗi rỗng (tài khoản có role = '' không thuộc vai trò nào);
+//   - "abc" gán vào cột INT thành 0 (ngưỡng cảnh báo tồn kho thành 0 -> tắt luôn cảnh báo).
+// Người dùng thấy "lưu thành công" trong khi dữ liệu đã bị biến dạng — kiểu hỏng khó phát
+// hiện nhất vì không có lỗi nào được ghi lại ở đâu cả.
+//
+// Bật strict mode biến các trường hợp đó thành lỗi thật, và middleware/errorHandler.js đã có
+// sẵn nhánh dịch ER_DATA_TOO_LONG / ER_TRUNCATED_WRONG_VALUE sang thông báo 422 tiếng Việt.
+// Đặt ở tầng kết nối thay vì sửa cấu hình my.ini để dự án chạy đúng trên MỌI máy, không phụ
+// thuộc việc người cài đặt có chỉnh MariaDB hay không.
+pool.on('connection', (connection) => {
+  connection.query("SET SESSION sql_mode = CONCAT(@@sql_mode, ',STRICT_TRANS_TABLES')");
+});
+
 // Hàm helper dùng CHUNG cho toàn bộ backend thay vì gọi pool.query() trực tiếp:
 // mysql2 trả về mảng [rows, fields] — hàm này chỉ lấy phần rows vì fields hiếm khi cần.
 export async function query(sql, params = []) {

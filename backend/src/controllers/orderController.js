@@ -1,15 +1,30 @@
+import { randomBytes } from 'crypto';
 import { query, pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
-import { computeVoucherDiscount } from './voucherController.js';
+import { computeVoucherDiscount, releaseOrderVoucher } from './voucherController.js';
 import { notifyUser } from '../services/notificationService.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
+import { validatePhone } from '../utils/validators.js';
 
+// Mã đơn hiển thị cho khách. Phần ngẫu nhiên 6 chữ số hex là BẮT BUỘC, không phải trang trí:
+// cột orders.order_no có UNIQUE KEY, mà Date.now() chỉ có độ phân giải mili-giây — 2 khách
+// bấm "Đặt hàng" trong cùng 1 mili-giây sẽ sinh ra 2 mã giống hệt nhau, câu INSERT thứ hai
+// vi phạm uk_orders_order_no và cả đơn hàng đó BỊ HỦY (khách nhận thông báo khó hiểu
+// "Mã đơn hàng đã tồn tại trong hệ thống"). Đã tái hiện được khi 5 khách đặt hàng đồng thời.
 function generateOrderNo() {
-  return `DH${Date.now()}`;
+  return `DH${Date.now()}${randomBytes(3).toString('hex').toUpperCase()}`;
 }
+
+// Đúng 4 phương thức mà hệ thống thực sự xử lý được (UC 2.2.9 + checkout-page.jsx):
+// COD và BANK_TRANSFER xử lý nội bộ, VNPAY/MOMO chuyển hướng sang cổng thanh toán.
+// Cột orders.payment_method là VARCHAR(30) nên không có ràng buộc nào ở tầng CSDL: thiếu
+// danh sách này thì client gửi "BITCOIN" hay cả thẻ <script> cũng lưu được, và đơn đó không
+// luồng nào xử lý nổi (admin/orders.controller.js còn tính tiền thu hộ COD theo đúng chuỗi
+// 'COD' nên các đơn "lạ" bị bỏ sót khi đối soát).
+const PAYMENT_METHODS = ['COD', 'BANK_TRANSFER', 'VNPAY', 'MOMO'];
 
 // Phí vận chuyển tính phía server, giữ đồng logic với checkout-page.jsx để tổng tiền
 // hiển thị trên UI khớp với đơn hàng thực tế lưu trong DB.
@@ -84,6 +99,14 @@ export const checkout = asyncHandler(async (req, res) => {
   if (!recipient_name || !recipient_phone || !shipping_address) {
     return res.status(422).json({ message: 'Thiếu thông tin người nhận hoặc địa chỉ giao hàng.' });
   }
+  // UC 2.2.8 luồng phụ A1: "nhập thiếu hoặc SAI thông tin giao hàng -> yêu cầu nhập lại".
+  // Số điện thoại sai định dạng chỉ lộ ra khi đơn vị vận chuyển gọi giao không được, nên
+  // phải chặn ngay lúc đặt hàng.
+  const invalidPhone = validatePhone(recipient_phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+  if (!PAYMENT_METHODS.includes(payment_method)) {
+    return res.status(422).json({ message: `Phương thức thanh toán không hợp lệ (chỉ nhận: ${PAYMENT_METHODS.join(', ')}).` });
+  }
 
   // Toàn bộ checkout chạy trong 1 TRANSACTION: tạo đơn + trừ tồn kho + ghi payment + cập
   // nhật voucher + xóa giỏ hàng phải cùng thành công hoặc cùng thất bại — nếu 1 bước lỗi
@@ -100,11 +123,25 @@ export const checkout = asyncHandler(async (req, res) => {
     if (!cart) throw Object.assign(new Error('Giỏ hàng đang trống.'), { status: 422 });
 
     const [items] = await connection.query(
-      `SELECT ci.*, p.name AS product_name, p.stock_quantity
+      `SELECT ci.*, p.name AS product_name, p.stock_quantity, p.is_active, p.is_deleted
        FROM cart_items ci JOIN products p ON p.id = ci.product_id WHERE ci.cart_id = ?`,
       [cart.id]
     );
     if (!items.length) throw Object.assign(new Error('Giỏ hàng đang trống.'), { status: 422 });
+
+    // UC 2.2.8 luồng phụ A2: "sản phẩm trong giỏ đã ngừng bán hoặc không tồn tại -> thông báo
+    // sản phẩm không khả dụng và yêu cầu loại bỏ khỏi giỏ".
+    // cartController#storeItem có lọc is_active/is_deleted lúc THÊM vào giỏ, nhưng sản phẩm
+    // vẫn nằm lại trong giỏ nếu Admin bấm "Ngừng bán" SAU đó — trước đây câu SELECT trên
+    // không lọc gì nên đơn vẫn được tạo và tồn kho vẫn bị trừ cho mặt hàng đã gỡ khỏi kinh
+    // doanh (có thể do hết hạn, bị thu hồi, vi phạm ATTP).
+    const unavailable = items.filter((i) => !i.is_active || i.is_deleted);
+    if (unavailable.length) {
+      throw Object.assign(
+        new Error(`Sản phẩm ${unavailable.map((i) => `"${i.product_name}"`).join(', ')} đã ngừng bán, vui lòng xóa khỏi giỏ hàng trước khi đặt.`),
+        { status: 422 }
+      );
+    }
 
     const subtotal = items.reduce((sum, i) => sum + Number(i.line_total), 0);
     const shipping_fee = calculateShippingFee(subtotal, shipping_address);
@@ -134,12 +171,23 @@ export const checkout = asyncHandler(async (req, res) => {
     );
     const orderId = orderResult.insertId;
 
-    for (const item of items) {
-      await connection.query(
-        `INSERT INTO order_items (order_id, product_id, product_name_snapshot, quantity, unit_price, line_total)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total]
-      );
+    // Thứ tự 2 vòng lặp dưới đây là CÓ CHỦ ĐÍCH, không gộp chung được — xem giải thích:
+    //
+    // (1) TRỪ TỒN KHO TRƯỚC, ghi order_items sau.
+    //     order_items.product_id có khóa ngoại trỏ tới products, nên mỗi câu INSERT order_items
+    //     khiến InnoDB đặt khóa CHIA SẺ (S) lên dòng products tương ứng để kiểm tra FK. Nếu
+    //     INSERT chạy trước như trước đây thì kịch bản 2 khách mua cùng 1 sản phẩm là:
+    //         T1 giữ S(sp) --(xin X)--> chờ T2 nhả S
+    //         T2 giữ S(sp) --(xin X)--> chờ T1 nhả S     => DEADLOCK
+    //     Đã tái hiện: 8 khách đặt cùng lúc thì 6 đơn chết với lỗi 1213 và trả HTTP 500.
+    //     Lấy khóa ĐỘC QUYỀN (X) trước bằng UPDATE thì khóa S mà FK cần sau đó đã nằm gọn
+    //     trong khóa X transaction này đang giữ, không còn cảnh nâng cấp khóa chéo nhau nữa.
+    //
+    // (2) Sắp xếp theo product_id để MỌI transaction khóa các dòng products theo CÙNG một thứ
+    //     tự — 2 đơn cùng chứa sản phẩm A và B mà khóa ngược chiều nhau cũng gây deadlock.
+    const orderedItems = [...items].sort((a, b) => Number(a.product_id) - Number(b.product_id));
+
+    for (const item of orderedItems) {
       // Trừ tồn kho + kiểm tra đủ hàng trong CÙNG 1 câu UPDATE (điều kiện stock_quantity >= ?),
       // dựa vào row lock của InnoDB để tránh race condition: nếu chỉ SELECT rồi so sánh trước,
       // 2 request checkout đồng thời cho cùng sản phẩm có thể cùng "thấy" còn đủ hàng và cùng
@@ -154,6 +202,14 @@ export const checkout = asyncHandler(async (req, res) => {
           { status: 422 }
         );
       }
+    }
+
+    for (const item of orderedItems) {
+      await connection.query(
+        `INSERT INTO order_items (order_id, product_id, product_name_snapshot, quantity, unit_price, line_total)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [orderId, item.product_id, item.product_name, item.quantity, item.unit_price, item.line_total]
+      );
     }
 
     // Tạo bản ghi thanh toán. BANK_TRANSFER lưu hướng dẫn chuyển khoản vào raw_payload
@@ -294,6 +350,13 @@ export const cancel = asyncHandler(async (req, res) => {
       if (!item.product_id) continue; // Sản phẩm đã bị xóa hẳn -> không còn dòng kho để cộng lại.
       await connection.query('UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?', [item.quantity, item.product_id]);
     }
+    // Trả lại lượt dùng voucher (nếu đơn có áp mã) — nằm CÙNG transaction với hoàn kho vì
+    // cả hai đều là việc "hoàn tác những gì checkout đã tiêu tốn".
+    // connection.query trả về [rows, fields] còn helper mong đợi trực tiếp rows, nên bọc lại.
+    await releaseOrderVoucher(order.id, async (sql, params) => {
+      const [rows] = await connection.query(sql, params);
+      return rows;
+    });
     await connection.query(
       "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'CANCELLED', ?, ?)",
       [order.id, order.status, req.body.reason || 'Khách hàng hủy đơn', req.user.id]

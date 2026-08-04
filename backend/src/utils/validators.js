@@ -36,6 +36,52 @@ export function validateEmail(value, label = 'Email') {
   return null;
 }
 
+// Số điện thoại Việt Nam. Chấp nhận cách viết quen thuộc của người dùng — có khoảng trắng,
+// dấu chấm, gạch ngang hay ngoặc đơn ("093 123 4567", "(024) 3825 1234") — nên bỏ hết ký tự
+// phân cách trước khi so khớp, thay vì bắt người dùng gõ liền một mạch.
+// Dạng hợp lệ sau khi bỏ phân cách: bắt đầu bằng 0 hoặc +84/84, tổng 10-11 chữ số
+// (10 số cho di động và phần lớn số cố định, 11 số cho một vài đầu số cố định cũ).
+const PHONE_SEPARATORS = /[\s.\-()]/g;
+const PHONE_REGEX = /^(0\d{9,10}|(\+?84)\d{9,10})$/;
+
+export function validatePhone(value, label = 'Số điện thoại') {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return `${label} là bắt buộc.`;
+  }
+  const digits = String(value).replace(PHONE_SEPARATORS, '');
+  if (!PHONE_REGEX.test(digits)) return `${label} không hợp lệ (ví dụ: 0912345678).`;
+  return null;
+}
+
+// Dùng cho các form mà số điện thoại là TÙY CHỌN: bỏ trống thì bỏ qua, đã nhập thì phải đúng.
+export function validateOptionalPhone(value, label = 'Số điện thoại') {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  return validatePhone(value, label);
+}
+
+// Độ dài mật khẩu tối thiểu — cùng con số mà authController#register đã áp cho form đăng ký.
+// Đặt thành hằng số export được để mọi nơi đổi mật khẩu tham chiếu chung, không còn chỗ
+// chặt chỗ lỏng (trước đây 2 endpoint đổi mật khẩu không kiểm tra gì nên đặt được mật khẩu
+// rỗng hoặc 1 ký tự, trong khi đăng ký lại bắt buộc từ 8 ký tự).
+export const PASSWORD_MIN_LENGTH = 8;
+
+// Kiểm tra mật khẩu MỚI khi đăng ký/đổi mật khẩu.
+// `confirmation` là tùy chọn: chỉ truyền ở những form CÓ ô "nhập lại mật khẩu" — nếu form
+// hiển thị ô này mà backend không so khớp thì người dùng gõ nhầm vẫn đổi thành công rồi
+// không đăng nhập lại được.
+export function validateNewPassword(value, confirmation = undefined, label = 'Mật khẩu') {
+  if (value === undefined || value === null || String(value) === '') {
+    return `${label} là bắt buộc.`;
+  }
+  if (String(value).length < PASSWORD_MIN_LENGTH) {
+    return `${label} phải có ít nhất ${PASSWORD_MIN_LENGTH} ký tự.`;
+  }
+  if (confirmation !== undefined && String(value) !== String(confirmation)) {
+    return 'Mật khẩu xác nhận chưa khớp.';
+  }
+  return null;
+}
+
 // UC "Yêu cầu nhập hàng" bước 7: "Số lượng nhập phải lớn hơn 0".
 // Số lượng ÂM khiến phiếu NHẬP hàng lại TRỪ tồn kho khi được đánh dấu đã nhận
 // (operationController#updateRequisitionStatus cộng thẳng approved_qty vào stock_quantity).

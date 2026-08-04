@@ -2,6 +2,7 @@ import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { esClient, PRODUCTS_INDEX } from '../config/elasticsearch.js';
 import { PRODUCT_SELECT, serializeProduct, serializeProducts, paginated, parsePagination } from '../utils/serializers.js';
+import { escapeLike } from '../utils/sql.js';
 
 // GET /api/products?keyword=&category_id=&region_id=&supplier_id=&max_price=&sort=&page=&per_page=
 // Frontend (use-storefront-catalog-store.js) gửi "keyword", "category_id" (có thể CSV),
@@ -59,8 +60,13 @@ export const index = asyncHandler(async (req, res) => {
     where.push(`p.id IN (${esProductIds.map(() => '?').join(',')})`);
     params.push(...esProductIds);
   } else if (searchTerm) {
+    // escapeLike: trong cú pháp LIKE, '%' khớp mọi chuỗi và '_' khớp mọi ký tự đơn. Tham số
+    // hóa (dấu ?) chỉ chống SQL injection chứ KHÔNG vô hiệu hóa 2 ký tự này, nên khách gõ
+    // đúng 1 dấu gạch dưới vào ô tìm kiếm là nhận về TOÀN BỘ sản phẩm thay vì "không tìm
+    // thấy" — kết quả sai và gây hiểu nhầm. Escape để chúng được hiểu là ký tự thường.
+    const term = escapeLike(searchTerm);
     where.push('(p.name LIKE ? OR p.description LIKE ? OR p.origin LIKE ?)');
-    params.push(`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`);
+    params.push(`%${term}%`, `%${term}%`, `%${term}%`);
   }
 
   if (category_id) {

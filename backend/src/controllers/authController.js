@@ -5,6 +5,7 @@ import { signToken, tokenExpiresAtIso } from '../utils/jwt.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendMail } from '../utils/mailer.js';
 import { verifyGoogleIdToken, verifyFacebookAccessToken } from '../utils/oauth.js';
+import { validatePhone } from '../utils/validators.js';
 
 // Frontend (use-auth-store.js) đọc "access_token" + "expires_at", không phải "token".
 // Giữ cả "token" để tương thích ngược với công cụ/test khác có thể đang đọc trường này.
@@ -22,9 +23,18 @@ export const register = asyncHandler(async (req, res) => {
   if (!full_name || !email || !phone || !password) {
     return res.status(422).json({ message: 'full_name, email, phone, password là bắt buộc.' });
   }
+  // Chuỗi toàn khoảng trắng là truthy trong JS nên lọt qua kiểm tra ở trên: trước đây đăng ký
+  // được tài khoản có họ tên "   ", hiển thị thành ô trống ở mọi nơi (đơn hàng, đánh giá,
+  // danh sách người dùng) mà Admin không sửa được từ phía khách.
+  if (!String(full_name).trim()) {
+    return res.status(422).json({ message: 'Họ và tên không được để trống.' });
+  }
   if (!EMAIL_REGEX.test(email)) {
     return res.status(422).json({ message: 'Email không hợp lệ.' });
   }
+  // Trước đây chỉ kiểm tra "có nhập hay không", nên đăng ký được với phone = "abcxyz".
+  const invalidPhone = validatePhone(phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   if (String(password).length < 8) {
     return res.status(422).json({ message: 'Mật khẩu phải có ít nhất 8 ký tự.' });
   }
@@ -36,7 +46,7 @@ export const register = asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO users (full_name, email, phone, password_hash, role, is_active)
      VALUES (?, ?, ?, ?, 'CUSTOMER', 1)`,
-    [full_name, email, phone, password_hash]
+    [String(full_name).trim(), email, phone, password_hash]
   );
   const userId = result.insertId;
   const token = signToken({ sub: userId, role: 'CUSTOMER' });
@@ -48,6 +58,13 @@ export const register = asyncHandler(async (req, res) => {
 // không so plaintext) -> chặn tài khoản bị khóa -> ký token mới.
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  // bcrypt.compare() ném "Illegal arguments" nếu tham số không phải chuỗi, và lỗi đó rơi vào
+  // nhánh 500 của errorHandler. Nghĩa là chỉ cần gửi request đăng nhập THIẾU mật khẩu (hoặc
+  // password là object/số) là server trả 500 — vừa lộ ra endpoint xử lý input không an toàn,
+  // vừa làm bẩn log lỗi. Kiểm tra kiểu ngay đầu hàm và trả 401 như mọi lần đăng nhập sai khác.
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return res.status(401).json({ message: 'Sai email hoặc mật khẩu.' });
+  }
   const [user] = await query('SELECT * FROM users WHERE email = ? AND is_deleted = 0 LIMIT 1', [email]);
   // Tài khoản tạo qua Google/Facebook không có password_hash — tránh gọi bcrypt.compare
   // với hash rỗng (có thể ném lỗi thay vì trả 401 gọn gàng).

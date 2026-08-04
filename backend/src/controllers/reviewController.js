@@ -93,6 +93,10 @@ export const adminModerate = asyncHandler(async (req, res) => {
   if (!['VISIBLE', 'HIDDEN'].includes(status)) {
     return res.status(422).json({ message: 'status phải là VISIBLE hoặc HIDDEN.' });
   }
+  // Kiểm duyệt một đánh giá không tồn tại trước đây trả 200 { data: null } — Admin bấm "Ẩn"
+  // trên dòng vừa bị xóa ở tab khác vẫn thấy báo thành công mà thực tế không có gì thay đổi.
+  const [existing] = await query('SELECT id FROM product_reviews WHERE id = ?', [req.params.id]);
+  if (!existing) return res.status(404).json({ message: 'Không tìm thấy đánh giá.' });
   await query(
     'UPDATE product_reviews SET status = ?, moderated_by_user_id = ?, moderated_at = NOW() WHERE id = ?',
     [status, req.user.id, req.params.id]

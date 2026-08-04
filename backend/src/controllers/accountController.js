@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PRODUCT_SELECT, serializeProducts } from '../utils/serializers.js';
+import { validatePhone, validateOptionalPhone, validateNewPassword } from '../utils/validators.js';
 
 // Frontend (use-account-store.js) đọc { data } với các field: name, avatar,
 // reward_snapshot{tier,points,next_tier_points,perks}, addresses[], reward_history[].
@@ -67,6 +68,11 @@ export const updateProfile = asyncHandler(async (req, res) => {
     favorite_region: 'favorite_region', avatar: 'avatar_url',
     newsletter: 'newsletter', sms_alerts: 'sms_alerts', order_email: 'order_email', security_alerts: 'security_alerts',
   };
+  // UC 2.2.3 bước 7: "Số điện thoại đúng định dạng". Đây là cập nhật MỘT PHẦN nên chỉ kiểm
+  // khi client có gửi trường phone; bỏ trống được coi là xóa số nên vẫn cho qua.
+  const invalidPhone = validateOptionalPhone(req.body.phone);
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
+
   const updates = []; // Mảng chuỗi "cot = ?", nối lại thành "SET cot1 = ?, cot2 = ?, ...".
   const params = []; // Giá trị tương ứng, PHẢI cùng thứ tự với updates để khớp dấu ? .
   for (const [key, column] of Object.entries(map)) {
@@ -88,9 +94,22 @@ export const updateProfile = asyncHandler(async (req, res) => {
 });
 
 export const changePassword = asyncHandler(async (req, res) => {
-  const { current_password, new_password } = req.body;
+  const { current_password, new_password, new_password_confirmation } = req.body;
+  // UC 2.2.3 luồng phụ A2 ("Mật khẩu quá ngắn" -> báo lỗi, yêu cầu nhập lại).
+  // Kiểm tra TRƯỚC khi so mật khẩu hiện tại để không tốn 1 lần bcrypt.compare cho request
+  // chắc chắn sẽ bị từ chối. Trước đây hàm này băm thẳng new_password nên:
+  //   - đặt được mật khẩu rỗng / 1 ký tự (lỏng hơn hẳn form đăng ký vốn bắt buộc >= 8);
+  //   - không gửi new_password thì bcrypt.hash(undefined) ném lỗi -> HTTP 500;
+  //   - ô "nhập lại mật khẩu" ở giao diện (new_password_confirmation) bị bỏ qua hoàn toàn,
+  //     gõ nhầm vẫn đổi thành công rồi người dùng không đăng nhập lại được.
+  const invalidPassword = validateNewPassword(new_password, new_password_confirmation, 'Mật khẩu mới');
+  if (invalidPassword) return res.status(422).json({ message: invalidPassword });
+
   const [user] = await query('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
-  if (!user.password_hash || !(await bcrypt.compare(current_password, user.password_hash))) {
+  // Token còn hạn nhưng tài khoản đã bị xóa khỏi DB -> `user` là undefined, đọc thẳng
+  // user.password_hash sẽ ném TypeError thành lỗi 500.
+  if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng.' });
+  if (!user.password_hash || !(await bcrypt.compare(String(current_password ?? ''), user.password_hash))) {
     return res.status(422).json({ message: 'Mật khẩu hiện tại không đúng.' });
   }
   const hash = await bcrypt.hash(new_password, 10);
@@ -105,6 +124,12 @@ export const listAddresses = asyncHandler(async (req, res) => {
 
 export const storeAddress = asyncHandler(async (req, res) => {
   const { label, recipient, phone, line1, city, note, is_default } = req.body;
+  // 3 cột này NOT NULL trong schema — thiếu thì trước đây rơi xuống lỗi SQL.
+  if (!recipient || !String(recipient).trim() || !line1 || !String(line1).trim()) {
+    return res.status(422).json({ message: 'Vui lòng nhập tên người nhận và địa chỉ.' });
+  }
+  const invalidPhone = validatePhone(phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   const result = await query(
     `INSERT INTO user_addresses (user_id, label, recipient, phone, line1, city, note, is_default)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -134,6 +159,8 @@ export const updateAddress = asyncHandler(async (req, res) => {
   if (!(await findOwnAddress(req.params.address, req.user.id))) {
     return res.status(404).json({ message: 'Không tìm thấy địa chỉ.' });
   }
+  const invalidPhone = validateOptionalPhone(req.body.phone, 'Số điện thoại người nhận');
+  if (invalidPhone) return res.status(422).json({ message: invalidPhone });
   const fields = ['label', 'recipient', 'phone', 'line1', 'city', 'note'];
   const updates = [];
   const params = [];
