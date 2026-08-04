@@ -228,7 +228,7 @@ export function ProductDetailPage() {
                             <span className="text-xs uppercase tracking-wider text-on-surface-variant">
                                 Nhà cung cấp
                             </span>
-                            <span className="font-medium">{currentProduct.regionName}</span>
+                            <span className="font-medium">{currentProduct.supplierName}</span>
                         </div>
                         <div className="flex flex-col gap-1">
                             <span className="text-xs uppercase tracking-wider text-on-surface-variant">
