@@ -23,6 +23,12 @@ export const register = asyncHandler(async (req, res) => {
   if (!full_name || !email || !phone || !password) {
     return res.status(422).json({ message: 'full_name, email, phone, password là bắt buộc.' });
   }
+  // Chuỗi toàn khoảng trắng là truthy trong JS nên lọt qua kiểm tra ở trên: trước đây đăng ký
+  // được tài khoản có họ tên "   ", hiển thị thành ô trống ở mọi nơi (đơn hàng, đánh giá,
+  // danh sách người dùng) mà Admin không sửa được từ phía khách.
+  if (!String(full_name).trim()) {
+    return res.status(422).json({ message: 'Họ và tên không được để trống.' });
+  }
   if (!EMAIL_REGEX.test(email)) {
     return res.status(422).json({ message: 'Email không hợp lệ.' });
   }
@@ -40,7 +46,7 @@ export const register = asyncHandler(async (req, res) => {
   const result = await query(
     `INSERT INTO users (full_name, email, phone, password_hash, role, is_active)
      VALUES (?, ?, ?, ?, 'CUSTOMER', 1)`,
-    [full_name, email, phone, password_hash]
+    [String(full_name).trim(), email, phone, password_hash]
   );
   const userId = result.insertId;
   const token = signToken({ sub: userId, role: 'CUSTOMER' });

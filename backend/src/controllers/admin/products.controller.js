@@ -49,7 +49,23 @@ export const storeProduct = asyncHandler(async (req, res) => {
   await indexProduct(result.insertId); // Đồng bộ Elasticsearch để fuzzy search cập nhật ngay.
   res.status(201).json({ data: await loadAdminProduct(result.insertId) });
 });
+// Kiểm tra sản phẩm có tồn tại không TRƯỚC khi sửa/xóa.
+// Trước đây các hàm bên dưới chạy thẳng câu UPDATE với id bất kỳ: không khớp dòng nào thì
+// MySQL coi là bình thường (affectedRows = 0), rồi câu SELECT sau đó trả về undefined và
+// endpoint đáp lại 200 kèm { data: null }. Với người gọi, "sửa thành công nhưng không có dữ
+// liệu" và "không tìm thấy bản ghi" trông giống hệt nhau — frontend hiện form trắng, không
+// báo lỗi gì. Mọi UC quản trị đều có luồng phụ "không tìm thấy -> hiển thị thông báo".
+async function ensureProductExists(id, res) {
+  const [product] = await query('SELECT id FROM products WHERE id = ?', [id]);
+  if (!product) {
+    res.status(404).json({ message: 'Không tìm thấy sản phẩm.' });
+    return false;
+  }
+  return true;
+}
+
 export const updateProduct = asyncHandler(async (req, res) => {
+  if (!(await ensureProductExists(req.params.id, res))) return;
   const fields = ['category_id', 'supplier_id', 'region_id', 'sku', 'name', 'description',
     'short_description', 'origin', 'image_url', 'sale_price', 'stock_quantity'];
   const invalid = validateProductPricing(req.body);
@@ -69,11 +85,13 @@ export const updateProduct = asyncHandler(async (req, res) => {
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 export const updateProductStatus = asyncHandler(async (req, res) => {
+  if (!(await ensureProductExists(req.params.id, res))) return;
   await query('UPDATE products SET is_active = ? WHERE id = ?', [req.body.is_active ? 1 : 0, req.params.id]);
   await indexProduct(req.params.id);
   res.json({ data: await loadAdminProduct(req.params.id) });
 });
 export const destroyProduct = asyncHandler(async (req, res) => {
+  if (!(await ensureProductExists(req.params.id, res))) return;
   // "Xóa" = ẩn sản phẩm (is_active=0) để vẫn hiện trong danh sách admin với trạng thái Tạm dừng.
   await query('UPDATE products SET is_active = 0 WHERE id = ?', [req.params.id]);
   await indexProduct(req.params.id); // is_active=false -> search sẽ lọc ra khỏi kết quả.

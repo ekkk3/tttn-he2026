@@ -34,7 +34,11 @@ export const markNotificationRead = asyncHandler(async (req, res) => {
   const [row] = await query('SELECT * FROM notifications WHERE id = ? AND user_id = ?', [
     req.params.notification, req.user.id,
   ]);
-  res.json({ data: row ? serializeNotification(row) : null });
+  // Điều kiện `user_id = ?` ở câu UPDATE đã đảm bảo không đọc/ghi được thông báo của người
+  // khác. Trả 404 ở đây chỉ để mã trạng thái nói đúng sự thật thay vì 200 kèm data rỗng —
+  // và cố tình KHÔNG phân biệt "không tồn tại" với "của người khác", tránh để lộ id nào có thật.
+  if (!row) return res.status(404).json({ message: 'Không tìm thấy thông báo.' });
+  res.json({ data: serializeNotification(row) });
 });
 
 // --- Complaints (UC 2.2.11 Khiếu nại) ---

@@ -34,7 +34,19 @@ export const storeAdmin = asyncHandler(async (req, res) => {
   );
   res.status(201).json({ data: await loadAdmin(result.insertId) });
 });
+// Chỉ thao tác được trên tài khoản QUẢN TRỊ còn tồn tại — id lạ hoặc id của khách hàng/kho/NCC
+// trước đây vẫn chạy UPDATE (không khớp dòng nào) rồi trả 200 { data: null }.
+async function ensureAdminExists(id, res) {
+  const [target] = await query("SELECT id FROM users WHERE id = ? AND role = 'ADMIN' AND is_deleted = 0", [id]);
+  if (!target) {
+    res.status(404).json({ message: 'Không tìm thấy tài khoản quản trị.' });
+    return false;
+  }
+  return true;
+}
+
 export const updateAdmin = asyncHandler(async (req, res) => {
+  if (!(await ensureAdminExists(req.params.admin, res))) return;
   const { full_name, admin_role_id } = req.body;
   await query(
     'UPDATE users SET full_name = COALESCE(?, full_name), admin_role_id = COALESCE(?, admin_role_id) WHERE id = ?',
@@ -48,6 +60,7 @@ export const updateAdminStatus = asyncHandler(async (req, res) => {
   if (String(req.params.admin) === String(req.user.id) && !req.body.is_active) {
     return res.status(422).json({ message: 'Bạn không thể tự khóa tài khoản của chính mình.' });
   }
+  if (!(await ensureAdminExists(req.params.admin, res))) return;
   await query('UPDATE users SET is_active = ? WHERE id = ?', [req.body.is_active ? 1 : 0, req.params.admin]);
   res.json({ data: await loadAdmin(req.params.admin) });
 });
@@ -60,8 +73,7 @@ export const updateAdminPassword = asyncHandler(async (req, res) => {
   if (invalidPassword) return res.status(422).json({ message: invalidPassword });
   // Chỉ đặt lại mật khẩu cho tài khoản QUẢN TRỊ: id không tồn tại (hoặc là tài khoản khách
   // hàng/kho/NCC) thì trả 404 thay vì âm thầm chạy UPDATE không khớp dòng nào rồi trả 200.
-  const [target] = await query("SELECT id FROM users WHERE id = ? AND role = 'ADMIN' AND is_deleted = 0", [req.params.admin]);
-  if (!target) return res.status(404).json({ message: 'Không tìm thấy tài khoản quản trị.' });
+  if (!(await ensureAdminExists(req.params.admin, res))) return;
 
   const password_hash = await bcrypt.hash(req.body.password, 10);
   await query('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, req.params.admin]);

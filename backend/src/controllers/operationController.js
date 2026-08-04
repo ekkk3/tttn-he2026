@@ -2,6 +2,7 @@ import { query, pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 import { validatePositiveQuantity } from '../utils/validators.js';
+import { escapeLike } from '../utils/sql.js';
 
 // Dành cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yêu cầu nhập hàng, 2.2.21 Quản lý kho,
 // 2.2.22 Cập nhật trạng thái đơn, 2.2.23 Xử lý đơn, 2.2.24 Quản lý giá nhập).
@@ -153,8 +154,11 @@ export const purchasePrices = asyncHandler(async (req, res) => {
     params.push(scopeId);
   }
   if (product) {
+    // escapeLike: NVK/NCC gõ "_" vào ô tìm sản phẩm (lịch sử giá nhập) sẽ ra toàn bộ danh
+    // sách thay vì lọc đúng — cùng lỗi đã sửa ở productController.
+    const term = escapeLike(product);
     conditions.push('(p.name LIKE ? OR p.sku LIKE ?)');
-    params.push(`%${product}%`, `%${product}%`);
+    params.push(`%${term}%`, `%${term}%`);
   }
   if (supplier_id) {
     conditions.push('pp.supplier_id = ?');

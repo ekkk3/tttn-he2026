@@ -210,7 +210,18 @@ export const store = asyncHandler(async (req, res) => {
   res.status(201).json({ data: supplier });
 });
 
+// UC 2.2.11 luồng phụ A2: "Nhà cung cấp không tồn tại -> Không tìm thấy nhà cung cấp".
+async function ensureSupplierExists(id, res) {
+  const [supplier] = await query('SELECT id FROM suppliers WHERE id = ?', [id]);
+  if (!supplier) {
+    res.status(404).json({ message: 'Không tìm thấy nhà cung cấp.' });
+    return false;
+  }
+  return true;
+}
+
 export const update = asyncHandler(async (req, res) => {
+  if (!(await ensureSupplierExists(req.params.supplier, res))) return;
   const { supplier_code, name, contact_name, phone, email, address, is_active, is_deleted } = req.body;
   const invalidContact = validateSupplierContact(req.body);
   if (invalidContact) return res.status(422).json({ message: invalidContact });
@@ -228,6 +239,7 @@ export const update = asyncHandler(async (req, res) => {
 });
 
 export const destroy = asyncHandler(async (req, res) => {
+  if (!(await ensureSupplierExists(req.params.supplier, res))) return;
   await query('UPDATE suppliers SET is_active = 0 WHERE id = ?', [req.params.supplier]);
   const [supplier] = await query('SELECT * FROM suppliers WHERE id = ?', [req.params.supplier]);
   res.json({ data: supplier });

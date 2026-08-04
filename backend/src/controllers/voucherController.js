@@ -83,6 +83,9 @@ export const adminList = asyncHandler(async (req, res) => {
 // vì adminUpdate là cập nhật MỘT PHẦN: đổi mỗi discount_type từ FIXED sang PERCENT trong khi
 // discount_value cũ là 500000 sẽ tạo ra voucher giảm 500000% nếu chỉ soi các field vừa gửi.
 // Trả về chuỗi thông báo lỗi đầu tiên tìm được, hoặc null nếu hợp lệ.
+// Trần cho mọi cột tiền DECIMAL(15,2) trong schema: 13 chữ số phần nguyên + 2 số lẻ.
+const MAX_MONEY_VALUE = 9_999_999_999_999;
+
 function validateVoucher(v) {
   if (!['PERCENT', 'FIXED'].includes(v.discount_type)) {
     return 'Loại giảm giá phải là PERCENT hoặc FIXED.';
@@ -97,13 +100,31 @@ function validateVoucher(v) {
   if (v.discount_type === 'PERCENT' && value > 100) {
     return 'Giảm theo phần trăm không được vượt quá 100%.';
   }
+  // Cột DECIMAL(15,2) chứa tối đa 13 chữ số phần nguyên. Không chặn ở đây thì giá trị lớn hơn
+  // sẽ do CSDL từ chối với thông báo chung chung ("Giá trị nhập vào không đúng định dạng"),
+  // không nói được là trường nào sai. Con số này cũng vô nghĩa về nghiệp vụ: không đơn hàng
+  // nào tới mức nghìn tỉ đồng.
+  if (v.discount_type === 'FIXED' && value > MAX_MONEY_VALUE) {
+    return `Giá trị giảm quá lớn (tối đa ${MAX_MONEY_VALUE.toLocaleString('vi-VN')}đ).`;
+  }
   const minOrder = Number(v.min_order_amount ?? 0);
   if (!Number.isFinite(minOrder) || minOrder < 0) {
     return 'Giá trị đơn hàng tối thiểu không được âm.';
   }
+  if (minOrder > MAX_MONEY_VALUE) {
+    return `Giá trị đơn hàng tối thiểu quá lớn (tối đa ${MAX_MONEY_VALUE.toLocaleString('vi-VN')}đ).`;
+  }
   // Hai trường tùy chọn: coi null/chuỗi rỗng là "không đặt giới hạn", chỉ kiểm tra khi có giá trị.
-  if (v.max_discount_amount != null && v.max_discount_amount !== '' && !(Number(v.max_discount_amount) > 0)) {
-    return 'Mức giảm tối đa phải lớn hơn 0.';
+  if (v.max_discount_amount != null && v.max_discount_amount !== '') {
+    const maxDiscount = Number(v.max_discount_amount);
+    if (!(maxDiscount > 0)) {
+      return 'Mức giảm tối đa phải lớn hơn 0.';
+    }
+    // Cùng cột DECIMAL(15,2) với discount_value/min_order_amount ở trên — thiếu trần này thì
+    // giá trị vượt 13 chữ số phần nguyên vẫn lọt validate JS rồi mới bị CSDL từ chối.
+    if (maxDiscount > MAX_MONEY_VALUE) {
+      return `Mức giảm tối đa quá lớn (tối đa ${MAX_MONEY_VALUE.toLocaleString('vi-VN')}đ).`;
+    }
   }
   if (v.usage_limit != null && v.usage_limit !== '' && !(Number(v.usage_limit) > 0)) {
     return 'Số lượng phát hành phải lớn hơn 0.';
@@ -164,6 +185,8 @@ export const adminUpdate = asyncHandler(async (req, res) => {
   res.json({ data: row ? serializeVoucher(row) : null });
 });
 export const adminDestroy = asyncHandler(async (req, res) => {
+  const [existing] = await query('SELECT id FROM vouchers WHERE id = ?', [req.params.voucher]);
+  if (!existing) return res.status(404).json({ message: 'Không tìm thấy mã giảm giá.' });
   await query('UPDATE vouchers SET is_active = 0 WHERE id = ?', [req.params.voucher]);
   const [row] = await query('SELECT * FROM vouchers WHERE id = ?', [req.params.voucher]);
   res.json({ data: row ? serializeVoucher(row) : null });
