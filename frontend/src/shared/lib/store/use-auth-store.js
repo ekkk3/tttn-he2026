@@ -138,6 +138,45 @@ export const useAuthStore = create()(persist((set, get) => ({
             };
         }
     },
+    // id_token lấy từ Google Identity Services (frontend, xem login-page.jsx) — backend tự
+    // verify chữ ký/audience thật với GOOGLE_CLIENT_ID (backend/src/utils/oauth.js), không
+    // tin tưởng mù quáng nội dung token gửi lên.
+    loginWithGoogle: async (idToken) => {
+        set({ isSubmitting: true });
+        try {
+            const response = await apiRequest("/auth/google", {
+                method: "POST",
+                body: { id_token: idToken },
+            });
+            return await applyAuthenticatedBackendSession(response, set);
+        }
+        catch (error) {
+            set({ isSubmitting: false });
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : "Đăng nhập Google thất bại.",
+            };
+        }
+    },
+    // access_token lấy từ FB.login() (Facebook JS SDK, xem login-page.jsx) — backend tự verify
+    // token thật qua Graph API (backend/src/utils/oauth.js), không tin nội dung gửi lên.
+    loginWithFacebook: async (accessToken) => {
+        set({ isSubmitting: true });
+        try {
+            const response = await apiRequest("/auth/facebook", {
+                method: "POST",
+                body: { access_token: accessToken },
+            });
+            return await applyAuthenticatedBackendSession(response, set);
+        }
+        catch (error) {
+            set({ isSubmitting: false });
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : "Đăng nhập Facebook thất bại.",
+            };
+        }
+    },
     register: async (payload) => {
         set({ isSubmitting: true });
         try {
