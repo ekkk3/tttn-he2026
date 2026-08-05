@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminModuleGuard } from "@/app/admin-module-guard";
 import { AccountLayout } from "@/app/layouts/account-layout";
@@ -5,31 +6,9 @@ import { AdminLayout } from "@/app/layouts/admin-layout";
 import { PortalLayout } from "@/app/layouts/portal-layout";
 import { StorefrontLayout } from "@/app/layouts/storefront-layout";
 import { RouteGuard } from "@/app/route-guard";
-import { AccountAddressesPage } from "@/pages/account-addresses/ui/account-addresses-page";
-import { AccountDisputesPage } from "@/pages/account-disputes/ui/account-disputes-page";
-import { AccountNotificationsPage } from "@/pages/account-notifications/ui/account-notifications-page";
-import { AccountWishlistPage } from "@/pages/account-wishlist/ui/account-wishlist-page";
-import { AccountOrdersPage } from "@/pages/account-orders/ui/account-orders-page";
-import { AccountProfilePage } from "@/pages/account-profile/ui/account-profile-page";
-import { AccountRewardsPage } from "@/pages/account-rewards/ui/account-rewards-page";
-import { AccountSecurityPage } from "@/pages/account-security/ui/account-security-page";
-import { AdminCommunityPage } from "@/pages/admin-community/ui/admin-community-page";
-import { AdminAdminsPage } from "@/pages/admin-admins/ui/admin-admins-page";
-import { AdminSupplierApplicationsPage } from "@/pages/admin-supplier-applications/ui/admin-supplier-applications-page";
-import { AdminComplaintsPage } from "@/pages/admin-complaints/ui/admin-complaints-page";
-import { AdminReviewsPage } from "@/pages/admin-reviews/ui/admin-reviews-page";
-import { AdminVouchersPage } from "@/pages/admin-vouchers/ui/admin-vouchers-page";
 import { ForgotPasswordPage } from "@/pages/forgot-password/ui/forgot-password-page";
 import { ResetPasswordPage } from "@/pages/reset-password/ui/reset-password-page";
 import { SupplierRegisterPage } from "@/pages/supplier-register/ui/supplier-register-page";
-import { AdminDashboardPage } from "@/pages/admin-dashboard/ui/admin-dashboard-page";
-import { AdminLogisticsPage } from "@/pages/admin-logistics/ui/admin-logistics-page";
-import { AdminRepositoryPage } from "@/pages/admin-repository/ui/admin-repository-page";
-import { AdminSettingsPage } from "@/pages/admin-settings/ui/admin-settings-page";
-import { AdminShippingCarriersPage } from "@/pages/admin-shipping-carriers/ui/admin-shipping-carriers-page";
-import { AdminUserOrderDetailPage } from "@/pages/admin-user-order-detail/ui/admin-user-order-detail-page";
-import { AdminUserOrdersPage } from "@/pages/admin-user-orders/ui/admin-user-orders-page";
-import { AdminUsersPage } from "@/pages/admin-users/ui/admin-users-page";
 import { ProductCatalogPage } from "@/pages/catalog/ui/product-catalog-page";
 import { CheckoutPage } from "@/pages/checkout/ui/checkout-page";
 import { HomePage } from "@/pages/home/ui/home-page";
@@ -40,22 +19,61 @@ import { PaymentResultPage } from "@/pages/payment-result/ui/payment-result-page
 import { ProductDetailPage } from "@/pages/product-detail/ui/product-detail-page";
 import { RegionsPage } from "@/pages/regions/ui/regions-page";
 import { StoryPage } from "@/pages/story/ui/story-page";
-import { SupplierHelpPage } from "@/pages/supplier-help/ui/supplier-help-page";
-import { SupplierProductsPage } from "@/pages/supplier-products/ui/supplier-products-page";
-import { SupplierRevenuePage } from "@/pages/supplier-revenue/ui/supplier-revenue-page";
-import { SupplierInventoryPage } from "@/pages/supplier-inventory/ui/supplier-inventory-page";
-import { SupplierOrdersPage } from "@/pages/supplier-orders/ui/supplier-orders-page";
-import { SupplierProcessingPage } from "@/pages/supplier-processing/ui/supplier-processing-page";
-import { SupplierRequisitionsPage } from "@/pages/supplier-requisitions/ui/supplier-requisitions-page";
 import { UnauthorizedPage } from "@/pages/unauthorized/ui/unauthorized-page";
-import { WarehouseFulfillmentPage } from "@/pages/warehouse-fulfillment/ui/warehouse-fulfillment-page";
-import { WarehouseHelpPage } from "@/pages/warehouse-help/ui/warehouse-help-page";
-import { WarehouseInventoryPage } from "@/pages/warehouse-inventory/ui/warehouse-inventory-page";
-import { WarehouseRequisitionsPage } from "@/pages/warehouse-requisitions/ui/warehouse-requisitions-page";
-import { WarehouseSupplierOrdersPage } from "@/pages/warehouse-supplier-orders/ui/warehouse-supplier-orders-page";
 import { getFirstAccessibleAdminModule } from "@/shared/config/admin-modules";
 import { routes as appRoutes } from "@/shared/config/routes";
 import { useAuthStore } from "@/shared/lib/store/use-auth-store";
+
+// Toàn bộ trang bên dưới chỉ dùng được sau khi đăng nhập đúng vai trò (Khách hàng/Admin/NCC/
+// Nhân viên kho) — phần lớn khách vãng lai/khách mua hàng thông thường (chiếm đa số traffic
+// thực tế) không bao giờ tải tới các trang này. Trước đây import tĩnh (`import { X } from ...`)
+// khiến TOÀN BỘ ~34 trang này bị gộp chung vào 1 file JS ban đầu (1,29MB, vượt ngưỡng cảnh
+// báo 500KB của Vite) dù khách chỉ xem trang chủ/giỏ hàng. Đổi sang `lazy()` để Vite tách mỗi
+// trang thành 1 chunk riêng, chỉ tải khi thực sự điều hướng tới route đó — không đổi hành vi
+// hiển thị, chỉ đổi THỜI ĐIỂM tải file JS xuống trình duyệt.
+const AccountAddressesPage = lazy(() => import("@/pages/account-addresses/ui/account-addresses-page").then((m) => ({ default: m.AccountAddressesPage })));
+const AccountDisputesPage = lazy(() => import("@/pages/account-disputes/ui/account-disputes-page").then((m) => ({ default: m.AccountDisputesPage })));
+const AccountNotificationsPage = lazy(() => import("@/pages/account-notifications/ui/account-notifications-page").then((m) => ({ default: m.AccountNotificationsPage })));
+const AccountWishlistPage = lazy(() => import("@/pages/account-wishlist/ui/account-wishlist-page").then((m) => ({ default: m.AccountWishlistPage })));
+const AccountOrdersPage = lazy(() => import("@/pages/account-orders/ui/account-orders-page").then((m) => ({ default: m.AccountOrdersPage })));
+const AccountProfilePage = lazy(() => import("@/pages/account-profile/ui/account-profile-page").then((m) => ({ default: m.AccountProfilePage })));
+const AccountRewardsPage = lazy(() => import("@/pages/account-rewards/ui/account-rewards-page").then((m) => ({ default: m.AccountRewardsPage })));
+const AccountSecurityPage = lazy(() => import("@/pages/account-security/ui/account-security-page").then((m) => ({ default: m.AccountSecurityPage })));
+const AdminCommunityPage = lazy(() => import("@/pages/admin-community/ui/admin-community-page").then((m) => ({ default: m.AdminCommunityPage })));
+const AdminAdminsPage = lazy(() => import("@/pages/admin-admins/ui/admin-admins-page").then((m) => ({ default: m.AdminAdminsPage })));
+const AdminSupplierApplicationsPage = lazy(() => import("@/pages/admin-supplier-applications/ui/admin-supplier-applications-page").then((m) => ({ default: m.AdminSupplierApplicationsPage })));
+const AdminComplaintsPage = lazy(() => import("@/pages/admin-complaints/ui/admin-complaints-page").then((m) => ({ default: m.AdminComplaintsPage })));
+const AdminReviewsPage = lazy(() => import("@/pages/admin-reviews/ui/admin-reviews-page").then((m) => ({ default: m.AdminReviewsPage })));
+const AdminVouchersPage = lazy(() => import("@/pages/admin-vouchers/ui/admin-vouchers-page").then((m) => ({ default: m.AdminVouchersPage })));
+const AdminDashboardPage = lazy(() => import("@/pages/admin-dashboard/ui/admin-dashboard-page").then((m) => ({ default: m.AdminDashboardPage })));
+const AdminLogisticsPage = lazy(() => import("@/pages/admin-logistics/ui/admin-logistics-page").then((m) => ({ default: m.AdminLogisticsPage })));
+const AdminRepositoryPage = lazy(() => import("@/pages/admin-repository/ui/admin-repository-page").then((m) => ({ default: m.AdminRepositoryPage })));
+const AdminSettingsPage = lazy(() => import("@/pages/admin-settings/ui/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })));
+const AdminShippingCarriersPage = lazy(() => import("@/pages/admin-shipping-carriers/ui/admin-shipping-carriers-page").then((m) => ({ default: m.AdminShippingCarriersPage })));
+const AdminUserOrderDetailPage = lazy(() => import("@/pages/admin-user-order-detail/ui/admin-user-order-detail-page").then((m) => ({ default: m.AdminUserOrderDetailPage })));
+const AdminUserOrdersPage = lazy(() => import("@/pages/admin-user-orders/ui/admin-user-orders-page").then((m) => ({ default: m.AdminUserOrdersPage })));
+const AdminUsersPage = lazy(() => import("@/pages/admin-users/ui/admin-users-page").then((m) => ({ default: m.AdminUsersPage })));
+const SupplierHelpPage = lazy(() => import("@/pages/supplier-help/ui/supplier-help-page").then((m) => ({ default: m.SupplierHelpPage })));
+const SupplierProductsPage = lazy(() => import("@/pages/supplier-products/ui/supplier-products-page").then((m) => ({ default: m.SupplierProductsPage })));
+const SupplierRevenuePage = lazy(() => import("@/pages/supplier-revenue/ui/supplier-revenue-page").then((m) => ({ default: m.SupplierRevenuePage })));
+const SupplierInventoryPage = lazy(() => import("@/pages/supplier-inventory/ui/supplier-inventory-page").then((m) => ({ default: m.SupplierInventoryPage })));
+const SupplierOrdersPage = lazy(() => import("@/pages/supplier-orders/ui/supplier-orders-page").then((m) => ({ default: m.SupplierOrdersPage })));
+const SupplierProcessingPage = lazy(() => import("@/pages/supplier-processing/ui/supplier-processing-page").then((m) => ({ default: m.SupplierProcessingPage })));
+const SupplierRequisitionsPage = lazy(() => import("@/pages/supplier-requisitions/ui/supplier-requisitions-page").then((m) => ({ default: m.SupplierRequisitionsPage })));
+const WarehouseFulfillmentPage = lazy(() => import("@/pages/warehouse-fulfillment/ui/warehouse-fulfillment-page").then((m) => ({ default: m.WarehouseFulfillmentPage })));
+const WarehouseHelpPage = lazy(() => import("@/pages/warehouse-help/ui/warehouse-help-page").then((m) => ({ default: m.WarehouseHelpPage })));
+const WarehouseInventoryPage = lazy(() => import("@/pages/warehouse-inventory/ui/warehouse-inventory-page").then((m) => ({ default: m.WarehouseInventoryPage })));
+const WarehouseRequisitionsPage = lazy(() => import("@/pages/warehouse-requisitions/ui/warehouse-requisitions-page").then((m) => ({ default: m.WarehouseRequisitionsPage })));
+const WarehouseSupplierOrdersPage = lazy(() => import("@/pages/warehouse-supplier-orders/ui/warehouse-supplier-orders-page").then((m) => ({ default: m.WarehouseSupplierOrdersPage })));
+
+// Fallback hiển thị TẠM trong lúc chờ tải chunk của trang đích (thường vài chục-trăm ms trên
+// mạng bình thường, có thể lâu hơn lần đầu trên mạng chậm) — giữ tối giản, không cần match
+// pixel-perfect với từng layout vì chỉ hiện thoáng qua.
+function RouteLoadingFallback() {
+    return (<div className="flex min-h-[40vh] items-center justify-center text-sm text-neutral-500">
+            Đang tải…
+        </div>);
+}
 // Vào "/admin" (dashboard mặc định) nhưng nếu sau này phân quyền chi tiết hơn khiến admin
 // không thấy dashboard, tự điều hướng sang module ĐẦU TIÊN họ có quyền truy cập thay vì
 // hiện trang trắng. Hiện tại canAccessAdminModule() luôn cho phép mọi admin (xem admin-modules.js)
@@ -96,7 +114,8 @@ function AdminUserOrdersGuard({ children }) {
 //    AdminModuleGuard riêng theo moduleId (2 lớp bảo vệ: role cấp route + module cấp trang).
 // 4) PortalLayout + RouteGuard(supplier, warehouse): cổng dành cho NCC/nhân viên kho.
 export function AppRoutes() {
-    return (<Routes>
+    return (<Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
             <Route element={<StorefrontLayout />}>
                 <Route path={appRoutes.home} element={<HomePage />}/>
                 <Route path={appRoutes.login} element={<LoginPage />}/>
@@ -240,5 +259,6 @@ export function AppRoutes() {
             <Route path="/supplier" element={<SupplierRootRedirect />}/>
             <Route path="/warehouse" element={<WarehouseRootRedirect />}/>
             <Route path="*" element={<Navigate replace to={appRoutes.home}/>}/>
-        </Routes>);
+        </Routes>
+    </Suspense>);
 }

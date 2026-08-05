@@ -110,6 +110,32 @@ export async function createProduct(overrides = {}) {
   return { id: result.insertId, name: overrides.name ?? `Sản phẩm test ${suffix}`, salePrice: overrides.salePrice ?? 100000 };
 }
 
+// Tao truc tiep 1 don + 1 payment gan voi don do (khong di qua /orders/checkout that vi phai
+// co san pham/gio hang/dia chi day du) - du cho cac test chi can 1 don o san trang thai/
+// payment_method/payment_status cho truoc de goi thang cac endpoint doi trang thai.
+export async function createOrder({
+  userId,
+  status = 'PENDING',
+  paymentMethod = 'COD',
+  paymentStatus = 'PENDING',
+  totalAmount = 100000,
+} = {}) {
+  const suffix = uniqueSuffix();
+  const orderResult = await query(
+    `INSERT INTO orders
+       (user_id, order_no, recipient_name, recipient_phone, shipping_address, payment_method, status, subtotal, total_amount)
+     VALUES (?, ?, 'Test Recipient', '0900000000', 'Dia chi test', ?, ?, ?, ?)`,
+    [userId, `DH-TEST-${suffix}`, paymentMethod, status, totalAmount, totalAmount]
+  );
+  const orderId = orderResult.insertId;
+  const paymentResult = await query(
+    `INSERT INTO payments (order_id, provider, payment_method, amount, payment_status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [orderId, paymentMethod, paymentMethod, totalAmount, paymentStatus]
+  );
+  return { id: orderId, paymentId: paymentResult.insertId };
+}
+
 export function authHeader(token) {
   return { Authorization: `Bearer ${token}` };
 }

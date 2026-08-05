@@ -76,6 +76,29 @@ router.get('/test', (req, res) => res.send('ok'));
 // Tính năng mới so với Laravel: AI Chatbot (điền theo đề cương, chưa có bên Laravel).
 router.post('/chat', chatController.chat);
 
+// router.use(auth) ngay dưới đây vốn không giới hạn theo path, nên nó chạy cho MỌI request
+// lọt tới đây — kể cả request gọi 1 đường dẫn không hề tồn tại (vd /api/khong-co-that).
+// Hệ quả: request đó bị `auth` chặn lại trả 401 ("Unauthenticated") trước khi kịp rơi xuống
+// notFound() ở app.js, khiến client (và người kiểm thử) hiểu nhầm là "route có tồn tại nhưng
+// cần đăng nhập" thay vì "route này không có". Middleware dưới đây kiểm tra path có khớp
+// route thật nào không (dùng chính router.stack — lúc request tới thì file này đã load xong
+// nên stack đã có ĐỦ mọi route, kể cả các route khai báo bên dưới dòng này) trước khi cho
+// qua auth; nếu không khớp gì và cũng không thuộc 1 trong 3 nhóm route con có tiền tố path
+// riêng (operations/supplier/admin, đã tự bảo vệ bằng router.use('/xxx', requireRole(...))
+// nên không cần liệt lại từng route con) thì trả 404 luôn, không chờ auth phán xét nữa.
+function isKnownFlatRoute(req) {
+  const method = req.method.toLowerCase();
+  return router.stack.some((layer) => layer.route && layer.route.methods[method] && layer.match(req.path));
+}
+const PROTECTED_GROUP_PREFIXES = ['/operations', '/supplier', '/admin'];
+function isKnownProtectedGroup(path) {
+  return PROTECTED_GROUP_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+router.use((req, res, next) => {
+  if (isKnownFlatRoute(req) || isKnownProtectedGroup(req.path)) return next();
+  return res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+});
+
 // ---------------- Authenticated (tương đương middleware 'auth:sanctum') ----------------
 // router.use(auth) áp dụng middleware auth() cho MỌI route định nghĩa PHÍA DƯỚI dòng này
 // (Express chạy middleware theo đúng thứ tự khai báo) — từ đây trở xuống, request phải có

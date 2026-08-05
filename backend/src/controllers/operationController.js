@@ -4,6 +4,7 @@ import { ORDER_TRANSITIONS, ORDER_STATUS_LABELS } from '../services/orderTransit
 import { validatePositiveQuantity } from '../utils/validators.js';
 import { escapeLike } from '../utils/sql.js';
 import { notifyUser } from '../services/notificationService.js';
+import { markCodOrderPaidIfDelivered } from '../services/paymentService.js';
 
 // Báo cho khách khi kho đổi trạng thái đơn (PACKED/SHIPPED...) — trước đây chỉ Admin cập
 // nhật trạng thái mới sinh thông báo, luồng kho (UC 2.2.22 Cập nhật trạng thái đơn) thì không,
@@ -464,6 +465,7 @@ export const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [req.params.order, order.status, delivery_status, note || null, req.user.id]
   );
+  if (delivery_status === 'DELIVERED') await markCodOrderPaidIfDelivered(order.id);
   await notifyOrderStatusChange(order, delivery_status);
   const [refreshed] = await query(
     'SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?',

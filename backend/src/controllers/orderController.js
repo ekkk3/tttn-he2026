@@ -6,6 +6,7 @@ import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
 import { computeVoucherDiscount, releaseOrderVoucher } from './voucherController.js';
 import { notifyUser } from '../services/notificationService.js';
+import { markCodOrderPaidIfDelivered } from '../services/paymentService.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
 import { validatePhone } from '../utils/validators.js';
 
@@ -408,6 +409,7 @@ export const confirmDelivery = asyncHandler(async (req, res) => {
     "INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, 'DELIVERED', 'Khách xác nhận đã nhận hàng', ?)",
     [order.id, order.status, req.user.id]
   );
+  await markCodOrderPaidIfDelivered(order.id);
   const detail = await loadOrderDetail(order.id, req.user.id);
   res.json({ data: detail });
 });

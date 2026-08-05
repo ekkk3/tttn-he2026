@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
 import { notifyUser } from './notificationService.js';
+import { PAYMENT_TRANSITIONS } from './orderTransitions.js';
 
 // ==================================================================
 // Xử lý kết quả thanh toán online (UC 2.2.9 / 2.2.25) — logic nghiệp vụ thuần túy,
@@ -91,4 +92,31 @@ export async function markOrderRefunded({ orderId, note, actorUserId }) {
     `/account/orders/${orderId}`
   );
   return { ok: true, order };
+}
+
+// ==================================================================
+// COD: tiền được shipper thu trực tiếp lúc giao hàng, không đi qua cổng thanh toán nào nên
+// không có callback tự động nào gọi applyPaymentResult() ở trên như VNPay/MoMo. Nếu không tự
+// cập nhật ở đây, mọi đơn COD sau khi giao xong vẫn mãi kẹt ở payment_status=PENDING cho tới
+// khi Admin tự tay bấm "Đã thanh toán" (admin/orders.controller.js#updatePaymentStatus) — dễ
+// sót, khiến báo cáo/đối soát tưởng nhầm là "chưa thu được tiền" dù thực tế khách đã trả tiền
+// mặt cho shipper rồi. Gọi hàm này từ MỌI nơi có thể đưa đơn sang DELIVERED (admin đổi trạng
+// thái đơn lẻ/hàng loạt, nhân viên kho cập nhật giao hàng, khách tự xác nhận đã nhận hàng).
+// Không làm gì (bỏ qua êm) nếu: không phải đơn COD, chưa có payment, hoặc trạng thái thanh
+// toán hiện tại không được phép nhảy thẳng sang SUCCESS (đã SUCCESS/REFUNDED từ trước — tái
+// dùng chính PAYMENT_TRANSITIONS thay vì hardcode "chỉ PENDING" để không lệch với state machine
+// dùng chung nơi khác).
+export async function markCodOrderPaidIfDelivered(orderId) {
+  const [order] = await query('SELECT payment_method FROM orders WHERE id = ?', [orderId]);
+  if (!order || order.payment_method !== 'COD') return;
+  const [payment] = await query(
+    'SELECT id, payment_status FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1',
+    [orderId]
+  );
+  if (!payment || !(PAYMENT_TRANSITIONS[payment.payment_status] ?? []).includes('SUCCESS')) return;
+  await query("UPDATE payments SET payment_status = 'SUCCESS', paid_at = NOW() WHERE id = ?", [payment.id]);
+  await query(
+    "INSERT INTO payment_status_history (order_id, from_status, to_status, note) VALUES (?, ?, 'SUCCESS', ?)",
+    [orderId, payment.payment_status, 'Tự động xác nhận đã thu tiền COD khi giao hàng thành công']
+  );
 }

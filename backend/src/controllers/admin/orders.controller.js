@@ -6,6 +6,7 @@ import {
 } from '../../utils/ghn.js';
 import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS, ORDER_STATUS_LABELS } from '../../services/orderTransitions.js';
 import { notifyUser } from '../../services/notificationService.js';
+import { markCodOrderPaidIfDelivered } from '../../services/paymentService.js';
 import { releaseOrderVoucher } from '../voucherController.js';
 
 // ---------------- Orders (admin) — UC 2.2.17 Quản lý đơn hàng ----------------
@@ -140,6 +141,8 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [order.id, order.status, status, note || null, req.user.id]
   );
+  // Đơn COD giao xong = đã thu tiền mặt, tự chuyển payment sang SUCCESS (xem paymentService.js).
+  if (status === 'DELIVERED') await markCodOrderPaidIfDelivered(order.id);
   // Hoàn kho khi hủy đơn (nếu chọn restock_inventory) — UC 2.2.17/2.2.21.
   if (status === 'CANCELLED' && restock_inventory) {
     const items = await query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
@@ -204,6 +207,7 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
     );
     // Hủy hàng loạt cũng phải trả lại lượt voucher, giống nhánh hủy từng đơn ở updateOrderStatus.
     if (targetStatus === 'CANCELLED') await releaseOrderVoucher(id);
+    if (targetStatus === 'DELIVERED') await markCodOrderPaidIfDelivered(id);
     await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${ORDER_STATUS_LABELS[targetStatus] ?? targetStatus}.`);
     results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Đã chuyển sang ${targetStatus}.` });
   }
