@@ -31,7 +31,10 @@ async function loadCartPayload(userId) {
   return serializeCart(cart, items);
 }
 
-async function invalidateCartCache(userId) {
+// export vì orderController.js#checkout cũng cần gọi (giỏ hàng bị xóa/chuyển CHECKED_OUT
+// sau khi đặt hàng thành công — nếu không invalidate, Redis vẫn giữ snapshot giỏ hàng CŨ
+// tới hết TTL 5 phút, khiến GET /api/cart trả về sai là "vẫn còn y nguyên sản phẩm vừa đặt").
+export async function invalidateCartCache(userId) {
   const redis = await getRedis();
   if (redis) await redis.del(`cart:${userId}`);
 }

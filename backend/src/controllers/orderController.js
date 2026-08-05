@@ -5,6 +5,7 @@ import { buildVnpayUrl } from '../utils/vnpay.js';
 import { createMomoPayment } from '../utils/momo.js';
 import { serializeOrderDetail, serializeOrderSummary, paginated, parsePagination } from '../utils/serializers.js';
 import { computeVoucherDiscount, releaseOrderVoucher } from './voucherController.js';
+import { invalidateCartCache } from './cartController.js';
 import { notifyUser } from '../services/notificationService.js';
 import { markCodOrderPaidIfDelivered } from '../services/paymentService.js';
 import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
@@ -257,6 +258,11 @@ export const checkout = asyncHandler(async (req, res) => {
     );
 
     await connection.commit();
+
+    // Giỏ hàng vừa bị xóa sạch/chuyển CHECKED_OUT ở trên (trong transaction) — Redis không
+    // nằm trong transaction đó nên phải tự xóa cache riêng, ngoài transaction, chỉ SAU KHI
+    // commit thành công (invalidate trước rồi lỡ rollback thì cache lại sai theo hướng khác).
+    await invalidateCartCache(req.user.id);
 
     // Thông báo "Đã đặt hàng" (UC 2.2.5a).
     await notifyUser(
