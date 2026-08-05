@@ -4,7 +4,7 @@ import { serializeOrderDetail, serializeOrderSummary } from '../../utils/seriali
 import {
   ghnConfigured, calculateFee, createShippingOrder, getShippingOrderDetail, cancelShippingOrder,
 } from '../../utils/ghn.js';
-import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS } from '../../services/orderTransitions.js';
+import { ORDER_TRANSITIONS, PAYMENT_TRANSITIONS, ORDER_STATUS_LABELS } from '../../services/orderTransitions.js';
 import { notifyUser } from '../../services/notificationService.js';
 import { releaseOrderVoucher } from '../voucherController.js';
 
@@ -153,7 +153,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
   if (status === 'CANCELLED') {
     await releaseOrderVoucher(order.id);
   }
-  await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${status}.`);
+  await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${ORDER_STATUS_LABELS[status] ?? status}.`);
   res.json({ data: await loadAdminOrderDetail(order.id) });
 });
 
@@ -204,7 +204,7 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
     );
     // Hủy hàng loạt cũng phải trả lại lượt voucher, giống nhánh hủy từng đơn ở updateOrderStatus.
     if (targetStatus === 'CANCELLED') await releaseOrderVoucher(id);
-    await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang ${targetStatus}.`);
+    await notifyOrderUser(order, 'Cập nhật đơn hàng', `Đơn ${order.order_no} chuyển sang trạng thái ${ORDER_STATUS_LABELS[targetStatus] ?? targetStatus}.`);
     results.push({ orderId: id, orderNo: order.order_no, success: true, message: `Đã chuyển sang ${targetStatus}.` });
   }
   const success = results.filter((r) => r.success).length;

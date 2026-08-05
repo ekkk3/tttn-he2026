@@ -317,7 +317,7 @@ export const apply = asyncHandler(async (req, res) => {
 // ---------------- UC 2.2.12b: Duyệt đăng ký Nhà cung cấp (Admin) ----------------
 export const pending = asyncHandler(async (req, res) => {
   const rows = await query("SELECT * FROM suppliers WHERE status = 'PENDING' ORDER BY id DESC");
-  res.json({ suppliers: rows });
+  res.json({ data: rows });
 });
 
 export const approve = asyncHandler(async (req, res) => {

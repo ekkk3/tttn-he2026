@@ -206,7 +206,8 @@ export function adaptBackendSupplierOption(supplier) {
 // chi tiết sản phẩm có đủ nội dung hiển thị phong phú mà không cần thêm cột DB nào.
 export function adaptBackendProduct(product, index = 0) {
     const fallback = fallbackProduct(index);
-    const supplierName = product.supplier?.name ?? `Nhà cung cấp #${product.supplier_id}`;
+    const supplierName = product.supplier?.name
+        ?? (product.supplier_id != null ? `Nhà cung cấp #${product.supplier_id}` : "Đang cập nhật nhà cung cấp");
     const categoryName = product.category?.name ?? `Danh mục #${product.category_id}`;
     const image = product.image_url?.trim() || placeholderImage(product.name);
     return {

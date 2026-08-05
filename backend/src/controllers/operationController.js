@@ -1,8 +1,23 @@
 import { query, pool } from '../config/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { ORDER_TRANSITIONS } from '../services/orderTransitions.js';
+import { ORDER_TRANSITIONS, ORDER_STATUS_LABELS } from '../services/orderTransitions.js';
 import { validatePositiveQuantity } from '../utils/validators.js';
 import { escapeLike } from '../utils/sql.js';
+import { notifyUser } from '../services/notificationService.js';
+
+// Báo cho khách khi kho đổi trạng thái đơn (PACKED/SHIPPED...) — trước đây chỉ Admin cập
+// nhật trạng thái mới sinh thông báo, luồng kho (UC 2.2.22 Cập nhật trạng thái đơn) thì không,
+// dù đặc tả usecase "Nhận thông báo trạng thái đơn hàng" (Chương 2) có liệt kê mốc "đang giao".
+async function notifyOrderStatusChange(order, status) {
+  if (!order.user_id) return;
+  await notifyUser(
+    order.user_id,
+    'ORDER_STATUS',
+    'Cập nhật đơn hàng',
+    `Đơn ${order.order_no} chuyển sang trạng thái ${ORDER_STATUS_LABELS[status] ?? status}.`,
+    `/account/orders/${order.id}`
+  );
+}
 
 // Dành cho WAREHOUSE_STAFF/ADMIN (UC 2.2.20 Yêu cầu nhập hàng, 2.2.21 Quản lý kho,
 // 2.2.22 Cập nhật trạng thái đơn, 2.2.23 Xử lý đơn, 2.2.24 Quản lý giá nhập).
@@ -449,6 +464,7 @@ export const updateOrderDeliveryStatus = asyncHandler(async (req, res) => {
     'INSERT INTO order_status_history (order_id, from_status, to_status, note, changed_by_user_id) VALUES (?, ?, ?, ?, ?)',
     [req.params.order, order.status, delivery_status, note || null, req.user.id]
   );
+  await notifyOrderStatusChange(order, delivery_status);
   const [refreshed] = await query(
     'SELECT o.*, u.full_name AS customer_name FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?',
     [req.params.order]

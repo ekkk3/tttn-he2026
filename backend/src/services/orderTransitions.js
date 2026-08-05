@@ -22,3 +22,17 @@ export const PAYMENT_TRANSITIONS = {
   SUCCESS: ['REFUNDED'],
   REFUNDED: [],
 };
+
+// Nhãn tiếng Việt cho từng mã trạng thái đơn hàng — dùng khi ghép nội dung thông báo
+// (notifications.message) gửi cho khách, để khách không thấy mã tiếng Anh thô (DELIVERED...).
+// Khớp với customerOrderStatusLabels bên frontend (frontend/src/shared/lib/customer-order-labels.js).
+export const ORDER_STATUS_LABELS = {
+  PENDING: 'Chờ xác nhận',
+  AWAITING_PAYMENT_CONFIRMATION: 'Chờ xác nhận chuyển khoản',
+  CONFIRMED: 'Đã xác nhận',
+  PACKED: 'Đã đóng gói',
+  SHIPPED: 'Đang giao',
+  DELIVERED: 'Đã giao',
+  DELIVERY_FAILED: 'Giao thất bại',
+  CANCELLED: 'Đã hủy',
+};

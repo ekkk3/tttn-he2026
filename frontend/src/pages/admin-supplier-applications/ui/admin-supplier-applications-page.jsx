@@ -33,7 +33,7 @@ export function AdminSupplierApplicationsPage() {
         setError("");
         try {
             const response = await apiRequest("/admin/suppliers/pending", { token: accessToken });
-            setApplications(response.suppliers ?? []);
+            setApplications(response.data ?? []);
         } catch (loadError) {
             setError(loadError instanceof Error ? loadError.message : "Không thể tải danh sách chờ duyệt.");
         } finally {
