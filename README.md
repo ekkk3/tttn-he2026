@@ -41,6 +41,13 @@ tttn-he2026/
 ```
 
 ## 4. Cài đặt & chạy
+lưu ý: web vẫn chạy được bình thường dù quên bật Redis (giỏ hàng vẫn hoạt động, chỉ là chậm hơn 1 chút vì không có cache) — nhưng nếu muốn Redis thực sự hoạt động, phải tự chạy riêng lệnh này trước (hoặc song song) mỗi lần khởi động lại máy:
+
+C:/Users/Admin/redis-portable/redis-server.exe C:/Users/Admin/redis-portable/redis.windows.conf
+
+Elasticsearch cũng y hệt vậy — là tiến trình riêng, npm run dev chỉ kết nối tới chứ không tự bật.
+C:\Users\Admin\elasticsearch-portable\elasticsearch-8.15.0\bin\elasticsearch.bat
+(Đây là process chạy nền (foreground) — cứ để cửa sổ cmd đó mở, đừng đóng lại khi đang dùng.)
 
 Mở **2 cửa sổ terminal** (một cho backend, một cho frontend). Chạy backend trước.
 

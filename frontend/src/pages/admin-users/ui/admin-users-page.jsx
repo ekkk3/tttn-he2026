@@ -12,6 +12,7 @@ const emptyCustomerForm = {
     email: "",
     phone: "",
     password: "",
+    role: "CUSTOMER",
     address: "",
     city: "",
     favoriteRegion: "",
@@ -195,7 +196,7 @@ export function AdminUsersPage() {
             full_name: customerForm.fullName.trim(),
             email: customerForm.email.trim(),
             phone: customerForm.phone.trim(),
-            ...(includePassword ? { password: customerForm.password } : {}),
+            ...(includePassword ? { password: customerForm.password, role: customerForm.role } : {}),
             address: customerForm.address.trim() || null,
             city: customerForm.city.trim() || null,
             favorite_region: customerForm.favoriteRegion.trim() || null,
@@ -425,6 +426,14 @@ export function AdminUsersPage() {
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Họ tên" value={customerForm.fullName} onChange={(event) => setCustomerForm((current) => ({ ...current, fullName: event.target.value }))}/>
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Số điện thoại" value={customerForm.phone} onChange={(event) => setCustomerForm((current) => ({ ...current, phone: event.target.value }))}/>
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Email" type="email" value={customerForm.email} onChange={(event) => setCustomerForm((current) => ({ ...current, email: event.target.value }))}/>
+                            {drawerMode === "create" ? (<label className="flex flex-col gap-1 text-sm text-on-surface-variant md:col-span-2">
+                                <span>Vai trò</span>
+                                <select className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm text-on-surface outline-none focus:ring-2 focus:ring-primary/15" value={customerForm.role} onChange={(event) => setCustomerForm((current) => ({ ...current, role: event.target.value }))}>
+                                    <option value="CUSTOMER">Khách hàng</option>
+                                    <option value="WAREHOUSE_STAFF">Nhân viên kho</option>
+                                    <option value="SUPPLIER">Nhà cung cấp</option>
+                                </select>
+                            </label>) : null}
                             {drawerMode === "create" ? (<input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15 md:col-span-2" placeholder="Mật khẩu mới khi tạo user" type="password" value={customerForm.password} onChange={(event) => setCustomerForm((current) => ({ ...current, password: event.target.value }))}/>) : null}
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Thành phố" value={customerForm.city} onChange={(event) => setCustomerForm((current) => ({ ...current, city: event.target.value }))}/>
                             <input className="rounded-2xl bg-surface-container-highest px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/15" placeholder="Vùng yêu thích" value={customerForm.favoriteRegion} onChange={(event) => setCustomerForm((current) => ({ ...current, favoriteRegion: event.target.value }))}/>
