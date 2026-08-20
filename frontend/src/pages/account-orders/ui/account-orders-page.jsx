@@ -109,7 +109,7 @@ export function AccountOrdersPage() {
             const matchesStatus = statusFilter === "all" ? true : order.status === statusFilter;
             const matchesQuery = normalizedQuery.length === 0
                 ? true
-                : [order.orderNo, order.id, order.status, order.payment?.paymentStatus]
+                : [order.orderNo, order.id, order.status, order.payment?.paymentStatus, ...order.productNames]
                     .filter(Boolean)
                     .join(" ")
                     .toLowerCase()
@@ -327,7 +327,7 @@ export function AccountOrdersPage() {
                         <table className="w-full border-collapse text-left">
                             <thead className="border-b border-outline-variant/15 bg-surface-container-low">
                                 <tr>
-                                    {["Mã đơn", "Ngày", "Tổng tiền", "Trạng thái", "Thanh toán", "Thao tác"].map((title) => (<th key={title} className="px-6 py-4 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+                                    {["Mã đơn", "Sản phẩm", "Ngày", "Tổng tiền", "Trạng thái", "Thanh toán", "Thao tác"].map((title) => (<th key={title} className="px-6 py-4 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
                                                 {title}
                                             </th>))}
                                 </tr>
@@ -335,6 +335,11 @@ export function AccountOrdersPage() {
                             <tbody className="divide-y divide-outline-variant/10">
                                 {filteredOrders.map((order) => (<tr key={order.id} className="transition-colors hover:bg-surface-container-low">
                                         <td className="px-6 py-5 text-sm font-bold">{order.orderNo}</td>
+                                        <td className="max-w-64 px-6 py-5 text-sm text-on-surface">
+                                            <p className="truncate font-medium" title={order.productNames.join(", ")}>
+                                                {order.productNames.join(", ") || "Đang cập nhật"}
+                                            </p>
+                                        </td>
                                         <td className="px-6 py-5 text-sm text-on-surface-variant">
                                             {formatDate(order.createdAt)}
                                         </td>

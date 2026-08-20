@@ -38,6 +38,7 @@ function mergeSummary(detail) {
         discountAmount: detail.discountAmount,
         totalAmount: detail.totalAmount,
         itemCount: detail.itemCount,
+        productNames: detail.productNames,
         payment: detail.payment,
         createdAt: detail.createdAt,
         updatedAt: detail.updatedAt,

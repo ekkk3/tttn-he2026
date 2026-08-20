@@ -32,23 +32,40 @@ export const index = asyncHandler(async (req, res) => {
         size: 200,
         query: {
           bool: {
-            // fuzziness AUTO -> chịu được lỗi gõ/sai chính tả; multi_match tìm trên nhiều
-            // trường (tên ưu tiên cao nhất, rồi nguồn gốc/vùng miền/mô tả).
-            must: [{
-              multi_match: {
-                query: searchTerm,
-                fields: ['name^3', 'origin^2', 'region_name^2', 'short_description', 'category_name', 'description'],
-                fuzziness: 'AUTO',
-                type: 'best_fields',
+            // Tìm chính xác trên các trường mô tả và yêu cầu đủ tất cả từ. Fuzzy chỉ áp
+            // dụng cho tên sản phẩm: nếu fuzzy trên toàn bộ mô tả, "đậu phộng" có thể khớp
+            // sai với "đạm" + "thống" trong mô tả nước mắm dù đã dùng operator AND.
+            minimum_should_match: 1,
+            should: [
+              {
+                multi_match: {
+                  query: searchTerm,
+                  fields: ['name^6', 'origin^2', 'region_name^2', 'short_description', 'category_name', 'description'],
+                  type: 'best_fields',
+                  operator: 'and',
+                },
               },
-            }],
+              {
+                multi_match: {
+                  query: searchTerm,
+                  fields: ['name^8'],
+                  fuzziness: 'AUTO',
+                  type: 'best_fields',
+                  operator: 'and',
+                },
+              },
+            ],
             filter: [{ term: { is_active: true } }, { term: { is_deleted: false } }],
           },
         },
       });
+      // Elasticsearch đã sắp theo _score giảm dần. Lưu thứ tự ID này để câu SELECT MySQL
+      // phía dưới không làm mất thứ hạng liên quan khi hydrate dữ liệu sản phẩm đầy đủ.
       esProductIds = result.hits.hits.map((h) => h._source.id);
       if (esProductIds.length === 0) {
-        return res.json(paginated([], { page, perPage, total: 0 }));
+        // Chỉ mục có thể chưa kịp đồng bộ sau khi import dữ liệu. Khi ES không có hit,
+        // dùng LIKE chính xác trên MySQL thay vì báo không có sản phẩm dù DB có dữ liệu.
+        esProductIds = null;
       }
     } catch (err) {
       console.warn('[elasticsearch] search thất bại, fallback về MySQL LIKE:', err.message);
@@ -89,14 +106,27 @@ export const index = asyncHandler(async (req, res) => {
 
   // sort: frontend gửi 'popular' (mặc định), 'price-asc', 'price-desc', 'newest'.
   let orderBy = 'p.id DESC';
-  if (sort === 'price-asc') orderBy = 'p.sale_price ASC';
-  else if (sort === 'price-desc') orderBy = 'p.sale_price DESC';
-  else if (sort === 'newest') orderBy = 'p.created_at DESC';
+  let orderParams = [];
+  if (esProductIds?.length) {
+    // FIELD trả về vị trí của p.id trong danh sách. Danh sách được lấy từ ES theo _score
+    // giảm dần nên đây là cách an toàn để giữ relevance khi vẫn truy vấn MySQL cho dữ liệu
+    // đầy đủ. Các lựa chọn sort chỉ làm tiêu chí phụ khi hai kết quả có cùng relevance.
+    const relevanceOrder = `FIELD(p.id, ${esProductIds.map(() => '?').join(', ')})`;
+    orderParams = [...esProductIds];
+    if (sort === 'price-asc') orderBy = `${relevanceOrder} ASC, p.sale_price ASC`;
+    else if (sort === 'price-desc') orderBy = `${relevanceOrder} ASC, p.sale_price DESC`;
+    else if (sort === 'newest') orderBy = `${relevanceOrder} ASC, p.created_at DESC`;
+    else orderBy = `${relevanceOrder} ASC, p.id DESC`;
+  } else {
+    if (sort === 'price-asc') orderBy = 'p.sale_price ASC';
+    else if (sort === 'price-desc') orderBy = 'p.sale_price DESC';
+    else if (sort === 'newest') orderBy = 'p.created_at DESC';
+  }
 
   const [{ total }] = await query(`SELECT COUNT(*) AS total FROM products p WHERE ${whereSql}`, params);
   const rows = await query(
     `${PRODUCT_SELECT} WHERE ${whereSql} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-    [...params, perPage, offset]
+    [...params, ...orderParams, perPage, offset]
   );
 
   res.json(paginated(serializeProducts(rows), { page, perPage, total }));

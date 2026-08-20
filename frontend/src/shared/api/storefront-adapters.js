@@ -331,6 +331,7 @@ export function adaptBackendOrderSummary(order) {
         discountAmount: numberValue(order.discount_amount),
         totalAmount: numberValue(order.total_amount),
         itemCount: order.item_count,
+        productNames: Array.isArray(order.product_names) ? order.product_names.filter(Boolean) : [],
         payment: order.payment ? adaptPayment(order.payment) : null,
         createdAt: order.created_at,
         updatedAt: order.updated_at,

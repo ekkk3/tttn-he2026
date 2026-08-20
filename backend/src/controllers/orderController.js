@@ -305,7 +305,15 @@ export const index = asyncHandler(async (req, res) => {
   const data = [];
   for (const order of orders) {
     const [payment] = await query('SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id]);
-    data.push(serializeOrderSummary(order, { itemCount: order.item_count, payment: payment || null }));
+    const items = await query(
+      'SELECT product_name_snapshot FROM order_items WHERE order_id = ? ORDER BY id ASC',
+      [order.id]
+    );
+    data.push(serializeOrderSummary(order, {
+      itemCount: order.item_count,
+      productNames: items.map((item) => item.product_name_snapshot).filter(Boolean),
+      payment: payment || null,
+    }));
   }
   res.json(paginated(data, { page, perPage, total }));
 });

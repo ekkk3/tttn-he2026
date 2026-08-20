@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { routes } from "@/shared/config/routes";
 import { redirectForRole, useAuthStore } from "@/shared/lib/store/use-auth-store";
 import { useCartStore } from "@/shared/lib/store/use-cart-store";
+import { useShopStore } from "@/shared/lib/store/use-shop-store";
 import { Icon, cn } from "@/shared/ui";
 function getVariant(pathname) {
     if (pathname === routes.home)
@@ -20,6 +21,7 @@ export function StorefrontHeader() {
     const location = useLocation();
     const session = useAuthStore((state) => state.session);
     const cartCount = useCartStore((state) => state.items.reduce((sum, item) => sum + item.quantity, 0));
+    const wishlistCount = useShopStore((state) => state.wishlistIds.length);
     const [search, setSearch] = useState("");
     const variant = getVariant(location.pathname);
     const accountTarget = session ? redirectForRole(session.user.role) : routes.login;
@@ -70,6 +72,13 @@ export function StorefrontHeader() {
                             <Icon name="shopping_cart"/>
                             {cartCount > 0 ? (<span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-tertiary text-[10px] font-bold text-on-tertiary">
                                     {cartCount}
+                                </span>) : null}
+                        </Link>) : null}
+
+                    {isCustomerSession ? (<Link to={routes.accountWishlist} className="relative rounded-full p-2 text-zinc-600 transition hover:bg-zinc-50 hover:text-error" aria-label="Danh sách yêu thích">
+                            <Icon name="favorite"/>
+                            {wishlistCount > 0 ? (<span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-error text-[10px] font-bold text-on-error">
+                                    {wishlistCount}
                                 </span>) : null}
                         </Link>) : null}
 

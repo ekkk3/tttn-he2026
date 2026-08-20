@@ -135,7 +135,7 @@ export function serializePayment(payment) {
 
 // Order summary + detail. adaptBackendOrderSummary/Detail đọc snake_case và cần
 // item_count, payment (lồng), items[], status_history[].
-export function serializeOrderSummary(order, { itemCount = null, payment = null } = {}) {
+export function serializeOrderSummary(order, { itemCount = null, productNames = [], payment = null } = {}) {
   return {
     id: order.id,
     order_no: order.order_no,
@@ -146,6 +146,7 @@ export function serializeOrderSummary(order, { itemCount = null, payment = null 
     discount_amount: Number(order.discount_amount),
     total_amount: Number(order.total_amount),
     item_count: itemCount,
+    product_names: productNames,
     payment: payment ? serializePayment(payment) : null,
     created_at: order.created_at,
     updated_at: order.updated_at ?? order.created_at,
@@ -154,7 +155,11 @@ export function serializeOrderSummary(order, { itemCount = null, payment = null 
 
 export function serializeOrderDetail(order, { items = [], statusHistory = [], payment = null } = {}) {
   return {
-    ...serializeOrderSummary(order, { itemCount: items.length, payment }),
+    ...serializeOrderSummary(order, {
+      itemCount: items.length,
+      productNames: items.map((item) => item.product_name_snapshot).filter(Boolean),
+      payment,
+    }),
     recipient_name: order.recipient_name,
     recipient_phone: order.recipient_phone,
     shipping_address: order.shipping_address,
